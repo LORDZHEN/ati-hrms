@@ -259,6 +259,10 @@ class LocatorSlipResource extends Resource
     // Show badge on navigation for pending leave applications
     public static function getNavigationBadge(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
+
         $count = LocatorSlip::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
@@ -266,6 +270,9 @@ class LocatorSlipResource extends Resource
     // Optional: change badge color dynamically
     public static function getNavigationBadgeColor(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
         $count = LocatorSlip::where('status', 'pending')->count();
         return $count > 0 ? 'warning' : 'success';
     }

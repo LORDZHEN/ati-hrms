@@ -258,6 +258,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="civil-service-note">
@@ -286,7 +287,7 @@
             <table>
                 <tr>
                     <td width="18%" class="field-label">1. OFFICE/DEPARTMENT</td>
-                    <td width="27%">{{ $leaveApplication->office_department ?? '' }}</td>
+                    <td width="27%">{{ $leaveApplication->employee?->department ?? '' }}</td>
                     <td width="8%" class="field-label">2. NAME:</td>
                     <td width="15%" class="field-label">(Last)</td>
                     <td width="16%" class="field-label">(First)</td>
@@ -296,9 +297,9 @@
                     <td style="height: 25px;"></td>
                     <td></td>
                     <td></td>
-                    <td>{{ $leaveApplication->last_name ?? '' }}</td>
-                    <td>{{ $leaveApplication->first_name ?? '' }}</td>
-                    <td>{{ $leaveApplication->middle_name ?? '' }}</td>
+                    <td>{{ $leaveApplication->employee?->last_name ?? '' }}</td>
+                    <td>{{ $leaveApplication->employee?->first_name ?? '' }}</td>
+                    <td>{{ $leaveApplication->employee?->middle_name ?? '' }}</td>
                 </tr>
             </table>
         </div>
@@ -310,9 +311,9 @@
                     <td width="18%" class="field-label">3. DATE OF FILING</td>
                     <td width="27%">{{ $leaveApplication->date_of_filing?->format('m/d/Y') ?? '' }}</td>
                     <td width="12%" class="field-label">4. POSITION</td>
-                    <td width="23%">{{ $leaveApplication->position ?? '' }}</td>
+                    <td width="23%">{{ $leaveApplication->employee?->position ?? '' }}</td>
                     <td width="10%" class="field-label">5. SALARY</td>
-                    <td width="10%">{{ $leaveApplication->salary ? number_format($leaveApplication->salary, 2) : '' }}</td>
+                    <td width="10%">{{ $leaveApplication->employee?->salary ? number_format($leaveApplication->employee->salary, 2) : '' }}</td>
                 </tr>
             </table>
         </div>
@@ -331,18 +332,19 @@
                         @php
                         $leaveTypes = [
                             'vacation_leave' => 'Vacation Leave (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                            'mandatory_leave' => 'Mandatory/Forced Leave (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'mandatory_forced_leave' => 'Mandatory/Forced Leave (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
                             'sick_leave' => 'Sick Leave (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
                             'maternity_leave' => 'Maternity Leave (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)',
                             'paternity_leave' => 'Paternity Leave (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)',
                             'special_privilege_leave' => 'Special Privilege Leave (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
                             'solo_parent_leave' => 'Solo Parent Leave (R.A. No. 8972 / CSC MC No. 8, s. 2004)',
                             'study_leave' => 'Study Leave (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                            'vawc_leave' => '10-Day VAWC Leave (R.A. No. 9262 / CSC MC No. 15, s. 2005)',
+                            '10_day_vawc_leave' => '10-Day VAWC Leave (R.A. No. 9262 / CSC MC No. 15, s. 2005)',
                             'rehabilitation_privilege' => 'Rehabilitation Privilege (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                            'special_leave_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
-                            'emergency_leave' => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
+                            'special_leave_benefits_for_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
+                            'special_emergency_leave' => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
                             'adoption_leave' => 'Adoption Leave (R.A. No. 8552)',
+                            'others' => 'Others',
                         ];
                         @endphp
 
@@ -354,8 +356,8 @@
                         @endforeach
 
                         <div style="margin-top: 5px; font-size: 12px;">
-                            <strong>Others:</strong>
-                            <span class="underline" style="width: 120px;">{{ $leaveApplication->others_specify ?? '' }}</span>
+                            <strong>Specify Other:</strong>
+                            <span class="underline" style="width: 120px;">{{ $leaveApplication->other_leave_type ?? '' }}</span>
                         </div>
                     </td>
 
@@ -365,37 +367,29 @@
                             <div>
                                 <div class="field-label" style="margin-bottom: 6px;">6.B DETAILS OF LEAVE</div>
 
+                                @if(in_array($leaveApplication->type_of_leave, ['vacation_leave', 'special_privilege_leave']))
                                 <div class="leave-details-text">
                                     <strong>Vacation/Special Privilege Leave:</strong><br>
-                                    <span class="checkbox {{ $leaveApplication->vacation_location == 'within_philippines' ? 'checked' : '' }}"></span> Within the Philippines
-                                    <span class="underline" style="width: 70px;">{{ $leaveApplication->vacation_location == 'within_philippines' ? ($leaveApplication->vacation_location_specify ?? '') : '' }}</span><br>
+                                    <span class="checkbox {{ $leaveApplication->vacation_location == 'within_philippines' ? 'checked' : '' }}"></span> Within the Philippines<br>
                                     <span class="checkbox {{ $leaveApplication->vacation_location == 'abroad' ? 'checked' : '' }}"></span> Abroad (Specify)
                                     <span class="underline" style="width: 70px;">{{ $leaveApplication->abroad_specify ?? '' }}</span>
                                 </div>
+                                @endif
 
+                                @if($leaveApplication->type_of_leave === 'sick_leave')
                                 <div class="leave-details-text">
                                     <strong>Sick Leave:</strong><br>
-                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'hospital' ? 'checked' : '' }}"></span> In Hospital
-                                    <span class="underline" style="width: 65px;">{{ $leaveApplication->sick_leave_location == 'hospital' ? ($leaveApplication->illness_specify ?? '') : '' }}</span><br>
-                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'outpatient' ? 'checked' : '' }}"></span> Out Patient
-                                    <span class="underline" style="width: 65px;">{{ $leaveApplication->sick_leave_location == 'outpatient' ? ($leaveApplication->illness_specify ?? '') : '' }}</span>
+                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'in_hospital' ? 'checked' : '' }}"></span> In Hospital
+                                    <span class="underline" style="width: 65px;">{{ $leaveApplication->hospital_illness_specify ?? '' }}</span><br>
+                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'out_patient' ? 'checked' : '' }}"></span> Out Patient
+                                    <span class="underline" style="width: 65px;">{{ $leaveApplication->outpatient_illness_specify ?? '' }}</span>
                                 </div>
+                                @endif
 
                                 <div class="leave-details-text">
-                                    <strong>Special Leave for Women:</strong><br>
-                                    <span class="underline" style="width: 90px;">{{ $leaveApplication->women_illness_specify ?? '' }}</span>
-                                </div>
-
-                                <div class="leave-details-text">
-                                    <strong>Study Leave:</strong><br>
-                                    <span class="checkbox {{ in_array('masters_degree', $leaveApplication->study_leave_purpose ?? []) ? 'checked' : '' }}"></span> Completion of Master's Degree<br>
-                                    <span class="checkbox {{ in_array('bar_board_exam', $leaveApplication->study_leave_purpose ?? []) ? 'checked' : '' }}"></span> BAR/Board Examination Review
-                                </div>
-
-                                <div class="leave-details-text">
-                                    <strong>Other Purpose:</strong><br>
-                                    <span class="checkbox {{ in_array('monetization', $leaveApplication->other_purpose ?? []) ? 'checked' : '' }}"></span> Monetization of Leave Credits<br>
-                                    <span class="checkbox {{ in_array('terminal_leave', $leaveApplication->other_purpose ?? []) ? 'checked' : '' }}"></span> Terminal Leave
+                                    <strong>Commutation:</strong><br>
+                                    <span class="checkbox {{ $leaveApplication->commutation == 'requested' ? 'checked' : '' }}"></span> Requested
+                                    <span class="checkbox {{ $leaveApplication->commutation == 'not_requested' ? 'checked' : '' }}"></span> Not Requested
                                 </div>
                             </div>
                         </div>
@@ -404,15 +398,25 @@
             </table>
         </div>
 
-        <!-- Section 6.C & 6.D -->
+        <!-- Section 6.D: Leave Credits -->
         <table>
             <tr>
                 <td width="50%" style="padding: 4px; vertical-align: top;">
-                    <strong>6.C. SERVICE RECORD</strong><br>
-                    <span class="underline" style="width: 90%;">{{ $leaveApplication->service_record ?? '' }}</span>
+                    <strong>6.D CERTIFICATION OF LEAVE CREDITS</strong><br>
+                    <table class="credits-table">
+                        <tr>
+                            <td>Vacation Leave</td>
+                            <td>{{ $leaveApplication->employee?->vl_balance ?? '' }}</td>
+                        </tr>
+                        <tr>
+                            <td>Sick Leave</td>
+                            <td>{{ $leaveApplication->employee?->sl_balance ?? '' }}</td>
+                        </tr>
+                    </table>
                 </td>
+
                 <td width="50%" style="padding: 4px; vertical-align: top;">
-                    <strong>6.D. ACTION ON PREVIOUS LEAVE</strong><br>
+                    <strong>Previous Leave Action</strong><br>
                     <span class="underline" style="width: 90%;">{{ $leaveApplication->previous_leave_action ?? '' }}</span>
                 </td>
             </tr>
@@ -424,8 +428,12 @@
                 <td style="padding: 4px; vertical-align: top;">
                     <strong>7. RECOMMENDING APPROVAL / DISAPPROVAL</strong><br>
                     <div class="signature-area">
-                        <span class="signature-line"></span>
-                        <div class="signature-label">Immediate Supervisor</div>
+                        <span class="signature-line">{{ $leaveApplication->authorized_officer ?? '' }}</span>
+                        <div class="signature-label">Immediate Supervisor
+                            @if($leaveApplication->status === 'disapproved')
+                                <br><small>Reason: {{ $leaveApplication->disapproval_reason }}</small>
+                            @endif
+                        </div>
                     </div>
                     <div class="signature-area" style="margin-top: 15px;">
                         <span class="signature-line"></span>

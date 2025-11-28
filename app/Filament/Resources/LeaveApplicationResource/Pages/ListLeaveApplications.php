@@ -12,8 +12,21 @@ class ListLeaveApplications extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
+        // Start with actions everyone can see
+        $actions = [
             Actions\CreateAction::make(),
         ];
+
+        // Add "Generate Report" only for admin users
+        if (auth()->check() && auth()->user()->role === 'admin') {
+            $actions[] = Actions\Action::make('generateReport')
+                ->label('Generate Report')
+                ->icon('heroicon-o-document-text')
+                ->color('primary')
+                ->url(fn() => route('leave-applications.report'))
+                ->openUrlInNewTab();
+        }
+
+        return $actions;
     }
 }

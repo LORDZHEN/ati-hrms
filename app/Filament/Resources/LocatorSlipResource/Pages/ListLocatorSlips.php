@@ -12,8 +12,20 @@ class ListLocatorSlips extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
+        // Actions everyone can see
+        $actions = [
             Actions\CreateAction::make(),
         ];
+
+        // Only show "Generate Report" for admin users
+        if (auth()->check() && auth()->user()->role === 'admin') {
+            $actions[] = Actions\Action::make('report')
+                ->label('Generate Report')
+                ->icon('heroicon-o-document-text')
+                ->url(route('locator-slip.report'))
+                ->openUrlInNewTab();
+        }
+
+        return $actions;
     }
 }

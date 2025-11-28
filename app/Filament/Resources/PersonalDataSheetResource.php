@@ -661,6 +661,9 @@ class PersonalDataSheetResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $user = auth()->user();
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
 
         // Only show badge for admins
         if ($user && $user->is_admin) {
@@ -674,6 +677,9 @@ class PersonalDataSheetResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         $user = auth()->user();
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
 
         if ($user && $user->is_admin) {
             $count = PersonalDataSheet::where('status', 'pending')->count();

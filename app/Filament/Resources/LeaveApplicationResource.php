@@ -35,17 +35,22 @@ class LeaveApplicationResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('office_department')
                                     ->label('Office/Department')
-                                    ->default(fn() => auth()->user()?->department)
                                     ->disabled()
                                     ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->department ?? '');
+                                    })
                                     ->prefixIcon('heroicon-o-building-office'),
 
                                 Forms\Components\TextInput::make('position')
                                     ->label('Position')
-                                    ->default(fn() => auth()->user()?->position)
                                     ->disabled()
                                     ->dehydrated(false)
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->position ?? '');
+                                    })
                                     ->prefixIcon('heroicon-o-briefcase'),
+
                             ]),
                         Forms\Components\DatePicker::make('date_of_filing')
                             ->label('Date of Filing')
@@ -55,20 +60,25 @@ class LeaveApplicationResource extends Resource
 
                         Forms\Components\TextInput::make('first_name')
                             ->label('First Name')
-                            ->default(fn() => auth()->user()?->first_name)
                             ->disabled()
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                $component->state($record->employee?->first_name ?? '');
+                            })
                             ->required(),
 
                         Forms\Components\TextInput::make('middle_name')
                             ->label('Middle Name')
-                            ->default(fn() => auth()->user()?->middle_name)
                             ->disabled()
-                            ->required(),
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                $component->state($record->employee?->middle_name ?? '');
+                            }),
 
                         Forms\Components\TextInput::make('last_name')
                             ->label('Last Name')
-                            ->default(fn() => auth()->user()?->last_name)
                             ->disabled()
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                $component->state($record->employee?->last_name ?? '');
+                            })
                             ->required(),
                     ])
                     ->collapsible()
@@ -230,10 +240,10 @@ class LeaveApplicationResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('full_name')
+                Tables\Columns\TextColumn::make('employee_name')
                     ->label('Employee Name')
-                    ->getStateUsing(fn($record) => trim($record->first_name . ' ' . ($record->middle_name ? $record->middle_name . ' ' : '') . $record->last_name))
-                    ->searchable(['first_name', 'middle_name', 'last_name'])
+                    ->getStateUsing(fn($record) => $record->employee?->name ?? 'N/A')
+                    ->searchable(['employee.name'])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type_of_leave')->label('Leave Type')->sortable(),
                 Tables\Columns\TextColumn::make('number_of_working_days')->label('Days')->sortable(),
@@ -246,7 +256,10 @@ class LeaveApplicationResource extends Resource
                     })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('date_of_filing')->label('Filed Date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('authorized_officer')->label('Processed By')->placeholder('Not yet processed'),
+                Tables\Columns\TextColumn::make('authorized_officer')
+                    ->label('Processed By')
+                    ->formatStateUsing(fn($state) => $state ?: 'Not yet processed'),
+
                 Tables\Columns\TextColumn::make('date_approved_disapproved')->label('Date Processed')->date()->placeholder('Not yet processed'),
             ])
             ->filters([
@@ -262,6 +275,13 @@ class LeaveApplicationResource extends Resource
                     ->visible(fn($record) => $record->status === 'pending'),
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn($record) => $record->status === 'pending'),
+                Tables\Actions\Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(fn($record) => route('leave_application.print', $record))
+                    ->openUrlInNewTab(),
+
 
                 // Admin Approve Action
                 Tables\Actions\Action::make('approve')
@@ -281,7 +301,7 @@ class LeaveApplicationResource extends Resource
                 // Admin Disapprove Action
                 Tables\Actions\Action::make('disapprove')
                     ->label('Disapprove')
-                    ->icon('heroicon-o-x')
+                    // ->icon('heroicon-o-x')
                     ->color('danger')
                     ->visible(fn($record) => auth()->user()->role === 'admin' && $record->status === 'pending')
                     ->form([
@@ -309,19 +329,28 @@ class LeaveApplicationResource extends Resource
     {
         return [];
     }
-    // Show badge on navigation for pending leave applications
+    // Show badge on navigation for pending leave applications (admin only)
     public static function getNavigationBadge(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
+
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
 
-    // Optional: change badge color dynamically
+    // Optional: change badge color dynamically (admin only)
     public static function getNavigationBadgeColor(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge color for non-admin users
+        }
+
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? 'warning' : 'success';
     }
+
 
 
     public static function getPages(): array

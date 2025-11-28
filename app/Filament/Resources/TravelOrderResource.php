@@ -460,6 +460,9 @@ class TravelOrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
         $myOrders = static::getModel()::where('created_by', Auth::id())
             ->whereIn('status', ['recommended', 'approved'])
             ->count();
@@ -469,6 +472,9 @@ class TravelOrderResource extends Resource
 
     public static function getNavigationBadgeColor(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
         $myOrders = static::getModel()::where('created_by', Auth::id())
             ->whereIn('status', ['recommended', 'approved'])
             ->count();
@@ -484,5 +490,5 @@ class TravelOrderResource extends Resource
 
         return parent::getEloquentQuery()->where('created_by', Auth::id());
     }
-    
+
 }

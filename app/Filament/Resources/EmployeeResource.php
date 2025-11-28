@@ -14,14 +14,13 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AccountVerifiedMail;
-use Illuminate\Support\Facades\Auth;
 
 class EmployeeResource extends Resource
 {
     protected static ?string $model = User::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $slug = 'employee-resource';
     protected static ?string $navigationLabel = 'Employees';
@@ -36,17 +35,28 @@ class EmployeeResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $isAdmin = auth()->user()?->role === 'admin';
+
         return $form->schema([
             TextInput::make('name')->label('Name')->required(),
             TextInput::make('email')->email()->required(),
+            TextInput::make('employee_id_number')->label('Employee ID')->required(),
             DatePicker::make('birthday')->required(),
+            Select::make('role')
+                ->label('Role')
+                ->options([
+                    'admin' => 'Admin',
+                ])
+                ->default('admin')
+                ->required()
+                ->hidden(!$isAdmin),
             Select::make('status')
                 ->options([
                     'pending' => 'Pending',
                     'active' => 'Active',
                     'inactive' => 'Inactive',
                 ])
-                ->default('pending'),
+                ->default('active'),
         ])->columns(2);
     }
 
@@ -54,7 +64,7 @@ class EmployeeResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employee_id')
+                TextColumn::make('employee_id_number')
                     ->label('Employee ID')
                     ->sortable()
                     ->searchable(),
@@ -84,14 +94,12 @@ class EmployeeResource extends Resource
                     ->color(fn($record) => $record->email_verified_at ? 'success' : 'danger')
                     ->getStateUsing(fn(User $record) => $record->email_verified_at ? 'Verified' : 'Not Verified'),
             ])
-
             ->filters([
                 SelectFilter::make('status')->options([
                     'pending' => 'Pending',
                     'active' => 'Active',
                     'inactive' => 'Inactive',
                 ]),
-
                 SelectFilter::make('verified')
                     ->label('Email Verified')
                     ->options([
@@ -102,16 +110,14 @@ class EmployeeResource extends Resource
                         ? $query->whereNotNull('email_verified_at')
                         : $query->whereNull('email_verified_at')),
             ])
-
             ->actions([
                 Tables\Actions\Action::make('verify')
                     ->label('Verify')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->hidden(fn($record) => (bool) $record->email_verified_at) // hide if verified
+                    ->hidden(fn($record) => (bool) $record->email_verified_at)
                     ->requiresConfirmation()
                     ->action(function ($record, $livewire) {
-
                         $birthday = $record->birthday?->format('mdY');
 
                         if (!$birthday || strlen($birthday) !== 8) {
@@ -125,7 +131,7 @@ class EmployeeResource extends Resource
 
                         $record->update([
                             'email_verified_at' => now(),
-                            'password'          => bcrypt($birthday),
+                            'password' => bcrypt($birthday),
                             'must_change_password' => true,
                             'status' => 'active',
                         ]);
@@ -134,17 +140,14 @@ class EmployeeResource extends Resource
 
                         Notification::make()
                             ->title('Account Verified')
-                            ->body("Temporary password: **{$birthday}**
-                            An email has been sent to the employee.")
+                            ->body("Temporary password: **{$birthday}**. An email has been sent to the employee.")
                             ->success()
                             ->persistent()
                             ->send();
 
-                        // 🔥 Refresh the table instantly
                         $livewire->redirect($livewire->getUrl());
                     }),
             ])
-
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
@@ -155,20 +158,19 @@ class EmployeeResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->where('role', 'employee')
-            ->whereIn('status', ['active', 'pending']);
+            ->where('role', 'employee'); // only show employees in list
     }
 
     public static function canCreate(): bool
     {
-        return false;
+        return auth()->user()?->role === 'admin'; // only admin can create
     }
 
     public static function getRelations(): array
     {
         return [];
     }
-    // Show badge on navigation for pending employees
+
     public static function getNavigationBadge(): ?string
     {
         $count = User::where('role', 'employee')
@@ -178,7 +180,6 @@ class EmployeeResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
-    // Optional: change badge color dynamically
     public static function getNavigationBadgeColor(): ?string
     {
         $count = User::where('role', 'employee')
@@ -188,12 +189,12 @@ class EmployeeResource extends Resource
         return $count > 0 ? 'warning' : 'success';
     }
 
-
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListEmployees::route('/'),
             'edit' => Pages\EditEmployee::route('/{record}/edit'),
+            'create' => Pages\CreateEmployee::route('/create'),
         ];
     }
 }

@@ -12,8 +12,21 @@ class ListEmployees extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make(),
-        ];
+        $actions = auth()->user()?->role === 'admin'
+            ? [
+                Actions\CreateAction::make()->label('New Admin User'),
+                Actions\Action::make('Generate Report')
+                    ->button()
+                    ->icon('heroicon-o-document-text')
+                    ->color('primary')
+                    ->url(route('employee.report'))
+                    ->openUrlInNewTab(),
+            ]
+            : [];
+
+        return $actions;
     }
+
+
+
 }

@@ -11,6 +11,9 @@ class LeaveApplication extends Model
     use HasFactory;
 
     protected $fillable = [
+        'first_name',
+        'last_name',
+        'name',
         'employee_id',
         'office_department',
         'date_of_filing',

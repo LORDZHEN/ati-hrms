@@ -11,6 +11,7 @@ class LeaveApplicationPrintController extends Controller
     {
         $leaveApplication = LeaveApplication::findOrFail($id);
 
-        return view('leave_application.print', compact('leaveApplication'));
+        return view('filament.pages.leave_application.print', compact('leaveApplication'));
+
     }
 }

@@ -7,17 +7,14 @@ use Filament\Pages\Auth\Register as BaseRegister;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\PendingRegistrationMail;
-use App\Mail\AdminTemporaryPasswordMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 
 class Register extends BaseRegister
 {
     protected static string $view = 'filament.pages.auth.register';
     protected static ?string $slug = 'register';
 
-    // Livewire properties for success message
     public bool $showSuccessMessage = false;
     public string $successMessage = '';
 
@@ -39,15 +36,6 @@ class Register extends BaseRegister
                 ->label('Employee ID')
                 ->required()
                 ->unique(User::class, 'employee_id_number'),
-
-            Forms\Components\Select::make('role')
-                ->label('Role')
-                ->options([
-                    'employee' => 'Employee',
-                    'admin' => 'Admin',
-                ])
-                ->default('employee')
-                ->required(),
 
             Forms\Components\TextInput::make('name')
                 ->label('Full Name')
@@ -85,68 +73,42 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): User
     {
-        $isAdmin = $data['role'] === 'admin';
+        $birthday = Carbon::parse($data['birthday']);
+        $tempPassword = $birthday->format('mdy');
 
-        if ($isAdmin) {
-            $tempPassword = \Str::random(6);
-            $password = \Hash::make($tempPassword);
-        } else {
-            $birthday = \Carbon\Carbon::parse($data['birthday']);
-            $tempPassword = $birthday->format('mdy');
-            $password = \Hash::make($tempPassword);
-        }
-
-        // Create user
         $user = User::create([
             'name' => $data['name'],
             'employee_id_number' => $data['employee_id'],
-            'role' => $data['role'],
+            'role' => 'employee', // fixed role
             'email' => $data['email'],
-            'password' => $password,
+            'password' => Hash::make($tempPassword),
             'birthday' => $data['birthday'],
             'phone' => $data['phone'] ?? null,
             'purok_street' => $data['purok_street'] ?? null,
             'city_municipality' => $data['city_municipality'] ?? null,
             'province' => $data['province'] ?? null,
-            'status' => $isAdmin ? 'active' : 'pending',
-            'verification_status' => $isAdmin ? 'verified' : 'pending',
-            'email_verified_at' => $isAdmin ? now() : null,
+            'status' => 'pending',
+            'verification_status' => 'pending',
+            'email_verified_at' => null,
             'must_change_password' => true,
         ]);
 
-        // Send emails
-        if ($isAdmin) {
-            \Mail::to($user->email)->send(new AdminTemporaryPasswordMail($user, $tempPassword));
-        } else {
-            \Mail::to($user->email)->send(new PendingRegistrationMail($user));
-        }
+        // Send registration email
+        Mail::to($user->email)->send(new PendingRegistrationMail($user));
 
-        // Do NOT log in the user
-        // BaseRegister automatically logs in. We override that behavior by returning null.
-
-        // Show success message
-        $this->successMessage = $isAdmin
-            ? 'Admin account created successfully. A temporary password has been sent to your email.'
-            : 'Registration successful! Your account is pending verification. Please check your email.';
+        $this->successMessage = 'Registration successful! Your account is pending verification. Please check your email.';
         $this->showSuccessMessage = true;
 
         return $user;
     }
 
-    /**
-     * Prevent automatic login after registration
-     */
     protected function authenticateUsing(): ?\Closure
     {
-        return null; // this prevents Filament from logging in the user
+        return null; // prevent automatic login
     }
 
-    /**
-     * Redirect everyone back to login after registration
-     */
     protected function getRedirectUrl(): string
     {
         return route('filament.hrms.auth.login');
     }
-
 }

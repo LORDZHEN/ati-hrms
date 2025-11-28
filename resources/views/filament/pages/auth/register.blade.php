@@ -21,6 +21,7 @@
             justify-content: center;
             padding: 20px;
             position: relative;
+            transition: background-color 0.3s;
         }
 
         .register-button {
@@ -46,12 +47,16 @@
         .mb-4 { margin-bottom: 1rem; }
         .mt-4 { margin-top: 1rem; }
         a { color: #16a34a; font-weight: 600; }
-        input, select {
+
+        input {
             width: 100%;
             padding: 8px 12px;
             border-radius: 8px;
             border: 1px solid #ccc;
             margin-top: 4px;
+            background-color: #fff;
+            color: #111;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .success-alert {
@@ -64,6 +69,42 @@
             text-align: center;
             font-weight: 500;
         }
+
+        /* Registration card */
+        .register-container {
+            background: rgba(255,255,255,0.9);
+            padding: 30px;
+            border-radius: 12px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1f2937; /* fallback if image is dark */
+            }
+
+            .register-container {
+                background: rgba(31, 41, 55, 0.9); /* dark semi-transparent */
+                color: #f9fafb;
+            }
+
+            input {
+                background-color: #374151;
+                color: #f9fafb;
+                border: 1px solid #4b5563;
+            }
+
+            a {
+                color: #22c55e;
+            }
+
+            .success-alert {
+                background-color: #065f46;
+                color: #d1fae5;
+                border-color: #10b981;
+            }
+        }
     </style>
 
     @livewireStyles
@@ -72,34 +113,24 @@
 <div>
     <div style="width: 400px;">
 
-        {{-- Success Message --}}
         @if($showSuccessMessage)
-            <div class="success-alert">
-                {{ $successMessage }}
-            </div>
+            <div class="success-alert">{{ $successMessage }}</div>
         @endif
 
-        {{-- Registration Card --}}
-        <div class="register-container" style="background: rgba(255,255,255,0.9); padding: 30px; border-radius: 12px;">
+        <div class="register-container">
             <div class="text-center mb-4">
-                <img src="{{ asset('images/ati_logo.png') }}" alt="ATI Logo"
-                     style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 16px; display: block;">
+                <img src="{{ asset('images/ati_logo.png') }}" alt="ATI Logo" style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 16px; display: block;">
                 <h1 class="text-2xl font-bold">Employee Registration</h1>
                 <p>Create your HRMS account below.</p>
             </div>
 
             <form wire:submit.prevent="register">
                 {{ $this->form }}
-
-                <button type="submit" class="register-button">
-                    Register
-                </button>
+                <button type="submit" class="register-button">Register</button>
             </form>
 
             <div class="mt-4 text-center">
-                <a href="{{ route('filament.hrms.auth.login') }}">
-                    Already have an account? Login
-                </a>
+                <a href="{{ route('filament.hrms.auth.login') }}">Already have an account? Login</a>
             </div>
         </div>
     </div>

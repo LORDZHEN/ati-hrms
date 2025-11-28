@@ -511,7 +511,7 @@ class SalnResource extends Resource
         $query = parent::getEloquentQuery()
             ->with(['user', 'children', 'realProperties', 'personalProperties', 'liabilities', 'businessInterests', 'relativesInGovernment']);
 
-        if (!auth()->user()->hasRole('admin')) {
+        if (!(auth()->user()?->is_admin ?? false)) {
             $query->where('user_id', auth()->id());
         }
 
@@ -521,6 +521,9 @@ class SalnResource extends Resource
     // Show badge on navigation for SALNs without admin remarks
     public static function getNavigationBadge(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
         $count = Saln::whereNull('remarks')->count();
         return $count > 0 ? (string) $count : null;
     }
@@ -528,6 +531,9 @@ class SalnResource extends Resource
     // Optional: change badge color dynamically
     public static function getNavigationBadgeColor(): ?string
     {
+        if (!(auth()->user()?->is_admin ?? false)) {
+            return null; // No badge for non-admin users
+        }
         $count = Saln::whereNull('remarks')->count();
         return $count > 0 ? 'warning' : 'success';
     }
