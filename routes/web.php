@@ -32,7 +32,7 @@ Route::get('/saln/{saln}/print', [SalnPrintController::class, 'print'])
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('filament.hrms.auth.login');
 });
 
 /*
