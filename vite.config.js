@@ -8,7 +8,8 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                'vendor/nuxtifyts/dash-stack-theme/resources/css/theme.css',
+                // 'vendor/nuxtifyts/dash-stack-theme/resources/css/theme.css',
+                // 'resources/css/filament/hrms/theme.css',
             ],
             refresh: true,
         }),

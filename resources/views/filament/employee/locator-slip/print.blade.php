@@ -51,10 +51,19 @@
             width: 120px;
         }
 
+        .signature-block {
+            margin-top: 30px;
+        }
+
         .signature-line {
             border-bottom: 1px solid #000;
             width: 200px;
             margin-bottom: 4px;
+        }
+
+        .signature-name {
+            font-weight: bold;
+            text-align: center;
         }
 
         .checkbox {
@@ -105,6 +114,7 @@
 
             <div class="section"><span class="label">Name:</span> {{ $record->employee_name }}</div>
             <div class="section"><span class="label">Position:</span> {{ $record->position }}</div>
+            <div class="section"><span class="label">Department:</span> {{ $record->department }}</div>
             <div class="section"><span class="label">Destination:</span> {{ $record->destination }}</div>
             <div class="section"><span class="label">Purpose:</span> {{ $record->purpose }}</div>
 
@@ -121,13 +131,33 @@
                 {{ $record->in_time ? \Carbon\Carbon::parse($record->in_time)->format('h:i A') : 'N/A' }}
             </div>
 
-            <div style="margin-top: 30px;">
-                <strong>Requested By:</strong><br>
-                <div class="signature-line"></div>
-                <div>{{ $record->requested_by }}</div>
+            {{-- Status with checkboxes --}}
+            <div class="section">
+                <span class="label">Status:</span>
 
-                <div style="margin-top: 30px;"><strong>Approved By:</strong></div>
+                <span class="checkbox {{ $record->status === 'pending' ? 'checked' : '' }}"></span> Pending
+                <span class="checkbox {{ $record->status === 'approved' ? 'checked' : '' }}" style="margin-left: 15px;"></span> Approved
+                <span class="checkbox {{ $record->status === 'rejected' ? 'checked' : '' }}" style="margin-left: 15px;"></span> Rejected
+            </div>
+
+            @if($record->status === 'rejected')
+            <div class="section"><span class="label">Rejection Reason:</span> {{ $record->rejection_reason }}</div>
+            @endif
+
+            <div class="signature-block">
+                <strong>Requested By:</strong>
                 <div class="signature-line"></div>
+                <div class="signature-name">{{ $record->requested_by }}</div>
+            </div>
+
+            <div class="signature-block">
+                <strong>Approved By:</strong>
+                <div class="signature-line"></div>
+                <div class="signature-name">{{ $record->approved_by ?? 'N/A' }}</div>
+
+                @if($record->approved_at)
+                <div class="section"><span class="label">Date Approved:</span> {{ \Carbon\Carbon::parse($record->approved_at)->format('F d, Y') }}</div>
+                @endif
             </div>
 
         </div>

@@ -13,15 +13,18 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
+
 class DailyTimeRecordResource extends Resource
 {
     protected static ?string $model = EmployeeDtr::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-down';
     protected static ?string $navigationLabel = 'Daily Time Record';
+    protected static ?string $slug = 'daily-time-records';
     protected static ?string $title = 'Daily Time Record';
-    protected static ?string $navigationGroup = 'My Account';
+    protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 1;
+
 
     public static function form(Form $form): Form
     {
@@ -29,7 +32,7 @@ class DailyTimeRecordResource extends Resource
             Forms\Components\Select::make('employee_id')
                 ->relationship('employee', 'name')
                 ->searchable()
-                ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN)
+                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN)
                 ->required(),
 
             Forms\Components\FileUpload::make('file_path')
@@ -40,11 +43,11 @@ class DailyTimeRecordResource extends Resource
                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     'text/csv',
                 ])
-                ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
 
             Forms\Components\Textarea::make('notes')
                 ->nullable()
-                ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
         ]);
     }
 
@@ -54,7 +57,7 @@ class DailyTimeRecordResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Employee')
-                    ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
 
                 Tables\Columns\TextColumn::make('notes')
                     ->limit(40)
@@ -67,19 +70,19 @@ class DailyTimeRecordResource extends Resource
             ->actions([
                 Tables\Actions\Action::make('download')
                     ->label('Download File')
-                    ->url(fn ($record) => Storage::url($record->file_path))
+                    ->url(fn($record) => Storage::url($record->file_path))
                     ->openUrlInNewTab(),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                        ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
                 ]),
             ]);
     }
@@ -104,4 +107,6 @@ class DailyTimeRecordResource extends Resource
             'edit' => Pages\EditDailyTimeRecord::route('/{record}/edit'),
         ];
     }
+
+
 }

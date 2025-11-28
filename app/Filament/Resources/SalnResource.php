@@ -22,8 +22,8 @@ class SalnResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'SALN';
     protected static ?string $title = 'SALNs';
-    protected static ?string $slug = 'Saln';
-    protected static ?string $navigationGroup = 'My Account';
+    protected static ?string $slug = 'saln';
+    protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
@@ -47,7 +47,6 @@ class SalnResource extends Resource
                                             ->label('Not Applicable'),
                                     ]),
                             ]),
-
                         Section::make('Declarant Information')
                             ->collapsible()
                             ->collapsed()
@@ -88,7 +87,6 @@ class SalnResource extends Resource
                                         auth()->user()?->province,
                                     ]))),
                             ]),
-
                         Section::make('Spouse Information')
                             ->schema([
                                 Grid::make(3)
@@ -198,7 +196,6 @@ class SalnResource extends Resource
                                     ->addActionLabel('Add Real Property')
                                     ->collapsed(),
                             ]),
-
                         Section::make('Personal Properties')
                             ->schema([
                                 Repeater::make('personalProperties')
@@ -296,7 +293,6 @@ class SalnResource extends Resource
                                     ->addActionLabel('Add Business Interest')
                                     ->collapsed(),
                             ]),
-
                         Section::make('Relatives in the Government Service')
                             ->schema([
                                 Grid::make(2)
@@ -353,109 +349,22 @@ class SalnResource extends Resource
                                         Forms\Components\FileUpload::make('declarant_id_presented')
                                             ->label('Declarant ID Presented')
                                             ->image()
-                                            ->imageResizeMode('cover')
-                                            ->imageCropAspectRatio('16:9')
-                                            ->imageResizeTargetWidth('1920')
-                                            ->imageResizeTargetHeight('1080')
                                             ->directory('saln/declarant-ids')
                                             ->visibility('private')
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                            ->maxSize(5120), // 5MB max
+                                            ->maxSize(5120),
                                         Forms\Components\FileUpload::make('spouse_id_presented')
                                             ->label('Spouse ID Presented')
                                             ->image()
-                                            ->imageResizeMode('cover')
-                                            ->imageCropAspectRatio('16:9')
-                                            ->imageResizeTargetWidth('1920')
-                                            ->imageResizeTargetHeight('1080')
                                             ->directory('saln/spouse-ids')
                                             ->visibility('private')
                                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                            ->maxSize(5120), // 5MB max
-                                    ]),
-                                Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('declarant_signature')
-                                            ->label('Declarant Signature')
-                                            ->required()
-                                            ->reactive()
-                                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                // Auto-populate with declarant's full name if field is empty
-                                                if (empty($state)) {
-                                                    $firstName = $get('../../declarant_first_name') ?? $get('declarant_first_name');
-                                                    $middleInitial = $get('../../declarant_middle_initial') ?? $get('declarant_middle_initial');
-                                                    $lastName = $get('../../declarant_family_name') ?? $get('declarant_family_name');
-
-                                                    if ($firstName && $lastName) {
-                                                        $fullName = trim(
-                                                            $firstName . ' ' .
-                                                            ($middleInitial ? $middleInitial . ' ' : '') .
-                                                            $lastName
-                                                        );
-                                                        $set('declarant_signature', $fullName);
-                                                    }
-                                                }
-                                            })
-                                            ->default(function (callable $get) {
-                                                // Set default value when the field is first loaded
-                                                $firstName = $get('../../declarant_first_name') ?? $get('declarant_first_name');
-                                                $middleInitial = $get('../../declarant_middle_initial') ?? $get('declarant_middle_initial');
-                                                $lastName = $get('../../declarant_family_name') ?? $get('declarant_family_name');
-
-                                                if ($firstName && $lastName) {
-                                                    return trim(
-                                                        $firstName . ' ' .
-                                                        ($middleInitial ? $middleInitial . ' ' : '') .
-                                                        $lastName
-                                                    );
-                                                }
-                                                return null;
-                                            }),
-                                        Forms\Components\TextInput::make('spouse_signature')
-                                            ->label('Spouse Signature')
-                                            ->reactive()
-                                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                // Auto-populate with spouse's full name if field is empty
-                                                if (empty($state)) {
-                                                    $firstName = $get('../../spouse_first_name') ?? $get('spouse_first_name');
-                                                    $middleInitial = $get('../../spouse_middle_initial') ?? $get('spouse_middle_initial');
-                                                    $lastName = $get('../../spouse_family_name') ?? $get('spouse_family_name');
-
-                                                    if ($firstName && $lastName) {
-                                                        $fullName = trim(
-                                                            $firstName . ' ' .
-                                                            ($middleInitial ? $middleInitial . ' ' : '') .
-                                                            $lastName
-                                                        );
-                                                        $set('spouse_signature', $fullName);
-                                                    }
-                                                }
-                                            })
-                                            ->default(function (callable $get) {
-                                                // Set default value when the field is first loaded
-                                                $firstName = $get('../../spouse_first_name') ?? $get('spouse_first_name');
-                                                $middleInitial = $get('../../spouse_middle_initial') ?? $get('spouse_middle_initial');
-                                                $lastName = $get('../../spouse_family_name') ?? $get('spouse_family_name');
-
-                                                if ($firstName && $lastName) {
-                                                    return trim(
-                                                        $firstName . ' ' .
-                                                        ($middleInitial ? $middleInitial . ' ' : '') .
-                                                        $lastName
-                                                    );
-                                                }
-                                                return null;
-                                            })
-                                            ->visible(
-                                                fn(callable $get) =>
-                                                $get('spouse_first_name') && $get('spouse_family_name')
-                                            ),
+                                            ->maxSize(5120),
                                     ]),
                                 Forms\Components\TextInput::make('person_administering_oath')
                                     ->label('Person Administering Oath')
                                     ->required(),
                             ]),
-
                         Section::make('Summary')
                             ->schema([
                                 Grid::make(3)
@@ -477,6 +386,13 @@ class SalnResource extends Resource
                                             ->disabled(),
                                     ]),
                             ]),
+                        // Admin Remarks: Only editable by Admin
+                        Section::make('Admin Remarks')
+                            ->schema([
+                                Forms\Components\Textarea::make('remarks')
+                                    ->label('Admin Remarks')
+                                    ->visible(fn() => auth()->user()->hasRole('admin'))
+                            ]),
                     ]),
             ])
                 ->columnSpanFull()
@@ -488,7 +404,6 @@ class SalnResource extends Resource
     {
         return $table
             ->columns([
-                // FIXED: Changed from 'user.name' to combine first_name and last_name
                 Tables\Columns\TextColumn::make('user.first_name')
                     ->label('Employee')
                     ->formatStateUsing(fn($record) => $record->user->first_name . ' ' . $record->user->last_name)
@@ -500,10 +415,7 @@ class SalnResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('declarant_family_name')
                     ->label('Declarant')
-                    ->formatStateUsing(
-                        fn($record) =>
-                        $record->declarant_family_name . ', ' . $record->declarant_first_name
-                    )
+                    ->formatStateUsing(fn($record) => $record->declarant_family_name . ', ' . $record->declarant_first_name)
                     ->searchable(['declarant_family_name', 'declarant_first_name']),
                 Tables\Columns\TextColumn::make('total_assets')
                     ->label('Total Assets')
@@ -517,6 +429,12 @@ class SalnResource extends Resource
                     ->label('Net Worth')
                     ->money('PHP')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('remarks')
+                    ->label('Admin Remarks')
+                    ->wrap()
+                    ->limit(50)
+                    ->toggleable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Filed Date')
                     ->dateTime()
@@ -526,54 +444,50 @@ class SalnResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('year')
                     ->label('Year')
-                    ->options(
-                        fn() =>
-                        Saln::selectRaw('YEAR(as_of_date) as year')
-                            ->distinct()
-                            ->orderByDesc('year')
-                            ->pluck('year', 'year')
-                    )
-                    ->query(
-                        fn(Builder $query, array $data) =>
-                        $query->whereYear('as_of_date', $data['value'])
-                    ),
-
-
-                // FIXED: Changed the relationship display to use first_name and last_name
+                    ->options(fn() => Saln::selectRaw('YEAR(as_of_date) as year')
+                        ->distinct()
+                        ->orderByDesc('year')
+                        ->pluck('year', 'year'))
+                    ->query(fn(Builder $query, array $data) => $query->whereYear('as_of_date', $data['value'])),
                 Tables\Filters\SelectFilter::make('user_id')
                     ->label('Employee')
                     ->relationship('user', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn($record) => $record->first_name . ' ' . $record->last_name),
                 Tables\Filters\Filter::make('as_of_date')
                     ->form([
-                        Forms\Components\DatePicker::make('from')
-                            ->label('From Date'),
-                        Forms\Components\DatePicker::make('until')
-                            ->label('Until Date'),
+                        Forms\Components\DatePicker::make('from')->label('From Date'),
+                        Forms\Components\DatePicker::make('until')->label('Until Date'),
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('as_of_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('as_of_date', '<=', $date),
-                            );
-                    })
+                    ->query(
+                        fn(Builder $query, array $data) => $query
+                            ->when($data['from'], fn($q, $date) => $q->whereDate('as_of_date', '>=', $date))
+                            ->when($data['until'], fn($q, $date) => $q->whereDate('as_of_date', '<=', $date))
+                    ),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-                // Add Print Action
+
+                // Print button
                 Tables\Actions\Action::make('print')
                     ->label('Print SALN')
                     ->icon('heroicon-o-printer')
                     ->color('success')
                     ->url(fn(Saln $record): string => route('saln.print', $record))
                     ->openUrlInNewTab(),
+
+                // Admin-only: Add/Edit Remarks
+                Tables\Actions\Action::make('remarks')
+                    ->label('Add/Edit Remarks')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->action(function (Saln $record, array $data) {
+                        $record->update(['remarks' => $data['remarks']]);
+                    })
+                    ->form([
+                        Forms\Components\Textarea::make('remarks')
+                            ->label('Remarks')
+                            ->required(),
+                    ])
+                    ->visible(fn() => auth()->user()->hasRole('admin')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -588,14 +502,35 @@ class SalnResource extends Resource
         return [
             'index' => Pages\ListSalns::route('/'),
             'create' => Pages\CreateSaln::route('/create'),
-            // 'view' => Pages\ViewSaln::route('/{record}'),
             'edit' => Pages\EditSaln::route('/{record}/edit'),
         ];
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['user', 'children', 'realProperties', 'personalProperties', 'liabilities', 'businessInterests', 'relativesInGovernment']);
+
+        if (!auth()->user()->hasRole('admin')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        return $query;
     }
+
+    // Show badge on navigation for SALNs without admin remarks
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Saln::whereNull('remarks')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    // Optional: change badge color dynamically
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $count = Saln::whereNull('remarks')->count();
+        return $count > 0 ? 'warning' : 'success';
+    }
+
+
 }

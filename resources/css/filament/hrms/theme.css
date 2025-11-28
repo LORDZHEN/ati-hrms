@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Override Filament's white backgrounds */
+.fi-main,
+.fi-page,
+.fi-body {
+    @apply bg-gray-100; /* or any color you want */
+}
+
+/* Optional: remove Filament container padding */
+.fi-main {
+    @apply p-0;
+}

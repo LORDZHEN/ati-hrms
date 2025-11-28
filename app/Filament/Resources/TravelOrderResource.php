@@ -14,6 +14,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Notifications\TravelOrderStatusUpdated;
 
 class TravelOrderResource extends Resource
 {
@@ -23,7 +24,7 @@ class TravelOrderResource extends Resource
     protected static ?string $slug = 'travel-order';
     protected static ?string $navigationLabel = 'Travel Order';
     protected static ?string $title = 'Travel Orders';
-    protected static ?string $navigationGroup = 'My Account';
+    protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -234,21 +235,28 @@ class TravelOrderResource extends Resource
                     ->sortable()
                     ->weight(FontWeight::Bold),
 
+                // Updated Traveler(s) column with full batch employee names
                 Tables\Columns\TextColumn::make('name')
                     ->label('Traveler(s)')
                     ->searchable()
                     ->sortable()
                     ->formatStateUsing(function ($record) {
-                        if ($record->employee_ids && is_array($record->employee_ids)) {
-                            $count = count($record->employee_ids);
-                            if ($count > 1) {
-                                return "Multiple Employees ({$count})";
-                            } else {
-                                $user = User::find($record->employee_ids[0]);
-                                return $user ? $user->name : 'Unknown Employee';
+                        // If it's a batch travel with employee_ids
+                        if ($record->employee_ids && is_array($record->employee_ids) && count($record->employee_ids) > 0) {
+                            $users = User::whereIn('employee_id', $record->employee_ids)->pluck('full_name')->toArray();
+                            $count = count($users);
+
+                            // Show all names if 3 or less, else show first 3 + "+n more"
+                            if ($count <= 3) {
+                                return implode(', ', $users);
                             }
+
+                            $firstThree = array_slice($users, 0, 3);
+                            return implode(', ', $firstThree) . " + " . ($count - 3) . " more";
                         }
-                        return $record->name ?? 'Not specified';
+
+                        // Solo travel: show solo_employee field
+                        return $record->solo_employee ?? $record->name ?? 'Not specified';
                     }),
 
                 Tables\Columns\BadgeColumn::make('employee_count')
@@ -348,19 +356,15 @@ class TravelOrderResource extends Resource
                 Tables\Actions\ViewAction::make(),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn(TravelOrder $record): bool =>
-                        $record->created_by === Auth::id() &&
-                        in_array($record->status, ['draft', 'rejected'])
-                    ),
+                    ->visible(fn(TravelOrder $record) => $record->created_by === Auth::id() &&
+                        in_array($record->status, ['draft', 'rejected'])),
 
                 Tables\Actions\Action::make('submit')
                     ->label('Submit for Review')
                     ->icon('heroicon-m-paper-airplane')
                     ->color('info')
-                    ->visible(fn(TravelOrder $record): bool =>
-                        $record->created_by === Auth::id() &&
-                        $record->status === 'draft'
-                    )
+                    ->visible(fn(TravelOrder $record) => $record->created_by === Auth::id() &&
+                        $record->status === 'draft')
                     ->requiresConfirmation()
                     ->modalHeading('Submit Travel Order')
                     ->modalDescription('Are you sure you want to submit this travel order for review? You will not be able to edit it after submission unless it is rejected.')
@@ -371,10 +375,8 @@ class TravelOrderResource extends Resource
                     ->label('Withdraw')
                     ->icon('heroicon-m-arrow-uturn-left')
                     ->color('warning')
-                    ->visible(fn(TravelOrder $record): bool =>
-                        $record->created_by === Auth::id() &&
-                        $record->status === 'pending'
-                    )
+                    ->visible(fn(TravelOrder $record) => $record->created_by === Auth::id() &&
+                        $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Withdraw Travel Order')
                     ->modalDescription('Are you sure you want to withdraw this travel order? It will be returned to draft status.')
@@ -382,46 +384,56 @@ class TravelOrderResource extends Resource
                     ->after(fn($record) => Notification::make()->title('Travel order withdrawn successfully')->success()->send()),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn(TravelOrder $record): bool =>
-                        $record->created_by === Auth::id() &&
-                        $record->status === 'draft'
-                    ),
+                    ->visible(fn(TravelOrder $record) => $record->created_by === Auth::id() &&
+                        $record->status === 'draft'),
 
-                // Admin-only approve
+                // --- Admin-only approve ---
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-m-check-circle')
                     ->color('success')
-                    ->visible(fn(TravelOrder $record): bool =>
-                        Auth::user()->role === 'admin' && $record->status === 'pending'
-                    )
+                    ->visible(fn(TravelOrder $record) => Auth::user()->role === 'admin' && $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Approve Travel Order')
                     ->modalDescription('Are you sure you want to approve this travel order?')
-                    ->action(fn(TravelOrder $record) => $record->update([
-                        'status' => 'approved',
-                        'approved_by' => Auth::id(),
-                        'approved_at' => now(),
-                    ]))
+                    ->action(function (TravelOrder $record) {
+                        $record->update([
+                            'status' => 'approved',
+                            'approved_by' => Auth::id(),
+                            'approved_at' => now(),
+                        ]);
+
+                        // Notify creator
+                        $record->creator->notify(new TravelOrderStatusUpdated($record));
+                    })
                     ->after(fn($record) => Notification::make()->title('Travel order approved successfully')->success()->send()),
 
-                // Admin-only reject
+                // --- Admin-only reject ---
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-m-x-circle')
                     ->color('danger')
-                    ->visible(fn(TravelOrder $record): bool =>
-                        Auth::user()->role === 'admin' && $record->status === 'pending'
-                    )
+                    ->visible(fn(TravelOrder $record) => Auth::user()->role === 'admin' && $record->status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Reject Travel Order')
                     ->modalDescription('Are you sure you want to reject this travel order?')
-                    ->action(fn(TravelOrder $record) => $record->update([
-                        'status' => 'rejected',
-                        'approved_by' => Auth::id(),
-                        'approved_at' => now(),
-                    ]))
+                    ->action(function (TravelOrder $record) {
+                        $record->update([
+                            'status' => 'rejected',
+                            'approved_by' => Auth::id(),
+                            'approved_at' => now(),
+                        ]);
+
+                        // Notify creator
+                        $record->creator->notify(new TravelOrderStatusUpdated($record));
+                    })
                     ->after(fn($record) => Notification::make()->title('Travel order rejected')->danger()->send()),
+
+                Tables\Actions\Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn($record) => route('travel-order.print', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -472,4 +484,5 @@ class TravelOrderResource extends Resource
 
         return parent::getEloquentQuery()->where('created_by', Auth::id());
     }
+    
 }

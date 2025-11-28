@@ -22,7 +22,7 @@ class PersonalDataSheetResource extends Resource
     protected static ?string $navigationLabel = 'Personal Data Sheet';
     protected static ?string $title = 'Personal Data Sheets';
     protected static ?string $slug = 'personal-data-sheet';
-    protected static ?string $navigationGroup = 'My Account';
+    protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
@@ -657,5 +657,29 @@ class PersonalDataSheetResource extends Resource
             //'view' => Pages\ViewPersonalDataSheet::route('/{record}'),
             'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
         ];
+    }
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+
+        // Only show badge for admins
+        if ($user && $user->is_admin) {
+            $count = PersonalDataSheet::where('status', 'pending')->count();
+            return $count > 0 ? (string) $count : null;
+        }
+
+        return null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $user = auth()->user();
+
+        if ($user && $user->is_admin) {
+            $count = PersonalDataSheet::where('status', 'pending')->count();
+            return $count > 0 ? 'warning' : 'success';
+        }
+
+        return null;
     }
 }

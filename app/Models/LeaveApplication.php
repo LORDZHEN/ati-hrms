@@ -11,59 +11,78 @@ class LeaveApplication extends Model
     use HasFactory;
 
     protected $fillable = [
-    'employee_id',
-    'office_department',
-    'date_of_filing',
-    'last_name',
-    'first_name',
-    'middle_name',
-    'position',
-    // 'salary', ← optional, if you're hiding it
-    'type_of_leave',
-    'others_specify',
-    'other_leave_type', // NEW
-    'vacation_location',
-    'abroad_specify',
-    'sick_leave_location',
-    'illness_specify',
-    'hospital_illness_specify', // NEW
-    'outpatient_illness_specify', // NEW
-    'women_illness_specify',
-    'study_leave_purpose',
-    'other_purpose',
-    'number_of_working_days',
-    'commutation',
-    'leave_date_from',
-    'leave_date_to',
-    'supporting_document', // NEW
-    'as_of_date',
-    'vacation_leave_total_earned',
-    'sick_leave_total_earned',
-    'vacation_leave_less_application',
-    'sick_leave_less_application',
-    'vacation_leave_balance',
-    'sick_leave_balance',
-    'recommendation',
-    'authorized_officer_recommendation', // NEW
-    'disapproval_reason',
-    'final_action',
-    'approved_days_with_pay',
-    'approved_days_without_pay',
-    'approved_others',
-    'disapproved_reason',
-    'authorized_officer',
-    'date_approved_disapproved',
-    'status',
-    'vacation_leave_credits',
-    'sick_leave_credits',
-    'emergency_leave_credits',
-    'maternity_leave_credits',
-    'paternity_leave_credits',
-    'credits_last_updated',
-    'vacation_credits_earned_ytd',
-    'sick_credits_earned_ytd',
-    'vacation_credits_used_ytd',
-    'sick_credits_used_ytd',
+        'employee_id',
+        'office_department',
+        'date_of_filing',
+        'last_name',
+        'first_name',
+        'middle_name',
+        'position',
+        // 'salary', ← optional, if you're hiding it
+        'type_of_leave',
+        'others_specify',
+        'other_leave_type', // NEW
+        'vacation_location',
+        'abroad_specify',
+        'sick_leave_location',
+        'illness_specify',
+        'hospital_illness_specify', // NEW
+        'outpatient_illness_specify', // NEW
+        'women_illness_specify',
+        'study_leave_purpose',
+        'other_purpose',
+        'number_of_working_days',
+        'commutation',
+        'leave_date_from',
+        'leave_date_to',
+        'supporting_document', // NEW
+        'as_of_date',
+        'vacation_leave_total_earned',
+        'sick_leave_total_earned',
+        'vacation_leave_less_application',
+        'sick_leave_less_application',
+        'vacation_leave_balance',
+        'sick_leave_balance',
+        'recommendation',
+        'authorized_officer_recommendation',
+        'disapproval_reason',
+        'final_action',
+        'approved_days_with_pay',
+        'approved_days_without_pay',
+        'approved_others',
+        'disapproved_reason',
+        'authorized_officer',
+        'date_approved_disapproved',
+        'status',
+        'vacation_leave_credits',
+        'sick_leave_credits',
+        'emergency_leave_credits',
+        'maternity_leave_credits',
+        'paternity_leave_credits',
+        'credits_last_updated',
+        'vacation_credits_earned_ytd',
+        'sick_credits_earned_ytd',
+        'vacation_credits_used_ytd',
+        'sick_credits_used_ytd',
+
+        'recommendation',
+        'authorized_officer_recommendation',
+        'disapproval_reason',
+        'approved_days_with_pay',
+        'approved_days_without_pay',
+        'approved_others',
+        'final_action',
+        'authorized_officer',
+        'date_approved_disapproved',
+        'status',
+
+        'recommended_by',
+        'recommendation_status',
+        'approved_by',
+        'approved_at',
+        'approval_status',
+        'rejected_by',
+        'remarks',
     ];
 
     protected $casts = [
@@ -81,6 +100,11 @@ class LeaveApplication extends Model
         'sick_leave_balance' => 'decimal:2',
         'study_leave_purpose' => 'array',
         'other_purpose' => 'array',
+        'working_days_from' => 'date',
+        'working_days_to' => 'date',
+        'approved_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // Relationships
@@ -91,6 +115,14 @@ class LeaveApplication extends Model
     public function employee()
     {
         return $this->belongsTo(User::class, 'employee_id');
+    }
+    public function recommender()
+    {
+        return $this->belongsTo(User::class, 'recommended_by');
+    }
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     // Accessors

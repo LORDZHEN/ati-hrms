@@ -32,6 +32,7 @@ class User extends Authenticatable implements FilamentUser
         'must_change_password',
         'employee_id',
         'verification_status',
+        'birthday',
     ];
 
     protected $hidden = [
@@ -102,10 +103,10 @@ class User extends Authenticatable implements FilamentUser
         RELATIONSHIPS
        ============================================================ */
 
-    public function notifications()
-    {
-        return $this->hasMany(\App\Models\Notification::class);
-    }
+    // public function notifications()
+    // {
+    //     return $this->hasMany(\App\Models\Notification::class);
+    // }
 
     public function employee()
     {

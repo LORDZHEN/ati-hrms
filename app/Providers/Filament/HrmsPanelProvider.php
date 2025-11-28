@@ -17,8 +17,8 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-//use Nuxtifyts\DashStackTheme\DashStackThemePlugin;
 use Filament\Navigation\NavigationGroup;
+
 
 class HrmsPanelProvider extends PanelProvider
 {
@@ -26,12 +26,12 @@ class HrmsPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->databaseNotifications()
             ->id('hrms')
             ->path('hrms')
             ->authGuard('web')
             ->login(\App\Filament\Pages\Auth\Login::class)
             ->registration(\App\Filament\Pages\Auth\Register::class)
-            //->plugin(DashStackThemePlugin::make())
             ->favicon(asset('images/Main_Logo-removebg-preview.png'))
             ->brandLogoHeight('80px')
             ->brandLogo(asset('images/ati_logo.png'))
@@ -49,8 +49,7 @@ class HrmsPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                // Widgets\AccountWidget::class,
-                // Widgets\FilamentInfoWidget::class,
+                \App\Filament\Widgets\NotificationBell::class,
             ])
             ->middleware([
                 EncryptCookies::class,

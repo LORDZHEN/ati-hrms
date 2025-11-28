@@ -12,7 +12,6 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
 
 class LocatorSlipResource extends Resource
 {
@@ -22,7 +21,7 @@ class LocatorSlipResource extends Resource
     protected static ?string $slug = 'locator-slip';
     protected static ?string $navigationLabel = 'Locator Slip';
     protected static ?string $title = 'Locator Slips';
-    protected static ?string $navigationGroup = 'My Account';
+    protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -39,6 +38,7 @@ class LocatorSlipResource extends Resource
                                 Forms\Components\Checkbox::make('personal_transaction')
                                     ->label('Personal Transaction')
                                     ->reactive()
+                                    ->disabled(fn($record) => $record?->exists)
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         if ($state) {
                                             $set('transaction_type', 'personal');
@@ -49,6 +49,7 @@ class LocatorSlipResource extends Resource
                                     ->label('Official Business')
                                     ->default(true)
                                     ->reactive()
+                                    ->disabled(fn($record) => $record?->exists)
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         if ($state) {
                                             $set('transaction_type', 'official');
@@ -56,8 +57,8 @@ class LocatorSlipResource extends Resource
                                         }
                                     }),
                             ]),
-                        Forms\Components\Hidden::make('transaction_type')
-                            ->default('official'),
+                        Forms\Components\Hidden::make('transaction_type')->default('official'),
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('employee_name')
@@ -77,6 +78,7 @@ class LocatorSlipResource extends Resource
                             ->default($user->office_department ?? '')
                             ->dehydrated()
                             ->required(),
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('destination')
@@ -88,6 +90,7 @@ class LocatorSlipResource extends Resource
                                     ->required()
                                     ->rows(3),
                             ]),
+
                         Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\DatePicker::make('inclusive_date')
@@ -110,15 +113,17 @@ class LocatorSlipResource extends Resource
                                     ->required()
                                     ->default(fn(callable $get) => \Carbon\Carbon::parse($get('out_time'))->addHours(2)->format('H:i')),
                             ]),
+
                         Forms\Components\TextInput::make('requested_by')
                             ->label('Requested By')
                             ->default($user->name ?? '')
                             ->disabled()
                             ->dehydrated()
                             ->required(),
-                    ]),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
 
-                // Admin-only Approval Section
                 Forms\Components\Section::make('Approval Section')
                     ->schema([
                         Forms\Components\Select::make('status')
@@ -126,7 +131,7 @@ class LocatorSlipResource extends Resource
                             ->options([
                                 'pending' => 'Pending',
                                 'approved' => 'Approved',
-                                'rejected' => 'Rejected',
+                                'disapproved' => 'Disapproved',
                             ])
                             ->required()
                             ->reactive(),
@@ -134,16 +139,19 @@ class LocatorSlipResource extends Resource
                         Forms\Components\TextInput::make('approved_by')
                             ->label('Approved By')
                             ->default($user->name)
-                            ->required()
-                            ->disabled(),
+                            ->disabled()
+                            ->dehydrated(),
 
-                        Forms\Components\Textarea::make('rejection_reason')
-                            ->label('Rejection Reason')
+                        Forms\Components\Textarea::make('admin_remarks')
+                            ->label('Remarks / Reason for Disapproval')
                             ->rows(3)
-                            ->required()
-                            ->visible(fn(callable $get) => $get('status') === 'rejected'),
+                            ->visible(fn(callable $get) => $get('status') === 'disapproved'),
                     ])
-                    ->visible(fn() => $user->role === 'admin'),
+                    ->visible(fn() => $user->role === 'admin')
+                    ->collapsible()
+                    ->collapsed(true),
+
+                Forms\Components\Hidden::make('user_id')->default($user->id),
             ]);
     }
 
@@ -161,7 +169,7 @@ class LocatorSlipResource extends Resource
                     ->colors([
                         'warning' => 'pending',
                         'success' => 'approved',
-                        'danger' => 'rejected',
+                        'danger' => 'disapproved',
                     ])
                     ->formatStateUsing(fn(string $state): string => ucfirst($state)),
                 Tables\Columns\TextColumn::make('created_at')->label('Submitted')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
@@ -170,72 +178,61 @@ class LocatorSlipResource extends Resource
                 Tables\Filters\SelectFilter::make('status')->options([
                     'pending' => 'Pending',
                     'approved' => 'Approved',
-                    'rejected' => 'Rejected',
+                    'disapproved' => 'Disapproved',
                 ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()->visible(fn(LocatorSlip $record) => $record->status === 'pending'),
-                Action::make('Print')
+                Tables\Actions\EditAction::make()
+                    ->visible(fn(LocatorSlip $record) => $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)),
+
+                Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
-                    ->url(fn ($record) => route('locator_slip.print', $record->id))
+                    ->url(fn($record) => route('locator_slip.print', $record->id))
                     ->openUrlInNewTab(),
 
-                // Admin Approve / Reject Actions
+                // Admin Approve Action
                 Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->action(function (LocatorSlip $record) {
+                    ->action(function ($record) {
                         $record->update([
                             'status' => 'approved',
-                            'approved_by' => Auth::user()->name,
+                            'approved_by' => auth()->user()->name,
                             'approved_at' => now(),
                         ]);
-
-                        Notification::make()
-                            ->title('Locator slip approved successfully')
-                            ->success()
-                            ->send();
+                        $record->user->notify(new \App\Notifications\LocatorSlipStatusUpdated($record));
                     })
-                    ->visible(fn(LocatorSlip $record) => $record->status === 'pending' && Auth::user()->role === 'admin'),
+                    ->visible(fn($record) => $record->status === 'pending' && auth()->user()->role === 'admin'),
 
-                Action::make('reject')
-                    ->label('Reject')
+                // Admin Disapprove Action
+                Action::make('disapprove')
+                    ->label('Disapprove')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->form([
-                        Forms\Components\Textarea::make('rejection_reason')
-                            ->label('Rejection Reason')
-                            ->required()
-                            ->rows(3),
+                        Forms\Components\Textarea::make('admin_remarks')->label('Reason for Disapproval')->required()->rows(3),
                     ])
-                    ->action(function (LocatorSlip $record, array $data) {
+                    ->action(function ($record, array $data) {
                         $record->update([
-                            'status' => 'rejected',
-                            'approved_by' => Auth::user()->name,
-                            'rejection_reason' => $data['rejection_reason'],
+                            'status' => 'disapproved',
+                            'approved_by' => auth()->user()->name,
+                            'admin_remarks' => $data['admin_remarks'],
                         ]);
-
-                        Notification::make()
-                            ->title('Locator slip rejected')
-                            ->success()
-                            ->send();
+                        $record->user->notify(new \App\Notifications\LocatorSlipStatusUpdated($record));
                     })
-                    ->visible(fn(LocatorSlip $record) => $record->status === 'pending' && Auth::user()->role === 'admin'),
+                    ->visible(fn($record) => $record->status === 'pending' && auth()->user()->role === 'admin'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()->visible(fn(LocatorSlip $record) => $record->status === 'pending'),
-                ]),
-            ])
+            ->bulkActions([])
             ->modifyQueryUsing(function (Builder $query) {
-                if (auth()->user()->role === 'admin') {
-                    return $query; // Admin sees all slips
+                $user = Auth::user();
+                if ($user->role === 'admin') {
+                    return $query;
                 }
-                return $query->where('user_id', auth()->id()); // Employee sees only their own
+                return $query->where('user_id', $user->id);
             })
             ->defaultSort('created_at', 'desc');
     }
@@ -249,12 +246,28 @@ class LocatorSlipResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function canEdit($record): bool
     {
-        // Ensure the default query respects roles
-        if (auth()->user()->role === 'admin') {
-            return parent::getEloquentQuery();
-        }
-        return parent::getEloquentQuery()->where('user_id', auth()->id());
+        return $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
     }
+
+    public static function canDelete($record): bool
+    {
+        return $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
+    }
+
+    // Show badge on navigation for pending leave applications
+    public static function getNavigationBadge(): ?string
+    {
+        $count = LocatorSlip::where('status', 'pending')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    // Optional: change badge color dynamically
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $count = LocatorSlip::where('status', 'pending')->count();
+        return $count > 0 ? 'warning' : 'success';
+    }
+
 }

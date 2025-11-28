@@ -5,7 +5,6 @@
     <title>Login - HRMS Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,12 +18,6 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            position: relative;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .login-button {
@@ -49,6 +42,7 @@
         .mb-4 { margin-bottom: 1rem; }
         .mt-4 { margin-top: 1rem; }
         a { color: #16a34a; font-weight: 600; }
+        .error-message { color: #dc2626; margin-bottom: 1rem; text-align: center; font-weight: 600; }
     </style>
     @livewireStyles
 </head>
@@ -56,10 +50,17 @@
     <div class="login-container">
         <div class="text-center mb-4">
             <img src="{{ asset('images/ati_logo.png') }}" alt="ATI Logo"
-         style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 16px; display: block;">
+                 style="width: 100px; height: 100px; object-fit: contain; margin: 0 auto 16px; display: block;">
             <h1 class="text-2xl font-bold">HRMS Login</h1>
-            <p>Welcome! please login to continue.</p>
+            <p>Welcome! Please login to continue.</p>
         </div>
+
+        <!-- Display login error -->
+        @if ($errors->any())
+            <div class="error-message">
+                {{ $errors->first() }}
+            </div>
+        @endif
 
         <form wire:submit.prevent="authenticate">
             {{ $this->form }}

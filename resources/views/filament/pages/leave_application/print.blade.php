@@ -308,7 +308,7 @@
             <table>
                 <tr>
                     <td width="18%" class="field-label">3. DATE OF FILING</td>
-                    <td width="27%" style="height: 25px;">{{ $leaveApplication->date_of_filing?->format('m/d/Y') ?? '' }}</td>
+                    <td width="27%">{{ $leaveApplication->date_of_filing?->format('m/d/Y') ?? '' }}</td>
                     <td width="12%" class="field-label">4. POSITION</td>
                     <td width="23%">{{ $leaveApplication->position ?? '' }}</td>
                     <td width="10%" class="field-label">5. SALARY</td>
@@ -317,93 +317,56 @@
             </table>
         </div>
 
-        <!-- Section 6: Details of Application - This will expand -->
+        <!-- Section 6 -->
         <div class="details-table">
             <table>
                 <tr>
                     <td colspan="2" class="section-header">6. DETAILS OF APPLICATION</td>
                 </tr>
                 <tr class="leave-details-row">
+                    <!-- 6.A -->
                     <td width="50%" style="padding: 4px; vertical-align: top;" class="details-section-content">
                         <div class="field-label" style="margin-bottom: 3px;">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
 
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'vacation_leave' ? 'checked' : '' }}"></span>
-                            <strong>Vacation Leave</strong> (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
+                        @php
+                        $leaveTypes = [
+                            'vacation_leave' => 'Vacation Leave (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'mandatory_leave' => 'Mandatory/Forced Leave (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'sick_leave' => 'Sick Leave (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'maternity_leave' => 'Maternity Leave (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)',
+                            'paternity_leave' => 'Paternity Leave (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)',
+                            'special_privilege_leave' => 'Special Privilege Leave (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'solo_parent_leave' => 'Solo Parent Leave (R.A. No. 8972 / CSC MC No. 8, s. 2004)',
+                            'study_leave' => 'Study Leave (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'vawc_leave' => '10-Day VAWC Leave (R.A. No. 9262 / CSC MC No. 15, s. 2005)',
+                            'rehabilitation_privilege' => 'Rehabilitation Privilege (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                            'special_leave_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
+                            'emergency_leave' => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
+                            'adoption_leave' => 'Adoption Leave (R.A. No. 8552)',
+                        ];
+                        @endphp
 
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'mandatory_leave' ? 'checked' : '' }}"></span>
-                            <strong>Mandatory/Forced Leave</strong> (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'sick_leave' ? 'checked' : '' }}"></span>
-                            <strong>Sick Leave</strong> (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'maternity_leave' ? 'checked' : '' }}"></span>
-                            <strong>Maternity Leave</strong> (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'paternity_leave' ? 'checked' : '' }}"></span>
-                            <strong>Paternity Leave</strong> (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'special_privilege_leave' ? 'checked' : '' }}"></span>
-                            <strong>Special Privilege Leave</strong> (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'solo_parent_leave' ? 'checked' : '' }}"></span>
-                            <strong>Solo Parent Leave</strong> (R.A. No. 8972 / CSC MC No. 8, s. 2004)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'study_leave' ? 'checked' : '' }}"></span>
-                            <strong>Study Leave</strong> (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'vawc_leave' ? 'checked' : '' }}"></span>
-                            <strong>10-Day VAWC Leave</strong> (R.A. No. 9262 / CSC MC No. 15, s. 2005)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'rehabilitation_privilege' ? 'checked' : '' }}"></span>
-                            <strong>Rehabilitation Privilege</strong> (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'special_leave_women' ? 'checked' : '' }}"></span>
-                            <strong>Special Leave Benefits for Women</strong> (R.A. No. 9710 / CSC MC No. 25, s. 2010)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'emergency_leave' ? 'checked' : '' }}"></span>
-                            <strong>Special Emergency (Calamity) Leave</strong> (CSC MC No. 2, s. 2012, as amended)
-                        </div>
-
-                        <div class="leave-type-item">
-                            <span class="checkbox {{ $leaveApplication->type_of_leave == 'adoption_leave' ? 'checked' : '' }}"></span>
-                            <strong>Adoption Leave</strong> (R.A. No. 8552)
-                        </div>
+                        @foreach($leaveTypes as $key => $label)
+                            <div class="leave-type-item">
+                                <span class="checkbox {{ $leaveApplication->type_of_leave == $key ? 'checked' : '' }}"></span>
+                                <strong>{{ $label }}</strong>
+                            </div>
+                        @endforeach
 
                         <div style="margin-top: 5px; font-size: 12px;">
                             <strong>Others:</strong>
                             <span class="underline" style="width: 120px;">{{ $leaveApplication->others_specify ?? '' }}</span>
                         </div>
                     </td>
+
+                    <!-- 6.B -->
                     <td width="50%" style="padding: 6px; vertical-align: top;" class="details-section-content">
                         <div class="details-section-6b">
                             <div>
                                 <div class="field-label" style="margin-bottom: 6px;">6.B DETAILS OF LEAVE</div>
 
                                 <div class="leave-details-text">
-                                    <strong>In case of Vacation/Special Privilege Leave:</strong><br>
+                                    <strong>Vacation/Special Privilege Leave:</strong><br>
                                     <span class="checkbox {{ $leaveApplication->vacation_location == 'within_philippines' ? 'checked' : '' }}"></span> Within the Philippines
                                     <span class="underline" style="width: 70px;">{{ $leaveApplication->vacation_location == 'within_philippines' ? ($leaveApplication->vacation_location_specify ?? '') : '' }}</span><br>
                                     <span class="checkbox {{ $leaveApplication->vacation_location == 'abroad' ? 'checked' : '' }}"></span> Abroad (Specify)
@@ -411,26 +374,26 @@
                                 </div>
 
                                 <div class="leave-details-text">
-                                    <strong>In case of Sick Leave:</strong><br>
-                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'hospital' ? 'checked' : '' }}"></span> In Hospital (Specify Illness)
+                                    <strong>Sick Leave:</strong><br>
+                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'hospital' ? 'checked' : '' }}"></span> In Hospital
                                     <span class="underline" style="width: 65px;">{{ $leaveApplication->sick_leave_location == 'hospital' ? ($leaveApplication->illness_specify ?? '') : '' }}</span><br>
-                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'outpatient' ? 'checked' : '' }}"></span> Out Patient (Specify Illness)
+                                    <span class="checkbox {{ $leaveApplication->sick_leave_location == 'outpatient' ? 'checked' : '' }}"></span> Out Patient
                                     <span class="underline" style="width: 65px;">{{ $leaveApplication->sick_leave_location == 'outpatient' ? ($leaveApplication->illness_specify ?? '') : '' }}</span>
                                 </div>
 
                                 <div class="leave-details-text">
-                                    <strong>In case of Special Leave Benefits for Women:</strong><br>
-                                    (Specify Illness) <span class="underline" style="width: 90px;">{{ $leaveApplication->women_illness_specify ?? '' }}</span>
+                                    <strong>Special Leave for Women:</strong><br>
+                                    <span class="underline" style="width: 90px;">{{ $leaveApplication->women_illness_specify ?? '' }}</span>
                                 </div>
 
                                 <div class="leave-details-text">
-                                    <strong>In case of Study Leave:</strong><br>
+                                    <strong>Study Leave:</strong><br>
                                     <span class="checkbox {{ in_array('masters_degree', $leaveApplication->study_leave_purpose ?? []) ? 'checked' : '' }}"></span> Completion of Master's Degree<br>
                                     <span class="checkbox {{ in_array('bar_board_exam', $leaveApplication->study_leave_purpose ?? []) ? 'checked' : '' }}"></span> BAR/Board Examination Review
                                 </div>
 
                                 <div class="leave-details-text">
-                                    <strong>Other purpose:</strong><br>
+                                    <strong>Other Purpose:</strong><br>
                                     <span class="checkbox {{ in_array('monetization', $leaveApplication->other_purpose ?? []) ? 'checked' : '' }}"></span> Monetization of Leave Credits<br>
                                     <span class="checkbox {{ in_array('terminal_leave', $leaveApplication->other_purpose ?? []) ? 'checked' : '' }}"></span> Terminal Leave
                                 </div>
@@ -441,120 +404,36 @@
             </table>
         </div>
 
-        <!-- Section 6.C and 6.D -->
-        <div class="fixed-table main-sections">
-            <table>
-                <tr>
-                    <td width="50%" class="field-label">6.C NUMBER OF WORKING DAYS APPLIED FOR</td>
-                    <td width="50%" class="field-label">6.D COMMUTATION</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px;">
-                        <div style="text-align: center; border-bottom: 1px solid #000; min-height: 25px; margin-bottom: 10px; line-height: 25px;">
-                            {{ $leaveApplication->number_of_working_days ?? '' }}
-                        </div>
-                        <div class="field-label" style="margin-bottom: 5px;">INCLUSIVE DATES</div>
-                        <div style="text-align: center; border-bottom: 1px solid #000; min-height: 20px; line-height: 20px;">
-                            @if($leaveApplication->leave_date_from && $leaveApplication->leave_date_to)
-                                {{ $leaveApplication->leave_date_from->format('m/d/Y') }} - {{ $leaveApplication->leave_date_to->format('m/d/Y') }}
-                            @endif
-                        </div>
-                    </td>
-                    <td style="padding: 4px; font-size: 10px; vertical-align: top;">
-                        <div style="margin-bottom: 8px;">
-                            <span class="checkbox {{ $leaveApplication->commutation == 'not_requested' ? 'checked' : '' }}"></span> Not Requested
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <span class="checkbox {{ $leaveApplication->commutation == 'requested' ? 'checked' : '' }}"></span> Requested
-                        </div>
-                        <div class="signature-area" style="margin-top: 10px;">
-                            <div class="signature-line" style="width: 120px;"></div>
-                            <div class="signature-label">(Signature of Applicant)</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <!-- Section 6.C & 6.D -->
+        <table>
+            <tr>
+                <td width="50%" style="padding: 4px; vertical-align: top;">
+                    <strong>6.C. SERVICE RECORD</strong><br>
+                    <span class="underline" style="width: 90%;">{{ $leaveApplication->service_record ?? '' }}</span>
+                </td>
+                <td width="50%" style="padding: 4px; vertical-align: top;">
+                    <strong>6.D. ACTION ON PREVIOUS LEAVE</strong><br>
+                    <span class="underline" style="width: 90%;">{{ $leaveApplication->previous_leave_action ?? '' }}</span>
+                </td>
+            </tr>
+        </table>
 
-        <!-- Section 7: Details of Action on Application -->
-        <div class="action-table action-section">
-            <table>
-                <tr>
-                    <td colspan="4" class="section-header">7. DETAILS OF ACTION ON APPLICATION</td>
-                </tr>
-                <tr>
-                    <td width="35%" class="field-label">7.A CERTIFICATION OF LEAVE CREDITS</td>
-                    <td width="20%" class="field-label">7.B RECOMMENDATION</td>
-                    <td width="25%" class="field-label">7.C APPROVED FOR:</td>
-                    <td width="20%" class="field-label">7.D DISAPPROVED DUE TO:</td>
-                </tr>
-                <tr>
-                    <td rowspan="3" style="padding: 4px;">
-                        As of <span class="underline" style="width: 60px;">{{ $leaveApplication->as_of_date?->format('m/d/Y') ?? '' }}</span>
-
-                        <table class="credits-table" border="1">
-                            <tr>
-                                <td></td>
-                                <td class="field-label">Vacation Leave</td>
-                                <td class="field-label">Sick Leave</td>
-                            </tr>
-                            <tr>
-                                <td class="field-label">Total Earned</td>
-                                <td>{{ $leaveApplication->vacation_leave_total_earned ? number_format($leaveApplication->vacation_leave_total_earned, 1) : '' }}</td>
-                                <td>{{ $leaveApplication->sick_leave_total_earned ? number_format($leaveApplication->sick_leave_total_earned, 1) : '' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="field-label">Less this application</td>
-                                <td>{{ $leaveApplication->vacation_leave_less_application ? number_format($leaveApplication->vacation_leave_less_application, 1) : '' }}</td>
-                                <td>{{ $leaveApplication->sick_leave_less_application ? number_format($leaveApplication->sick_leave_less_application, 1) : '' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="field-label">Balance</td>
-                                <td>{{ $leaveApplication->vacation_leave_balance ? number_format($leaveApplication->vacation_leave_balance, 1) : '' }}</td>
-                                <td>{{ $leaveApplication->sick_leave_balance ? number_format($leaveApplication->sick_leave_balance, 1) : '' }}</td>
-                            </tr>
-                        </table>
-
-                        <div class="signature-area" style="margin-top: 15px;">
-                            <div class="signature-line" style="width: 80px;"></div>
-                            <div class="signature-label">(Authorized Officer)</div>
-                        </div>
-                    </td>
-                    <td style="padding: 4px;">
-                        <span class="checkbox {{ $leaveApplication->recommendation == 'approved' ? 'checked' : '' }}"></span> For approval<br><br>
-                        <span class="checkbox {{ $leaveApplication->recommendation == 'disapproved' ? 'checked' : '' }}"></span> For disapproval due to<br>
-                        <span class="underline" style="width: 100%; display: block; margin-top: 2px;">{{ $leaveApplication->disapproval_reason ?? '' }}</span>
-
-                        <div class="signature-area" style="margin-top: 15px;">
-                            <div class="signature-line" style="width: 80px;"></div>
-                            <div class="signature-label">(Authorized Officer)</div>
-                        </div>
-                    </td>
-                    <td style="padding: 4px;">
-                        <span class="underline" style="width: 40px;">{{ $leaveApplication->approved_days_with_pay ?? '' }}</span> days with pay<br><br>
-                        <span class="underline" style="width: 40px;">{{ $leaveApplication->approved_days_without_pay ?? '' }}</span> days without pay<br><br>
-                        <span class="underline" style="width: 40px;">{{ $leaveApplication->approved_others ?? '' }}</span> others (Specify)<br>
-                        <br><br>
-                        <div class="signature-area" style="margin-top: 15px;">
-                            <div class="signature-line" style="width: 80px;">{{ $leaveApplication->authorized_officer ?? '' }}</div>
-                            <div class="signature-label">(Authorized Officer)</div>
-                            <div class="signature-line" style="width: 60px; margin-top: 10px;">{{ $leaveApplication->date_approved_disapproved?->format('m/d/Y') ?? '' }}</div>
-                            <div class="signature-label">(Date)</div>
-                        </div>
-                    </td>
-                    <td rowspan="3" style="padding: 4px;">
-                        <span class="underline" style="width: 100%; display: block; margin-bottom: 6px;">{{ $leaveApplication->disapproved_reason ?? '' }}</span>
-
-                        <div class="signature-area" style="margin-top: 15px;">
-                            <div class="signature-line" style="width: 80px;">{{ $leaveApplication->authorized_officer ?? '' }}</div>
-                            <div class="signature-label">(Authorized Officer)</div>
-                            <div class="signature-line" style="width: 60px; margin-top: 10px;">{{ $leaveApplication->date_approved_disapproved?->format('m/d/Y') ?? '' }}</div>
-                            <div class="signature-label">(Date)</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <!-- Section 7 -->
+        <table>
+            <tr>
+                <td style="padding: 4px; vertical-align: top;">
+                    <strong>7. RECOMMENDING APPROVAL / DISAPPROVAL</strong><br>
+                    <div class="signature-area">
+                        <span class="signature-line"></span>
+                        <div class="signature-label">Immediate Supervisor</div>
+                    </div>
+                    <div class="signature-area" style="margin-top: 15px;">
+                        <span class="signature-line"></span>
+                        <div class="signature-label">Head of Office</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="footer">

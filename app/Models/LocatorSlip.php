@@ -15,6 +15,7 @@ class LocatorSlip extends Model
         'transaction_type',
         'employee_name',
         'position',
+        'department',
         'destination',
         'purpose',
         'inclusive_date',

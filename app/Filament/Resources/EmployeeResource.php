@@ -168,6 +168,26 @@ class EmployeeResource extends Resource
     {
         return [];
     }
+    // Show badge on navigation for pending employees
+    public static function getNavigationBadge(): ?string
+    {
+        $count = User::where('role', 'employee')
+            ->where('status', 'pending')
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    // Optional: change badge color dynamically
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $count = User::where('role', 'employee')
+            ->where('status', 'pending')
+            ->count();
+
+        return $count > 0 ? 'warning' : 'success';
+    }
+
 
     public static function getPages(): array
     {

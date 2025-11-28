@@ -3,15 +3,21 @@
 namespace App\Filament\Resources\SalnResource\Pages;
 
 use App\Filament\Resources\SalnResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+use App\Notifications\NewSalnFiled;
+use App\Models\User;
+use Illuminate\Support\Facades\Notification;
 
 class CreateSaln extends CreateRecord
 {
     protected static string $resource = SalnResource::class;
 
-    protected function getRedirectUrl(): string
+    protected function afterCreate(): void
     {
-        return $this->getResource()::getUrl('index');
+        parent::afterCreate();
+
+        // Notify all admins
+        $admins = User::where('role', 'admin')->get();
+        Notification::send($admins, new NewSalnFiled($this->record));
     }
 }
