@@ -13,29 +13,31 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name',
-        'first_name',
-        'last_name',
-        'email',
-        'password',
-        'role',
-        'phone',
-        'purok_street',
-        'city_municipality',
-        'province',
-        'profile_photo_path',
-        'e_signature',
-        'position',
-        'employment_status',
-        'department',
-        'status',
-        'birthday',
-        'email_verified_at',
-        'must_change_password',
-        'employee_id',
-        'verification_status',
-        'birthday',
-    ];
+    'name',
+    'first_name',
+    'middle_name',
+    'last_name',
+    'suffix',
+    'email',
+    'password',
+    'role',
+    'phone',
+    'purok_street',
+    'city_municipality',
+    'province',
+    'profile_photo_path',
+    'e_signature',
+    'position',
+    'employment_status',
+    'department',
+    'status',
+    'birthday',
+    'email_verified_at',
+    'must_change_password',
+    'employee_id',
+    'verification_status',
+];
+
 
     protected $hidden = [
         'password',
@@ -83,9 +85,17 @@ class User extends Authenticatable implements FilamentUser
        ============================================================ */
 
     public function getFullNameAttribute(): string
-    {
-        return $this->name ?? 'User';
-    }
+{
+    $parts = [
+        $this->first_name,
+        $this->middle_name,
+        $this->last_name,
+        $this->suffix
+    ];
+
+    return implode(' ', array_filter($parts));
+}
+
 
     public function getRoleDisplayName(): string
     {
@@ -110,10 +120,10 @@ class User extends Authenticatable implements FilamentUser
     //     return $this->hasMany(\App\Models\Notification::class);
     // }
 
-    public function employee()
-    {
-        return $this->hasOne(Employee::class);
-    }
+    // public function employee()
+    // {
+    //     return $this->hasOne(Employee::class);
+    // }
 
     /* ============================================================
         MODEL EVENTS
@@ -141,4 +151,10 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->role === self::ROLE_ADMIN;
     }
+
+    public function locatorSlips()
+{
+    return $this->hasMany(LocatorSlip::class);
+}
+
 }

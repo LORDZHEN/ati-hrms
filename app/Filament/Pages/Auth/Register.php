@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Mail\PendingRegistrationMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
+use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
 
 class Register extends BaseRegister
 {
@@ -35,11 +36,31 @@ class Register extends BaseRegister
             Forms\Components\TextInput::make('employee_id')
                 ->label('Employee ID')
                 ->required()
-                ->unique(User::class, 'employee_id_number'),
+                ->unique(User::class, 'employee_id'),
 
-            Forms\Components\TextInput::make('name')
-                ->label('Full Name')
+            Forms\Components\TextInput::make('first_name')
+                ->label('First Name')
                 ->required(),
+
+            Forms\Components\TextInput::make('middle_name')
+                ->label('Middle Name')
+                ->nullable(),
+
+            Forms\Components\TextInput::make('last_name')
+                ->label('Last Name')
+                ->required(),
+
+            Forms\Components\Select::make('suffix')
+                ->label('Suffix')
+                ->options([
+                    'Jr' => 'Jr',
+                    'Sr' => 'Sr',
+                    'I' => 'I',
+                    'II' => 'II',
+                    'III' => 'III',
+                    'IV' => 'IV',
+                ])
+                ->nullable(),
 
             Forms\Components\TextInput::make('email')
                 ->label('Email')
@@ -52,10 +73,16 @@ class Register extends BaseRegister
                 ->required()
                 ->before(today()),
 
-            // OPTIONAL FIELDS
             Forms\Components\TextInput::make('phone')
                 ->label('Phone')
-                ->nullable(),
+                ->nullable()
+                ->tel()
+                ->inputMode('numeric')
+                ->dehydrateStateUsing(fn ($state) => substr(preg_replace('/\D/', '', $state ?? ''), 0, 11))
+                ->extraInputAttributes([
+                    'oninput' => "this.value = this.value.replace(/\\D/g,'').slice(0,11)",
+                ])
+                ->rules(['nullable', 'digits:11']),
 
             Forms\Components\TextInput::make('purok_street')
                 ->label('Purok / Street')
@@ -77,9 +104,18 @@ class Register extends BaseRegister
         $tempPassword = $birthday->format('mdy');
 
         $user = User::create([
-            'name' => $data['name'],
-            'employee_id_number' => $data['employee_id'],
-            'role' => 'employee', // fixed role
+            'first_name' => $data['first_name'],
+            'middle_name' => $data['middle_name'] ?? null,
+            'last_name' => $data['last_name'],
+            'suffix' => $data['suffix'] ?? null,
+            'name' => implode(' ', array_filter([
+                $data['first_name'],
+                $data['middle_name'] ?? null,
+                $data['last_name'],
+                $data['suffix'] ?? null,
+            ])),
+            'employee_id' => $data['employee_id'],
+            'role' => 'employee',
             'email' => $data['email'],
             'password' => Hash::make($tempPassword),
             'birthday' => $data['birthday'],
@@ -102,13 +138,27 @@ class Register extends BaseRegister
         return $user;
     }
 
+    /**
+     * Prevent automatic login
+     */
     protected function authenticateUsing(): ?\Closure
     {
-        return null; // prevent automatic login
+        return null;
     }
 
-    protected function getRedirectUrl(): string
-    {
-        return route('filament.hrms.auth.login');
-    }
+    /**
+     * Override register method to prevent automatic login and redirect to login page
+     */
+    public function register(): ?RegistrationResponse
+{
+    $data = $this->form->getState();
+
+    $this->handleRegistration($data);
+
+    // flash message for toast after redirect
+    session()->flash('registration_success', 'Thank you for registering! Please check your Email for further details.');
+
+    // redirect manually
+    return $this->redirectRoute('filament.hrms.auth.login');
+}
 }

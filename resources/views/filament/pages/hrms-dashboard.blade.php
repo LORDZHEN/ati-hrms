@@ -48,7 +48,7 @@
     .dark .first-login-modal { background: #374151 !important; border-color: #4b5563; color: #f3f4f6; }
 
     .first-login-btn {
-        background: #059669 !important; color: white !important;
+        background: #d41111ff !important; color: white !important;
         padding: 10px 18px; border-radius: 8px; font-weight: 600;
     }
     .first-login-btn:hover { background: #047857 !important; }
@@ -66,7 +66,7 @@
 
 <x-filament::page>
 
-    {{-- First Login Password Prompt --}}
+    {{-- First Login Modal --}}
     @if($mustChangePassword)
         <div x-data="{ open: true }" x-show="open" x-trap="open" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
             <div x-transition class="first-login-modal max-w-md w-full">
@@ -83,20 +83,9 @@
         </div>
     @endif
 
-    {{-- Main Dashboard --}}
     <div class="space-y-6 custom-dashboard">
 
-        {{-- Greeting
-        <h2 class="text-2xl font-bold">{{ $this->getGreeting() }}</h2>
-        <p class="text-gray-600 dark:text-gray-300">
-            @if($user->role === 'admin')
-                You are logged in as an <span class="font-semibold text-amber-600 dark:text-amber-400">Admin</span>. You can manage employees and view all reports.
-            @elseif($user->role === 'employee')
-                You are logged in as an <span class="font-semibold text-emerald-600 dark:text-emerald-400">Employee</span>. Here’s a quick look at your profile.
-            @endif
-        </p> --}}
-
-        {{-- Stats Cards (Admin only) --}}
+        {{-- Stats Cards --}}
         @if($user->isAdmin())
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mt-4">
                 <div class="stat-card flex flex-col items-center justify-center gap-2">
@@ -111,6 +100,51 @@
                 </div>
             </div>
         @endif
+
+        {{-- Recent Activity Feed --}}
+<div class="mt-6">
+    <h3 class="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Recent Activities</h3>
+    <div class="space-y-2">
+        @forelse($recentActivities as $activity)
+            @php
+                // Define color classes for each activity type
+                $colorClasses = match($activity['type']) {
+                    'Leave Application' => ['bg' => 'bg-blue-100 dark:bg-blue-800', 'text' => 'text-blue-800 dark:text-blue-100'],
+                    'Travel Order' => ['bg' => 'bg-yellow-100 dark:bg-yellow-800', 'text' => 'text-yellow-800 dark:text-yellow-100'],
+                    'DTR Approval' => ['bg' => 'bg-emerald-100 dark:bg-emerald-800', 'text' => 'text-emerald-800 dark:text-emerald-100'],
+                    'SALN Upload' => ['bg' => 'bg-pink-100 dark:bg-pink-800', 'text' => 'text-pink-800 dark:text-pink-100'],
+                    'Locator Slip' => ['bg' => 'bg-purple-100 dark:bg-purple-800', 'text' => 'text-purple-800 dark:text-purple-100'],
+                    default => ['bg' => 'bg-gray-100 dark:bg-gray-800', 'text' => 'text-gray-800 dark:text-gray-100'],
+                };
+
+                // Icon color (same as badge text for consistency)
+                $iconColor = str_replace(['bg-', 'dark:bg-'], ['text-', 'dark:text-'], $colorClasses['bg']);
+            @endphp
+
+            <div class="dashboard-card flex items-center justify-between p-4">
+                <div class="flex items-center gap-3">
+                    <x-dynamic-component :component="$activity['icon']" class="w-6 h-6 {{ $iconColor }}" />
+                    <div>
+                        <p class="text-sm font-medium">
+                            <span class="font-semibold">{{ $activity['employee'] }}</span> - {{ $activity['type'] }}
+                            {{-- Activity Badge --}}
+                            <span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold {{ $colorClasses['bg'] }} {{ $colorClasses['text'] }}">
+                                {{ $activity['type'] }}
+                            </span>
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $activity['status'] }} | {{ $activity['date'] }}</p>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="dashboard-card text-center text-gray-500 dark:text-gray-400">
+                No recent activities
+            </div>
+        @endforelse
+    </div>
+</div>
+
+
 
         {{-- Modules Section --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
@@ -134,4 +168,5 @@
     </div>
 
 </x-filament::page>
+
 

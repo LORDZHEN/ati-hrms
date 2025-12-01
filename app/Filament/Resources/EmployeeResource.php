@@ -40,7 +40,7 @@ class EmployeeResource extends Resource
         return $form->schema([
             TextInput::make('name')->label('Name')->required(),
             TextInput::make('email')->email()->required(),
-            TextInput::make('employee_id_number')->label('Employee ID')->required(),
+            TextInput::make('employee_id')->label('Employee ID')->required(),
             DatePicker::make('birthday')->required(),
             Select::make('role')
                 ->label('Role')
@@ -64,10 +64,11 @@ class EmployeeResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employee_id_number')
+                TextColumn::make('employee_id')
                     ->label('Employee ID')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->getStateUsing(fn($record) => $record->employee_id ?? 'N/A'),
 
                 TextColumn::make('name')
                     ->label('Name')
@@ -92,7 +93,7 @@ class EmployeeResource extends Resource
                     ->label('Verification Status')
                     ->badge()
                     ->color(fn($record) => $record->email_verified_at ? 'success' : 'danger')
-                    ->getStateUsing(fn(User $record) => $record->email_verified_at ? 'Verified' : 'Not Verified'),
+                    ->getStateUsing(fn($record) => $record->email_verified_at ? 'Verified' : 'Not Verified'),
             ])
             ->filters([
                 SelectFilter::make('status')->options([
@@ -115,7 +116,7 @@ class EmployeeResource extends Resource
                     ->label('Verify')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->hidden(fn($record) => (bool) $record->email_verified_at)
+                    ->hidden(fn($record) => !is_null($record->email_verified_at))
                     ->requiresConfirmation()
                     ->action(function ($record, $livewire) {
                         $birthday = $record->birthday?->format('mdY');
@@ -134,19 +135,21 @@ class EmployeeResource extends Resource
                             'password' => bcrypt($birthday),
                             'must_change_password' => true,
                             'status' => 'active',
+                            'verification_status' => 'verified',
                         ]);
 
                         Mail::to($record->email)->send(new AccountVerifiedMail($record, $birthday));
 
                         Notification::make()
                             ->title('Account Verified')
-                            ->body("Temporary password: **{$birthday}**. An email has been sent to the employee.")
+                            ->body("Temporary password: **{$birthday}**. Email sent.")
                             ->success()
                             ->persistent()
                             ->send();
 
-                        $livewire->redirect($livewire->getUrl());
-                    }),
+                            $livewire->dispatch('refresh');
+                    })
+                    ->after(fn($record, $livewire) => $livewire->dispatch('refresh')), // <-- This refreshes the table automatically
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -158,12 +161,14 @@ class EmployeeResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->where('role', 'employee'); // only show employees in list
+            ->whereIn('role', ['employee', 'admin'])  // show ONLY employee accounts
+            ->orderBy('created_at', 'desc');
     }
+
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->role === 'admin'; // only admin can create
+        return auth()->user()?->role === 'admin';
     }
 
     public static function getRelations(): array

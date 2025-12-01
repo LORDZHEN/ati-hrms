@@ -9,10 +9,26 @@ use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use App\Notifications\TravelOrderStatusUpdated;
+use Filament\Actions;
 
 class CreateTravelOrder extends CreateRecord
 {
     protected static string $resource = TravelOrderResource::class;
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('create')
+                ->label('Send')
+                ->submit('create')
+                ->color('primary'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('secondary'),
+        ];
+    }
 
     protected function handleRecordCreation(array $data): TravelOrder
     {
@@ -78,5 +94,10 @@ class CreateTravelOrder extends CreateRecord
             ->send();
 
         return $travelOrder;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

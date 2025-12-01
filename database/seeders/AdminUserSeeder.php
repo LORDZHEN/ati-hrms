@@ -18,6 +18,7 @@ class AdminUserSeeder extends Seeder
                 'name' => 'System Administrator',
                 'password'   => Hash::make('password123'),
                 'role'       => 'admin',
+                'verification_status' => 'verified',
                 'status'     => 'active',
                 'must_change_password' => false,
                 'phone' => '09123456789',

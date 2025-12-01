@@ -9,7 +9,6 @@ use Livewire\Component;
 class ChangePassword extends Component
 {
     public $changingPassword = false;
-
     public $current_password;
     public $password;
     public $password_confirmation;
@@ -34,18 +33,18 @@ class ChangePassword extends Component
             return;
         }
 
-        // Update password and mark that the user no longer needs to change it
+        // Update password
         $user->update([
             'password' => bcrypt($this->password),
             'must_change_password' => false,
         ]);
 
-        // Reset form fields
+        // Reset form
         $this->reset(['current_password', 'password', 'password_confirmation']);
         $this->changingPassword = false;
 
-        // Success notification
-        session()->flash('success', 'Password updated successfully!');
+        // Redirect after saving
+        return redirect()->route('filament.hrms.pages.profile'); // or dashboard
     }
 
     public function render()

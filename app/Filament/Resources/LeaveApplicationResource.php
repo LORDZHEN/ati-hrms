@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\LeaveApplicationResource\Pages;
 use App\Models\LeaveApplication;
 use Filament\Forms;
+use App\Models\User;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -28,61 +29,52 @@ class LeaveApplicationResource extends Resource
             ->schema([
                 // Employee Info
                 Forms\Components\Section::make('Employee Information')
-                    ->description('Auto-filled personal details')
-                    ->icon('heroicon-o-user')
-                    ->schema([
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('office_department')
-                                    ->label('Office/Department')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->employee?->department ?? '');
-                                    })
-                                    ->prefixIcon('heroicon-o-building-office'),
+    ->description('Auto-filled personal details')
+    ->icon('heroicon-o-user')
+    ->schema([
+        Forms\Components\Grid::make(2)
+            ->schema([
+                Forms\Components\TextInput::make('first_name')
+                    ->label('First Name')
+                    ->disabled()
+                    ->afterStateHydrated(function ($component, $state, $record) {
+                        $component->state($record->employee?->first_name ?? auth()->user()->first_name);
+                    })
+                    ->required(),
 
-                                Forms\Components\TextInput::make('position')
-                                    ->label('Position')
-                                    ->disabled()
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->employee?->position ?? '');
-                                    })
-                                    ->prefixIcon('heroicon-o-briefcase'),
+                Forms\Components\TextInput::make('middle_name')
+                    ->label('Middle Name')
+                    ->disabled()
+                    ->afterStateHydrated(function ($component, $state, $record) {
+                        $component->state($record->employee?->middle_name ?? auth()->user()->middle_name);
+                    }),
 
-                            ]),
-                        Forms\Components\DatePicker::make('date_of_filing')
-                            ->label('Date of Filing')
-                            ->default(now())
-                            ->required()
-                            ->prefixIcon('heroicon-o-calendar'),
+                Forms\Components\TextInput::make('last_name')
+                    ->label('Last Name')
+                    ->disabled()
+                    ->afterStateHydrated(function ($component, $state, $record) {
+                        $component->state($record->employee?->last_name ?? auth()->user()->last_name);
+                    })
+                    ->required(),
 
-                        Forms\Components\TextInput::make('first_name')
-                            ->label('First Name')
-                            ->disabled()
-                            ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->first_name ?? '');
-                            })
-                            ->required(),
+                Forms\Components\TextInput::make('office_department')
+                    ->label('Office/Department')
+                    ->disabled()
+                    ->afterStateHydrated(function ($component, $state, $record) {
+                        $component->state($record->employee?->department ?? auth()->user()->department);
+                    }),
 
-                        Forms\Components\TextInput::make('middle_name')
-                            ->label('Middle Name')
-                            ->disabled()
-                            ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->middle_name ?? '');
-                            }),
+                Forms\Components\TextInput::make('position')
+                    ->label('Position')
+                    ->disabled()
+                    ->afterStateHydrated(function ($component, $state, $record) {
+                        $component->state($record->employee?->position ?? auth()->user()->position);
+                    }),
+            ]),
+    ])
+    ->collapsible()
+    ->collapsed(false),
 
-                        Forms\Components\TextInput::make('last_name')
-                            ->label('Last Name')
-                            ->disabled()
-                            ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->last_name ?? '');
-                            })
-                            ->required(),
-                    ])
-                    ->collapsible()
-                    ->collapsed(false),
 
                 // Leave Type
                 Forms\Components\Section::make('Leave Type Selection')

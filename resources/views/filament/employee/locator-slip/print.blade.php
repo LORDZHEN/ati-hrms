@@ -58,12 +58,13 @@
         .signature-line {
             border-bottom: 1px solid #000;
             width: 200px;
-            margin-bottom: 4px;
+            margin: 0 auto 4px auto;
         }
 
         .signature-name {
             font-weight: bold;
             text-align: center;
+            margin-bottom: 3px;
         }
 
         .checkbox {
@@ -114,7 +115,10 @@
 
             <div class="section"><span class="label">Name:</span> {{ $record->employee_name }}</div>
             <div class="section"><span class="label">Position:</span> {{ $record->position }}</div>
-            <div class="section"><span class="label">Department:</span> {{ $record->department }}</div>
+
+            {{-- FIXED: office_department --}}
+            <div class="section"><span class="label">Department:</span> {{ $record->office_department }}</div>
+
             <div class="section"><span class="label">Destination:</span> {{ $record->destination }}</div>
             <div class="section"><span class="label">Purpose:</span> {{ $record->purpose }}</div>
 
@@ -131,7 +135,7 @@
                 {{ $record->in_time ? \Carbon\Carbon::parse($record->in_time)->format('h:i A') : 'N/A' }}
             </div>
 
-            {{-- Status with checkboxes --}}
+            {{-- Status --}}
             <div class="section">
                 <span class="label">Status:</span>
 
@@ -144,19 +148,24 @@
             <div class="section"><span class="label">Rejection Reason:</span> {{ $record->rejection_reason }}</div>
             @endif
 
+            {{-- REQUESTED BY --}}
             <div class="signature-block">
                 <strong>Requested By:</strong>
-                <div class="signature-line"></div>
                 <div class="signature-name">{{ $record->requested_by }}</div>
+                <div class="signature-line"></div>
             </div>
 
+            {{-- APPROVED BY --}}
             <div class="signature-block">
                 <strong>Approved By:</strong>
-                <div class="signature-line"></div>
                 <div class="signature-name">{{ $record->approved_by ?? 'N/A' }}</div>
+                <div class="signature-line"></div>
 
                 @if($record->approved_at)
-                <div class="section"><span class="label">Date Approved:</span> {{ \Carbon\Carbon::parse($record->approved_at)->format('F d, Y') }}</div>
+                <div class="section">
+                    <span class="label">Date Approved:</span>
+                    {{ \Carbon\Carbon::parse($record->approved_at)->format('F d, Y') }}
+                </div>
                 @endif
             </div>
 

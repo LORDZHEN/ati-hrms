@@ -6,10 +6,26 @@ use App\Filament\Resources\LocatorSlipResource;
 use App\Models\User;
 use App\Notifications\LocatorSlipSubmitted;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Actions;
 
 class CreateLocatorSlip extends CreateRecord
 {
     protected static string $resource = LocatorSlipResource::class;
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('create')
+                ->label('Send')
+                ->submit('create')
+                ->color('primary'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('secondary'),
+        ];
+    }
 
     protected function afterCreate(): void
     {

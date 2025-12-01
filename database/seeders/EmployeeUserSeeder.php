@@ -16,7 +16,7 @@ class EmployeeUserSeeder extends Seeder
                 'name' => 'Juan Dela Cruz',
                 'first_name' => 'Juan',
                 'last_name' => 'Dela Cruz',
-                // 'middle_name' => 'S',
+                'middle_name' => 'S',
                 'email' => 'employee@example.com',
                 'password' => Hash::make('password123'), // default password
                 'role' => User::ROLE_EMPLOYEE,
@@ -31,7 +31,7 @@ class EmployeeUserSeeder extends Seeder
                 'birthday' => '1995-01-15',
                 'must_change_password' => true,
                 'employee_id' => 'EMP001',
-                'verification_status' => 'verified',
+                'verification_status' => 'not-verified',
             ]
         );
 

@@ -303,28 +303,34 @@
                     <div class="field-value">{{ $record->remarks_special_instructions }}</div>
                 </div>
             </div>
+<div class="signature-section">
+    {{-- RECOMMENDED --}}
+    <div class="signature-box">
+        <div class="signature-title">RECOMMENDED:</div>
+        <div class="signature-role">
+            {{-- Display the admin's full name who approved --}}
+            {{ optional($record->approver)->full_name ?? 'Pending Approval' }}
+        </div>
+        <div class="signature-line"></div>
+        @if($record->recommended_at)
+            <div style="font-size: 6px; margin-top: 2px;">
+                {{ $record->recommended_at->setTimezone('Asia/Manila')->format('M d, Y g:i A') }}
+            </div>
+        @endif
+    </div>
+            
 
-            <div class="signature-section">
                 <div class="signature-box">
-                    <div class="signature-title">RECOMMENDED:</div>
-                    <div class="signature-line"></div>
-                    <div class="signature-role">Assistant Center Director</div>
-                    @if($record->recommended_at)
-                        <div style="font-size: 6px; margin-top: 2px;">
-                            {{ $record->recommended_at->format('M d, Y g:i A') }}
-                        </div>
-                    @endif
-                </div>
-                <div class="signature-box">
-                    <div class="signature-title">APPROVED:</div>
-                    <div class="signature-line"></div>
-                    <div class="signature-role">Center Director</div>
-                    @if($record->approved_at)
-                        <div style="font-size: 6px; margin-top: 2px;">
-                            {{ $record->approved_at->format('M d, Y g:i A') }}
-                        </div>
-                    @endif
-                </div>
+    <div class="signature-title">APPROVED:</div>
+    <div class="signature-role">Center Director: Alicia Rose D. Nebreja</div>
+    <div class="signature-line"></div>
+    @if($record->approved_at)
+        <div style="font-size: 6px; margin-top: 2px;">
+            {{ $record->approved_at->setTimezone('Asia/Manila')->format('M d, Y g:i A') }}
+        </div>
+    @endif
+</div>
+
             </div>
 
             <div class="footer-info">

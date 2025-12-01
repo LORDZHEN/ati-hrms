@@ -23,13 +23,6 @@
                 @click.away="show = false"
                 class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700"
             >
-                {{-- Success Notification --}}
-                @if (session()->has('success'))
-                    <div class="mb-4 p-3 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" x-data x-init="setTimeout(() => $el.remove(), 3000)">
-                        {{ session('success') }}
-                    </div>
-                @endif
-
                 {{-- Header --}}
                 <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
                     <x-heroicon-o-user-circle class="w-7 h-7 text-primary-500" />
@@ -40,7 +33,7 @@
                     {{-- Profile Photo --}}
                     <div class="flex items-center gap-6">
                         <img
-                            src="{{ Storage::url(Auth::user()->profile_photo_path) }}"
+                            src="{{ Auth::user()->profile_photo_url }}"
                             alt="Profile Picture"
                             class="w-20 h-20 rounded-full object-cover border-2 border-primary-500"
                         />
@@ -58,8 +51,16 @@
                         </div>
                     </div>
 
+                    {{-- Employee ID --}}
+                    <div>
+                        <label class="text-sm font-medium">Employee ID</label>
+                        <input type="text" wire:model.defer="employee_id"
+                            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                        @error('employee_id') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
+                    </div>
+
                     {{-- Name Fields --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="text-sm font-medium">First Name</label>
                             <input type="text" wire:model.defer="first_name"
@@ -67,11 +68,33 @@
                             @error('first_name') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
                         </div>
                         <div>
+                            <label class="text-sm font-medium">Middle Name</label>
+                            <input type="text" wire:model.defer="middle_name"
+                                class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                            @error('middle_name') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
                             <label class="text-sm font-medium">Last Name</label>
                             <input type="text" wire:model.defer="last_name"
                                 class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
                             @error('last_name') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
                         </div>
+                    </div>
+
+                    {{-- Suffix --}}
+                    <div>
+                        <label class="text-sm font-medium">Suffix</label>
+                        <select wire:model.defer="suffix"
+                            class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                            <option value="">None</option>
+                            <option value="Jr">Jr</option>
+                            <option value="Sr">Sr</option>
+                            <option value="I">I</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                        </select>
+                        @error('suffix') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Employment Details --}}

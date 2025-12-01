@@ -76,6 +76,39 @@
             </a>
         </div>
     </div>
+@if(session('registration_success'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const message = "{{ session('registration_success') }}";
+
+            const toast = document.createElement('div');
+            toast.innerText = message;
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.backgroundColor = '#16a34a';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 20px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            toast.style.zIndex = '9999';
+            toast.style.fontWeight = '500';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+
+            document.body.appendChild(toast);
+
+            // Fade in
+            setTimeout(() => toast.style.opacity = '1', 100);
+
+            // Fade out after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        });
+    </script>
+@endif
 
     @livewireScripts
 </body>

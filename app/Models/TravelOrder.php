@@ -157,27 +157,30 @@ class TravelOrder extends Model
         ]);
     }
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($travelOrder) {
-            if (empty($travelOrder->travel_order_no)) {
-                $travelOrder->travel_order_no = 'TO-' . date('Y') . '-' . str_pad(
-                    static::whereYear('created_at', date('Y'))->count() + 1,
-                    4,
-                    '0',
-                    STR_PAD_LEFT
-                );
-            }
-        });
-    }
-
+    /**
+     * Auto-generate travel_order_no in format mm-yyyy-0001
+     */
     protected static function booted()
     {
         static::creating(function ($travelOrder) {
+            // Set creator
             $travelOrder->created_by = Auth::id();
+
+            // Auto-generate travel order number if empty
+            if (empty($travelOrder->travel_order_no)) {
+                $date = $travelOrder->date ?? now();
+                $month = $date->format('m');
+                $year = $date->format('Y');
+
+                // Count existing records in the same month/year
+                $count = static::whereYear('created_at', $year)
+                    ->whereMonth('created_at', $month)
+                    ->count() + 1;
+
+                $sequence = str_pad($count, 4, '0', STR_PAD_LEFT);
+
+                $travelOrder->travel_order_no = "{$month}-{$year}-{$sequence}";
+            }
         });
     }
-
 }

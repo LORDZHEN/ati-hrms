@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DailyTimeRecordResource\Pages;
 use App\Models\EmployeeDtr;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,41 +14,51 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
-
 class DailyTimeRecordResource extends Resource
 {
     protected static ?string $model = EmployeeDtr::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-down';
     protected static ?string $navigationLabel = 'Daily Time Record';
-    protected static ?string $slug = 'daily-time-records';
-    protected static ?string $title = 'Daily Time Record';
     protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 1;
-
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Select::make('employee_id')
-                ->relationship('employee', 'name')
-                ->searchable()
-                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN)
-                ->required(),
+                ->label('Employee')
+                ->options(
+                    User::where('role', User::ROLE_EMPLOYEE)
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->toArray()
+                )
+                ->default(fn() =>
+                    Auth::user()->isAdmin()
+                        ? null
+                        : Auth::id()
+                )
+                ->required(fn() => Auth::user()->isAdmin())   // Required only for admin
+                ->disabled(fn() => !Auth::user()->isAdmin()) // Employee sees but cannot edit
+                ->dehydrated(fn() => true),                  // Always send value when saving
 
             Forms\Components\FileUpload::make('file_path')
-                ->directory('dtr')
-                ->required()
+                ->label('DTR File')
+                ->visible(fn() => Auth::user()->isAdmin())
+                ->required(fn() => Auth::user()->isAdmin())
+                ->directory('dtr_files')
                 ->acceptedFileTypes([
+                    'application/pdf',
                     'application/vnd.ms-excel',
                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     'text/csv',
-                ])
-                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                ]),
 
             Forms\Components\Textarea::make('notes')
-                ->nullable()
-                ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                ->label('Notes')
+                ->placeholder('Optional note/remarks')
+                ->visible(fn() => Auth::user()->isAdmin()),
         ]);
     }
 
@@ -57,46 +68,50 @@ class DailyTimeRecordResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Employee')
-                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->isAdmin()),
 
                 Tables\Columns\TextColumn::make('notes')
-                    ->limit(40)
-                    ->label('Notes'),
+                    ->limit(50),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Uploaded On')
-                    ->dateTime(),
+                    ->date('M d, Y'),
             ])
             ->actions([
                 Tables\Actions\Action::make('download')
-                    ->label('Download File')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn($record) => Storage::url($record->file_path))
                     ->openUrlInNewTab(),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->isAdmin()),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
+                    ->visible(fn() => Auth::user()->isAdmin()),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => Auth::user()->role === \App\Models\User::ROLE_ADMIN),
-                ]),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn() => Auth::user()->isAdmin()),
             ]);
     }
 
     public static function getEloquentQuery(): Builder
     {
-        $user = Auth::user();
+        $query = parent::getEloquentQuery();
 
-        if ($user->role === \App\Models\User::ROLE_ADMIN) {
-            return parent::getEloquentQuery();
+        return Auth::user()->isAdmin()
+            ? $query
+            : $query->where('employee_id', Auth::id());
+    }
+
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (Auth::user()->isAdmin() && isset($data['file_path'])) {
+            $data['file_path'] = $data['file_path']->store('dtr_files');
         }
 
-        return parent::getEloquentQuery()
-            ->where('employee_id', $user->id);
+        return $data;
     }
 
     public static function getPages(): array
@@ -107,6 +122,4 @@ class DailyTimeRecordResource extends Resource
             'edit' => Pages\EditDailyTimeRecord::route('/{record}/edit'),
         ];
     }
-
-
 }

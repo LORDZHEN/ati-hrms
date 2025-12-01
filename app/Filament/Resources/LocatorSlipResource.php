@@ -25,135 +25,148 @@ class LocatorSlipResource extends Resource
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
-    {
-        $user = Auth::user();
+{
+    return $form
+        ->schema([
+            Forms\Components\Section::make('Agricultural Training Institute - XI')
+                ->description('Office of the Human Resource Management - LOCATOR SLIP')
+                ->schema([
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\Checkbox::make('personal_transaction')
+                                ->label('Personal Transaction')
+                                ->reactive()
+                                // ->disabled(fn($record) => $record?->exists)
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    if ($state) {
+                                        $set('transaction_type', 'personal');
+                                        $set('official_business', false);
+                                    }
+                                }),
+                            Forms\Components\Checkbox::make('official_business')
+                                ->label('Official Business')
+                                ->default(true)
+                                ->reactive()
+                                // ->disabled(fn($record) => $record?->exists)
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    if ($state) {
+                                        $set('transaction_type', 'official');
+                                        $set('personal_transaction', false);
+                                    }
+                                }),
+                        ]),
+                    Forms\Components\Hidden::make('transaction_type')->default('official'),
 
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Agricultural Training Institute - XI')
-                    ->description('Office of the Human Resource Management - LOCATOR SLIP')
-                    ->schema([
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\Checkbox::make('personal_transaction')
-                                    ->label('Personal Transaction')
-                                    ->reactive()
-                                    ->disabled(fn($record) => $record?->exists)
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $set('transaction_type', 'personal');
-                                            $set('official_business', false);
-                                        }
-                                    }),
-                                Forms\Components\Checkbox::make('official_business')
-                                    ->label('Official Business')
-                                    ->default(true)
-                                    ->reactive()
-                                    ->disabled(fn($record) => $record?->exists)
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $set('transaction_type', 'official');
-                                            $set('personal_transaction', false);
-                                        }
-                                    }),
-                            ]),
-                        Forms\Components\Hidden::make('transaction_type')->default('official'),
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('employee_name')
+                                ->label('Name')
+                                ->disabled()
+                                ->dehydrated()
+                                ->afterStateHydrated(function ($component, $state, $record) {
+                                    $component->state($record->employee?->name ?? auth()->user()->name);
+                                })
+                                ->required(),
 
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('employee_name')
-                                    ->label('Name')
-                                    ->default($user->name ?? '')
-                                    ->required()
-                                    ->disabled()
-                                    ->dehydrated(),
-                                Forms\Components\TextInput::make('position')
-                                    ->label('Position')
-                                    ->default($user->position ?? '')
-                                    ->required()
-                                    ->dehydrated(),
-                            ]),
-                        Forms\Components\TextInput::make('department')
-                            ->label('Department')
-                            ->default($user->office_department ?? '')
-                            ->dehydrated()
-                            ->required(),
+                            Forms\Components\TextInput::make('position')
+                                ->label('Position')
+                                ->disabled()
+                                ->dehydrated()
+                                ->afterStateHydrated(function ($component, $state, $record) {
+                                    $component->state($record->employee?->position ?? auth()->user()->position);
+                                })
+                                ->required(),
+                        ]),
 
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('destination')
-                                    ->label('Destination')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Textarea::make('purpose')
-                                    ->label('Purpose')
-                                    ->required()
-                                    ->rows(3),
-                            ]),
+                    Forms\Components\TextInput::make('office_department')
+                        ->label('Department')
+                        ->disabled()
+                        ->dehydrated()
+                        ->afterStateHydrated(function ($component, $state, $record) {
+                            $component->state($record->employee?->office_department ?? auth()->user()->department);
+                        })
+                        ->required(),
 
-                        Forms\Components\Grid::make(3)
-                            ->schema([
-                                Forms\Components\DatePicker::make('inclusive_date')
-                                    ->label('Inclusive Date')
-                                    ->required()
-                                    ->default(now()),
-                                Forms\Components\TimePicker::make('out_time')
-                                    ->label('Out')
-                                    ->required()
-                                    ->default(now())
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $time = \Carbon\Carbon::parse($state)->addHours(2);
-                                            $set('in_time', $time->format('H:i'));
-                                        }
-                                    }),
-                                Forms\Components\TimePicker::make('in_time')
-                                    ->label('In')
-                                    ->required()
-                                    ->default(fn(callable $get) => \Carbon\Carbon::parse($get('out_time'))->addHours(2)->format('H:i')),
-                            ]),
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('destination')
+                                ->label('Destination')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\Textarea::make('purpose')
+                                ->label('Purpose')
+                                // ->required()
+                                ->rows(3),
+                        ]),
 
-                        Forms\Components\TextInput::make('requested_by')
-                            ->label('Requested By')
-                            ->default($user->name ?? '')
-                            ->disabled()
-                            ->dehydrated()
-                            ->required(),
-                    ])
-                    ->collapsible()
-                    ->collapsed(false),
+                    Forms\Components\Grid::make(3)
+                        ->schema([
+                            Forms\Components\DatePicker::make('inclusive_date')
+                                ->label('Inclusive Date')
+                                ->required()
+                                ->default(now()),
+                            Forms\Components\TimePicker::make('out_time')
+                                ->label('Out')
+                                ->required()
+                                ->default(now())
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    if ($state) {
+                                        $time = \Carbon\Carbon::parse($state)->addHours(2);
+                                        $set('in_time', $time->format('H:i'));
+                                    }
+                                }),
+                            Forms\Components\TimePicker::make('in_time')
+                                ->label('In')
+                                ->required()
+                                ->default(fn(callable $get) => \Carbon\Carbon::parse($get('out_time'))->addHours(2)->format('H:i')),
+                        ]),
 
-                Forms\Components\Section::make('Approval Section')
-                    ->schema([
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'pending' => 'Pending',
-                                'approved' => 'Approved',
-                                'disapproved' => 'Disapproved',
-                            ])
-                            ->required()
-                            ->reactive(),
+                    Forms\Components\TextInput::make('requested_by')
+                        ->label('Requested By')
+                        ->disabled()
+                        ->dehydrated()
+                        ->afterStateHydrated(function ($component, $state, $record) {
+                            $component->state($record->employee?->name ?? auth()->user()->name);
+                        })
+                        ->required(),
+                ])
+                ->collapsible()
+                ->collapsed(false),
 
-                        Forms\Components\TextInput::make('approved_by')
-                            ->label('Approved By')
-                            ->default($user->name)
-                            ->disabled()
-                            ->dehydrated(),
+            // Approval Section (Admin Only)
+            Forms\Components\Section::make('Approval Section')
+                ->schema([
+                    Forms\Components\Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'pending' => 'Pending',
+                            'approved' => 'Approved',
+                            'disapproved' => 'Disapproved',
+                        ])
+                        ->required()
+                        ->reactive(),
 
-                        Forms\Components\Textarea::make('admin_remarks')
-                            ->label('Remarks / Reason for Disapproval')
-                            ->rows(3)
-                            ->visible(fn(callable $get) => $get('status') === 'disapproved'),
-                    ])
-                    ->visible(fn() => $user->role === 'admin')
-                    ->collapsible()
-                    ->collapsed(true),
+                    Forms\Components\TextInput::make('approved_by')
+                        ->label('Approved By')
+                        ->disabled()
+                        ->afterStateHydrated(function ($component) {
+                            $component->state(auth()->user()->name);
+                        })
+                        ->dehydrated(),
 
-                Forms\Components\Hidden::make('user_id')->default($user->id),
-            ]);
-    }
+                    Forms\Components\Textarea::make('admin_remarks')
+                        ->label('Remarks / Reason for Disapproval')
+                        ->rows(3)
+                        ->visible(fn(callable $get) => $get('status') === 'disapproved'),
+                ])
+                ->visible(fn() => auth()->user()->role === 'admin')
+                ->collapsible()
+                ->collapsed(true),
+
+            Forms\Components\Hidden::make('user_id')->default(fn() => auth()->id()),
+        ]);
+}
 
     public static function table(Table $table): Table
     {
@@ -190,7 +203,8 @@ class LocatorSlipResource extends Resource
                     ->label('Print')
                     ->icon('heroicon-o-printer')
                     ->url(fn($record) => route('locator_slip.print', $record->id))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn($record) => $record->status === 'approved'),
 
                 // Admin Approve Action
                 Action::make('approve')

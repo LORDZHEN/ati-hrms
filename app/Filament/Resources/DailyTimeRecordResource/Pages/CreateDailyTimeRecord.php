@@ -6,7 +6,7 @@ use App\Filament\Resources\DailyTimeRecordResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
-
+use Filament\Actions;
 
 class CreateDailyTimeRecord extends CreateRecord
 {
@@ -16,14 +16,34 @@ class CreateDailyTimeRecord extends CreateRecord
     {
         abort_unless(Auth::user()->role === \App\Models\User::ROLE_ADMIN, 403);
     }
+
+    /**
+     * Replace the default form actions
+     * - Keep only "Send"
+     * - Restore "Cancel" button
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('create')
+                ->label('Send')
+                ->submit('create')
+                ->color('primary'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('secondary'),
+        ];
+    }
+
     protected function afterCreate(): void
     {
         $record = $this->record;
-
         $user = $record->employee;
 
         if ($user) {
-            \Filament\Notifications\Notification::make()
+            Notification::make()
                 ->title('New Daily Time Record')
                 ->body("A new Daily Time Record has been uploaded for you.")
                 ->success()
@@ -31,6 +51,8 @@ class CreateDailyTimeRecord extends CreateRecord
         }
     }
 
-
-
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

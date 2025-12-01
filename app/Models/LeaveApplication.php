@@ -12,14 +12,13 @@ class LeaveApplication extends Model
 
     protected $fillable = [
         'first_name',
+        'middle_name',
         'last_name',
         'name',
         'employee_id',
         'office_department',
         'date_of_filing',
         'last_name',
-        'first_name',
-        'middle_name',
         'position',
         // 'salary', ← optional, if you're hiding it
         'type_of_leave',

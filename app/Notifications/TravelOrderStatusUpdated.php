@@ -6,6 +6,7 @@ use App\Models\TravelOrder;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Filament\Resources\TravelOrderResource;
 
 class TravelOrderStatusUpdated extends Notification
 {
@@ -24,16 +25,21 @@ class TravelOrderStatusUpdated extends Notification
     }
 
     public function toMail($notifiable)
-    {
-        $status = ucfirst($this->travelOrder->status);
+{
+    $status = ucfirst($this->travelOrder->status);
 
-        return (new MailMessage)
-            ->subject("Travel Order {$status}")
-            ->greeting("Hello {$notifiable->name},")
-            ->line("The travel order ({$this->travelOrder->travel_order_no}) has been {$status}.")
-            ->action('View Travel Order', route('filament.resources.travel-order.edit', $this->travelOrder->id))
-            ->line('Thank you!');
-    }
+    return (new MailMessage)
+        ->subject("Travel Order {$status}")
+        ->greeting("Hello {$notifiable->name},")
+        ->line("The travel order ({$this->travelOrder->travel_order_no}) has been {$status}.")
+        ->action(
+    'View Travel Order', 
+    TravelOrderResource::getUrl('edit', ['record' => $this->travelOrder->id])
+)
+
+        ->line('Thank you!');
+}
+
 
     public function toDatabase($notifiable)
     {

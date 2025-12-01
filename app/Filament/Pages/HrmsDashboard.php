@@ -5,6 +5,10 @@ namespace App\Filament\Pages;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\LeaveApplication;
+use App\Models\TravelOrder;
+use App\Models\LocatorSlip;
+use App\Models\Saln;
 
 class HrmsDashboard extends Page
 {
@@ -17,6 +21,7 @@ class HrmsDashboard extends Page
     public $stats = [];
     public bool $mustChangePassword;
     public $modules = [];
+    public $recentActivities = [];
 
     public function mount(): void
     {
@@ -108,6 +113,94 @@ class HrmsDashboard extends Page
         } else {
             $this->modules = $baseModules;
         }
+
+        // Recent Activities
+        $this->recentActivities = collect();
+
+        if ($this->user->isAdmin()) {
+            // Admin sees all recent activities
+            $leaves = LeaveApplication::latest()->take(5)->get();
+            $travelOrders = TravelOrder::latest()->take(5)->get();
+            $locatorSlips = LocatorSlip::latest()->take(5)->get();
+            $salns = Saln::latest()->take(5)->get();
+        } else {
+            // Employee sees only their own activities
+            $leaves = LeaveApplication::where('employee_id', $this->user->id)->latest()->take(5)->get();
+            $travelOrders = TravelOrder::whereJsonContains('employee_ids', ['id' => $this->user->id])
+                ->latest()->take(5)->get();
+            $locatorSlips = LocatorSlip::where('user_id', $this->user->id)->latest()->take(5)->get();
+            $salns = Saln::where('user_id', $this->user->id)->latest()->take(5)->get();
+        }
+
+        // Helper function to push activities
+        $addActivity = function ($type, $employee, $status, $date, $icon) {
+            $this->recentActivities->push([
+                'type' => $type,
+                'employee' => $employee,
+                'status' => $status,
+                'date' => $date,
+                'icon' => $icon,
+            ]);
+        };
+
+        // Populate activities
+        foreach ($leaves as $leave) {
+            $addActivity(
+                'Leave Application',
+                $leave->employee?->full_name ?? ($leave->full_name ?? 'Unknown'),
+                ucfirst($leave->status),
+                $leave->created_at->format('M d, Y'),
+                'heroicon-o-calendar'
+            );
+        }
+
+        foreach ($travelOrders as $order) {
+            $employeeName = 'Unknown';
+            if (!empty($order->employee_details) && is_array($order->employee_details)) {
+                $firstEmployee = $order->employee_details[0] ?? null;
+                $employeeName = $firstEmployee['name'] ?? 'Unknown';
+            }
+
+            $addActivity(
+                'Travel Order',
+                $employeeName,
+                $order->status_label ?? ucfirst($order->status),
+                $order->created_at->format('M d, Y'),
+                'heroicon-o-briefcase'
+            );
+        }
+
+        foreach ($locatorSlips as $slip) {
+            $employeeName = $slip->user?->full_name ?? $slip->employee_name ?? 'Unknown';
+            $statusLabel = $slip->status_label ?? ucfirst($slip->status);
+
+            $addActivity(
+                'Locator Slip',
+                $employeeName,
+                $statusLabel,
+                $slip->created_at?->format('M d, Y') ?? 'N/A',
+                'heroicon-o-map-pin'
+            );
+        }
+
+        foreach ($salns as $saln) {
+            $employeeName = $saln->user?->full_name
+                ?? trim("{$saln->declarant_first_name} {$saln->declarant_middle_initial} {$saln->declarant_family_name}") 
+                ?: 'Unknown';
+
+            $addActivity(
+                'SALN Upload',
+                $employeeName,
+                'Filed',
+                $saln->created_at?->format('M d, Y') ?? 'N/A',
+                'heroicon-o-document-text'
+            );
+        }
+
+        // Sort by date descending and take latest 5
+        $this->recentActivities = $this->recentActivities
+            ->sortByDesc('date')
+            ->take(5);
     }
 
     public function getGreeting(): string

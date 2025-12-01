@@ -12,6 +12,21 @@ use Illuminate\Support\Facades\Notification as LaravelNotification;
 class CreatePersonalDataSheet extends CreateRecord
 {
     protected static string $resource = PersonalDataSheetResource::class;
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('create')
+                ->label('Send')
+                ->submit('create')
+                ->color('primary'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('secondary'),
+        ];
+    }
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
