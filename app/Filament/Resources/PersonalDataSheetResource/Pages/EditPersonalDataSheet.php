@@ -11,9 +11,16 @@ class EditPersonalDataSheet extends EditRecord
     protected static string $resource = PersonalDataSheetResource::class;
 
     protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+{
+    return [
+        \Filament\Actions\Action::make('print')
+            ->label('Print PDS')
+            ->icon('heroicon-o-printer')
+            ->url(fn() => route('pds.print', $this->record->id))
+            ->openUrlInNewTab(),
+
+        \Filament\Actions\DeleteAction::make(),
+    ];
+}
+
 }

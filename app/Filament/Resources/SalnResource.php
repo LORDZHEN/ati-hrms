@@ -23,6 +23,8 @@ class SalnResource extends Resource
     protected static ?string $navigationLabel = 'SALN';
     protected static ?string $title = 'SALNs';
     protected static ?string $slug = 'saln';
+    protected static ?string $modelLabel = 'Saln';
+    protected static ?string $pluralModelLabel = 'Statement of Assests, Liabilities and Net Worth';
     protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 6;
 
@@ -391,7 +393,7 @@ class SalnResource extends Resource
                             ->schema([
                                 Forms\Components\Textarea::make('remarks')
                                     ->label('Admin Remarks')
-                                    ->visible(fn() => auth()->user()->hasRole('admin'))
+                                    // ->visible(fn() => auth()->user()->hasRole('admin'))
                             ]),
                     ]),
             ])

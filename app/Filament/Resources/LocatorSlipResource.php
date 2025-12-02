@@ -21,6 +21,8 @@ class LocatorSlipResource extends Resource
     protected static ?string $slug = 'locator-slip';
     protected static ?string $navigationLabel = 'Locator Slip';
     protected static ?string $title = 'Locator Slips';
+    protected static ?string $modelLabel = 'Locator Slip';
+    protected static ?string $pluralModelLabel = 'Locator Slip';
     protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 3;
 
@@ -36,6 +38,7 @@ class LocatorSlipResource extends Resource
                             Forms\Components\Checkbox::make('personal_transaction')
                                 ->label('Personal Transaction')
                                 ->reactive()
+                                ->required()
                                 // ->disabled(fn($record) => $record?->exists)
                                 ->afterStateUpdated(function ($state, callable $set) {
                                     if ($state) {
@@ -47,6 +50,7 @@ class LocatorSlipResource extends Resource
                                 ->label('Official Business')
                                 ->default(true)
                                 ->reactive()
+                                ->required()
                                 // ->disabled(fn($record) => $record?->exists)
                                 ->afterStateUpdated(function ($state, callable $set) {
                                     if ($state) {

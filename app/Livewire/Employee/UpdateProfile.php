@@ -6,13 +6,13 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class UpdateProfile extends Component
 {
     use WithFileUploads;
 
     public $editingProfile = false;
-
     public $employee_id;
     public $first_name;
     public $middle_name;
@@ -26,7 +26,6 @@ class UpdateProfile extends Component
     public function mount()
     {
         $user = Auth::user();
-
         $this->employee_id = $user->employee_id;
         $this->first_name = $user->first_name;
         $this->middle_name = $user->middle_name;
@@ -53,25 +52,25 @@ class UpdateProfile extends Component
 
         $user = Auth::user();
 
-        $user->employee_id = $this->employee_id;
-        $user->first_name = $this->first_name;
-        $user->middle_name = $this->middle_name;
-        $user->last_name = $this->last_name;
-        $user->suffix = $this->suffix;
-        $user->position = $this->position;
-        $user->employment_status = $this->employment_status;
-        $user->department = $this->department;
+        $user->fill([
+            'employee_id' => $this->employee_id,
+            'first_name' => $this->first_name,
+            'middle_name' => $this->middle_name,
+            'last_name' => $this->last_name,
+            'suffix' => $this->suffix,
+            'position' => $this->position,
+            'employment_status' => $this->employment_status,
+            'department' => $this->department,
+            'name' => implode(' ', array_filter([$this->first_name,$this->middle_name,$this->last_name,$this->suffix])),
+        ]);
 
+        // Handle photo upload
         if ($this->photo) {
+            if ($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path)) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
             $user->profile_photo_path = $this->photo->store('profile-photos', 'public');
         }
-
-        $user->name = implode(' ', array_filter([
-            $this->first_name,
-            $this->middle_name,
-            $this->last_name,
-            $this->suffix,
-        ]));
 
         $user->save();
 
@@ -84,7 +83,21 @@ class UpdateProfile extends Component
             ->success()
             ->send();
 
-        return redirect()->route('filament.hrms.pages.profile');
+    }
+
+    /**
+     * Get avatar URL for modal preview
+     */
+    public function getAvatarUrlProperty(): string
+    {
+        if ($this->photo) {
+            return $this->photo->temporaryUrl();
+        }
+
+        $user = Auth::user();
+        return $user->profile_photo_path
+            ? asset('storage/' . $user->profile_photo_path)
+            : 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User');
     }
 
     public function render()

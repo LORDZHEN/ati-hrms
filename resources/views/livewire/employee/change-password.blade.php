@@ -53,40 +53,94 @@
                 <form wire:submit.prevent="updatePassword" class="space-y-5">
 
                     {{-- Current Password --}}
-                    <div class="space-y-1">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
-                        <x-filament::input
-                            type="password"
-                            wire:model.defer="current_password"
-                            placeholder="Enter your current password"
-                            class="w-full rounded-2xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600"
-                        />
-                        @error('current_password') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-                    </div>
+                    <div class="space-y-1" x-data="{ show: false }">
+    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        Current Password
+    </label>
+
+    <x-filament::input.wrapper>
+        <x-filament::input
+            x-bind:type="show ? 'text' : 'password'"
+            wire:model.defer="current_password"
+            placeholder="Enter your current password"
+            class="rounded-2xl"
+        />
+
+        <x-slot name="suffix">
+            <button type="button"
+                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                @click="show = !show">
+
+                <x-heroicon-o-eye x-show="!show" class="w-5 h-5" />
+                <x-heroicon-o-eye-slash x-show="show" class="w-5 h-5" />
+            </button>
+        </x-slot>
+    </x-filament::input.wrapper>
+
+    @error('current_password')
+        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+    @enderror
+</div>
 
                     {{-- New Password --}}
-                    <div class="space-y-1">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
-                        <x-filament::input
-                            type="password"
-                            wire:model.defer="password"
-                            placeholder="Enter a new password"
-                            class="w-full rounded-2xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600"
-                        />
-                        @error('password') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-                    </div>
+<div class="space-y-1" x-data="{ showNew: false }">
+    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        New Password
+    </label>
 
-                    {{-- Confirm New Password --}}
-                    <div class="space-y-1">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
-                        <x-filament::input
-                            type="password"
-                            wire:model.defer="password_confirmation"
-                            placeholder="Confirm your new password"
-                            class="w-full rounded-2xl border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600"
-                        />
-                        @error('password_confirmation') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
-                    </div>
+    <x-filament::input.wrapper>
+        <x-filament::input
+            x-bind:type="showNew ? 'text' : 'password'"
+            wire:model.defer="password"
+            placeholder="Enter a new password"
+            class="rounded-2xl"
+        />
+
+        <x-slot name="suffix">
+            <button type="button"
+                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                @click="showNew = !showNew">
+
+                <x-heroicon-o-eye x-show="!showNew" class="w-5 h-5" />
+                <x-heroicon-o-eye-slash x-show="showNew" class="w-5 h-5" />
+            </button>
+        </x-slot>
+    </x-filament::input.wrapper>
+
+    @error('password')
+        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+    @enderror
+</div>
+
+{{-- Confirm New Password --}}
+<div class="space-y-1" x-data="{ showConfirm: false }">
+    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        Confirm New Password
+    </label>
+
+    <x-filament::input.wrapper>
+        <x-filament::input
+            x-bind:type="showConfirm ? 'text' : 'password'"
+            wire:model.defer="password_confirmation"
+            placeholder="Confirm your new password"
+            class="rounded-2xl"
+        />
+
+        <x-slot name="suffix">
+            <button type="button"
+                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                @click="showConfirm = !showConfirm">
+
+                <x-heroicon-o-eye x-show="!showConfirm" class="w-5 h-5" />
+                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-5 h-5" />
+            </button>
+        </x-slot>
+    </x-filament::input.wrapper>
+
+    @error('password_confirmation')
+        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+    @enderror
+</div>
 
                     {{-- Actions --}}
                     <div class="flex flex-col md:flex-row items-center md:justify-end gap-3 mt-4">

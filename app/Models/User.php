@@ -13,31 +13,30 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable;
 
     protected $fillable = [
-    'name',
-    'first_name',
-    'middle_name',
-    'last_name',
-    'suffix',
-    'email',
-    'password',
-    'role',
-    'phone',
-    'purok_street',
-    'city_municipality',
-    'province',
-    'profile_photo_path',
-    'e_signature',
-    'position',
-    'employment_status',
-    'department',
-    'status',
-    'birthday',
-    'email_verified_at',
-    'must_change_password',
-    'employee_id',
-    'verification_status',
-];
-
+        'name',
+        'first_name',
+        'middle_name',
+        'last_name',
+        'suffix',
+        'email',
+        'password',
+        'role',
+        'phone',
+        'purok_street',
+        'city_municipality',
+        'province',
+        'profile_photo_path',
+        'e_signature',
+        'position',
+        'employment_status',
+        'department',
+        'status',
+        'birthday',
+        'email_verified_at',
+        'must_change_password',
+        'employee_id',
+        'verification_status',
+    ];
 
     protected $hidden = [
         'password',
@@ -63,7 +62,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /* ============================================================
-        FILAMENT REQUIRED METHODS
+       FILAMENT REQUIRED METHODS
        ============================================================ */
 
     public function getFilamentName(): string
@@ -79,54 +78,57 @@ class User extends Authenticatable implements FilamentUser
         };
     }
 
+    /**
+     * Fix: Filament Top-Right Avatar
+     * Filament will call this method to show the user's profile photo
+     */
+    public function getFilamentAvatarUrl(): ?string {
+        // If user has uploaded photo
+        if ($this->profile_photo_path && file_exists(storage_path('app/public/' . $this->profile_photo_path))) {
+            return asset('storage/' . $this->profile_photo_path);
+        }
+        // fallback to initials
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute() ?? 'User');
+    }
 
     /* ============================================================
-        ACCESSORS
+       ACCESSORS
        ============================================================ */
 
     public function getFullNameAttribute(): string
-{
-    $parts = [
-        $this->first_name,
-        $this->middle_name,
-        $this->last_name,
-        $this->suffix
-    ];
+    {
+        $parts = [
+            $this->first_name,
+            $this->middle_name,
+            $this->last_name,
+            $this->suffix
+        ];
 
-    return implode(' ', array_filter($parts));
-}
-
+        return implode(' ', array_filter($parts));
+    }
 
     public function getRoleDisplayName(): string
     {
         return self::getRoles()[$this->role] ?? 'Unknown';
     }
 
-    public function getProfilePhotoUrlAttribute()
-    {
-        if ($this->profile_photo_path) {
-            return asset('storage/' . $this->profile_photo_path);
-        }
-
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name ?? 'User');
+    public function getProfilePhotoUrlAttribute(): string {
+        return $this->profile_photo_path
+            ? asset('storage/' . $this->profile_photo_path)
+            : 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute() ?? 'User');
     }
 
     /* ============================================================
-        RELATIONSHIPS
+       RELATIONSHIPS
        ============================================================ */
 
-    // public function notifications()
-    // {
-    //     return $this->hasMany(\App\Models\Notification::class);
-    // }
-
-    // public function employee()
-    // {
-    //     return $this->hasOne(Employee::class);
-    // }
+    public function locatorSlips()
+    {
+        return $this->hasMany(LocatorSlip::class);
+    }
 
     /* ============================================================
-        MODEL EVENTS
+       MODEL EVENTS
        ============================================================ */
 
     protected static function booted(): void
@@ -139,7 +141,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /* ============================================================
-        ROLE CHECKS
+       ROLE CHECKS
        ============================================================ */
 
     public function isEmployee(): bool
@@ -151,10 +153,4 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->role === self::ROLE_ADMIN;
     }
-
-    public function locatorSlips()
-{
-    return $this->hasMany(LocatorSlip::class);
-}
-
 }

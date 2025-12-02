@@ -8,6 +8,7 @@ use App\Http\Controllers\TravelOrderPrintController;
 use App\Models\User;
 use App\Models\LeaveApplication;
 use App\Models\TravelOrder;
+use App\Http\Controllers\PersonalDataSheetPrintController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,10 @@ Route::get('/leave-application/print/{id}', [LeaveApplicationPrintController::cl
 
 Route::get('/saln/{saln}/print', [SalnPrintController::class, 'print'])
     ->name('saln.print');
+
+Route::get('/pds/{pds}/print', [PersonalDataSheetPrintController::class, 'print'])
+    ->name('pds.print')
+    ->middleware(['auth']);
 
 /*
 |--------------------------------------------------------------------------

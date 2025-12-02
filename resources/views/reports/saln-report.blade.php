@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SALN Comprehensive Report</title>
+    <title>Statment of Assets, Liabilites and Net Worth Report</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {

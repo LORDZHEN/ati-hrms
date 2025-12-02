@@ -20,6 +20,8 @@ class LeaveApplicationResource extends Resource
     protected static ?string $slug = 'leave-applications';
     protected static ?string $navigationLabel = 'Leave Application';
     protected static ?string $title = 'Leave Applications';
+    protected static ?string $modelLabel = 'Leave Application';
+    protected static ?string $pluralModelLabel = 'Leave Application';
     protected static ?string $navigationGroup = 'Manage';
     protected static ?int $navigationSort = 2;
 

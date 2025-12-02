@@ -25,6 +25,8 @@ class EmployeeResource extends Resource
     protected static ?string $slug = 'employee-resource';
     protected static ?string $navigationLabel = 'Employees';
     protected static ?string $title = 'Employees';
+    protected static ?string $modelLabel = 'Employee';
+    protected static ?string $pluralModelLabel = 'Employees';
     protected static ?string $navigationGroup = 'Settings';
     protected static ?int $navigationSort = 2;
 
@@ -38,18 +40,52 @@ class EmployeeResource extends Resource
         $isAdmin = auth()->user()?->role === 'admin';
 
         return $form->schema([
-            TextInput::make('name')->label('Name')->required(),
-            TextInput::make('email')->email()->required(),
-            TextInput::make('employee_id')->label('Employee ID')->required(),
-            DatePicker::make('birthday')->required(),
+
+            TextInput::make('first_name')
+                ->label('First Name')
+                ->required(),
+
+            TextInput::make('middle_name')
+                ->label('Middle Name')
+                ->nullable(),
+
+            TextInput::make('last_name')
+                ->label('Last Name')
+                ->required(),
+
+            // Auto-generate "name" using the three fields
+            TextInput::make('name')
+                ->hidden()
+                ->dehydrated()
+                ->default(fn($get) =>
+                    trim(
+                        ($get('first_name') ?? '') . ' ' .
+                        ($get('middle_name') ?? '') . ' ' .
+                        ($get('last_name') ?? '')
+                    )
+                ),
+
+            TextInput::make('email')
+                ->email()
+                ->required(),
+
+            TextInput::make('employee_id')
+                ->label('Employee ID')
+                ->required(),
+
+            DatePicker::make('birthday')
+                ->required(),
+
             Select::make('role')
                 ->label('Role')
                 ->options([
                     'admin' => 'Admin',
+                    'employee' => 'Employee',
                 ])
                 ->default('admin')
                 ->required()
                 ->hidden(!$isAdmin),
+
             Select::make('status')
                 ->options([
                     'pending' => 'Pending',
@@ -147,9 +183,9 @@ class EmployeeResource extends Resource
                             ->persistent()
                             ->send();
 
-                            $livewire->dispatch('refresh');
+                        $livewire->dispatch('refresh');
                     })
-                    ->after(fn($record, $livewire) => $livewire->dispatch('refresh')), // <-- This refreshes the table automatically
+                    ->after(fn($record, $livewire) => $livewire->dispatch('refresh')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -161,10 +197,9 @@ class EmployeeResource extends Resource
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->whereIn('role', ['employee', 'admin'])  // show ONLY employee accounts
+            ->whereIn('role', ['employee', 'admin'])
             ->orderBy('created_at', 'desc');
     }
-
 
     public static function canCreate(): bool
     {

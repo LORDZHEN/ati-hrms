@@ -630,6 +630,11 @@ class PersonalDataSheetResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn($record) => route('pds.print', $record->id))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
