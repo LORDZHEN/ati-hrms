@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Statment of Assets, Liabilites and Net Worth Report</title>
+    <title>Statement of Assets, Liabilities and Net Worth Report</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -23,7 +23,7 @@
             margin: 5px 0;
         }
 
-        .logo-section .logo img {
+        .logo img {
             height: 60px;
             object-fit: contain;
         }
@@ -33,12 +33,12 @@
             margin: 0 15px;
         }
 
-        .title-section .main-title {
+        .main-title {
             font-weight: bold;
             font-size: 16px;
         }
 
-        .title-section .sub-title {
+        .sub-title {
             font-weight: bold;
             font-size: 14px;
         }
@@ -75,12 +75,6 @@
         th {
             background-color: #f2f2f2;
         }
-
-        .section-title {
-            margin-top: 15px;
-            font-weight: bold;
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -113,6 +107,12 @@
 
     <h2>SALN Comprehensive Report</h2>
 
+    @if($from && $to)
+        <p style="text-align:center; font-size:11px;">
+            Showing from {{ \Carbon\Carbon::parse($from)->format('M d, Y') }} to {{ \Carbon\Carbon::parse($to)->format('M d, Y') }}
+        </p>
+    @endif
+
     <table>
         <thead>
             <tr>
@@ -125,21 +125,40 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($salns as $saln)
-            <tr>
-                <td>{{ $saln->user->first_name }} {{ $saln->user->last_name }}</td>
-                <td>{{ $saln->as_of_date?->format('M d, Y') }}</td>
-                <td>₱{{ number_format($saln->total_assets, 2) }}</td>
-                <td>₱{{ number_format($saln->total_liabilities, 2) }}</td>
-                <td>₱{{ number_format($saln->net_worth, 2) }}</td>
-                <td>{{ $saln->remarks ?? '-' }}</td>
-            </tr>
-            @endforeach
+            @forelse($salns as $saln)
+                <tr>
+                    <td>{{ $saln->user->first_name }} {{ $saln->user->last_name }}</td>
+                    <td>{{ $saln->as_of_date?->format('M d, Y') }}</td>
+                    <td>₱{{ number_format($saln->total_assets, 2) }}</td>
+                    <td>₱{{ number_format($saln->total_liabilities, 2) }}</td>
+                    <td>₱{{ number_format($saln->net_worth, 2) }}</td>
+                    <td>{{ $saln->remarks ?? '-' }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" style="text-align:center;">No records found.</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
+    
+<br><br><br>
+    <table style="width:100%; border:none;">
+        <tr>
+            <td style="width:50%; text-align:center; border:none;">
+                <strong>Prepared by:</strong><br><br><br>
+                <u>{{ auth()->user()->name }}</u><br>
+                <span style="font-size:11px;">System Administrator</span>
+            </td>
 
+            <td style="width:50%; text-align:center; border:none;">
+                <strong>Accomplished by:</strong><br><br><br>
+                <u>{{ auth()->user()->name }}</u><br>
+                <span style="font-size:11px;">HR Officer</span>
+            </td>
+        </tr>
+    </table>
     <script>
-        // Auto-print
         window.onload = function() {
             window.print();
         };

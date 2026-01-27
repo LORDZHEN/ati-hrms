@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use Filament\Notifications\Notification;
+use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification as BaseNotification;
 
@@ -10,21 +10,34 @@ class PDSSubmittedNotification extends BaseNotification
 {
     use Queueable;
 
-    public $user;
-    public $pds;
+    public function __construct(public $user, public $pds) {}
 
-    public function __construct($user, $pds)
+    public function via($notifiable): array
     {
-        $this->user = $user;
-        $this->pds = $pds;
+        return ['database'];
     }
 
-    public function toFilament(): Notification
+    public function toDatabase($notifiable): array
     {
-        return Notification::make()
-            ->title('New PDS Submitted')
-            ->body("{$this->user->first_name} {$this->user->last_name} has submitted a PDS for the year {$this->pds->year}.")
-            ->success()
-            ->action('View', url("/hrms/personal-data-sheet/{$this->pds->id}/view"));
+        return [
+            'title' => 'New PDS Submitted',
+            'body' => "{$this->user->first_name} {$this->user->last_name} submitted a PDS for the year {$this->pds->year}.",
+            'url' => url("/hrms/personal-data-sheet/{$this->pds->id}/view"),
+        ];
+    }
+
+    public function notifyUser($user)
+    {
+        $user->notify($this); // store in DB
+
+        if (class_exists(FilamentNotification::class)) {
+            $data = $this->toDatabase($user);
+            FilamentNotification::make()
+                ->title($data['title'])
+                ->body($data['body'])
+                ->success()
+                ->action('View', $data['url'])
+                ->send();
+        }
     }
 }

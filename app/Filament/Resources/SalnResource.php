@@ -26,7 +26,7 @@ class SalnResource extends Resource
     protected static ?string $modelLabel = 'Saln';
     protected static ?string $pluralModelLabel = 'Statement of Assests, Liabilities and Net Worth';
     protected static ?string $navigationGroup = 'Manage';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
     {

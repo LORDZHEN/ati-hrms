@@ -6,16 +6,17 @@ use Filament\Forms;
 use Filament\Pages\Auth\Register as BaseRegister;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use App\Mail\PendingRegistrationMail;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\PendingRegistrationMail;
 use Carbon\Carbon;
-use Filament\Http\Responses\Auth\Contracts\RegistrationResponse;
+use Illuminate\Support\Facades\Log;
 
 class Register extends BaseRegister
 {
     protected static string $view = 'filament.pages.auth.register';
     protected static ?string $slug = 'register';
 
+    // ✅ REQUIRED for Blade
     public bool $showSuccessMessage = false;
     public string $successMessage = '';
 
@@ -36,129 +37,94 @@ class Register extends BaseRegister
             Forms\Components\TextInput::make('employee_id')
                 ->label('Employee ID')
                 ->required()
-                ->unique(User::class, 'employee_id'),
+                ->unique('users', 'employee_id'),
 
-            Forms\Components\TextInput::make('first_name')
-                ->label('First Name')
-                ->required(),
+            Forms\Components\TextInput::make('first_name')->required(),
+            Forms\Components\TextInput::make('middle_name'),
+            Forms\Components\TextInput::make('last_name')->required(),
 
-            Forms\Components\TextInput::make('middle_name')
-                ->label('Middle Name')
-                ->nullable(),
-
-            Forms\Components\TextInput::make('last_name')
-                ->label('Last Name')
-                ->required(),
-
-            Forms\Components\Select::make('suffix')
-                ->label('Suffix')
-                ->options([
-                    'Jr' => 'Jr',
-                    'Sr' => 'Sr',
-                    'I' => 'I',
-                    'II' => 'II',
-                    'III' => 'III',
-                    'IV' => 'IV',
-                ])
-                ->nullable(),
+            Forms\Components\Select::make('suffix')->options([
+                'Jr' => 'Jr',
+                'Sr' => 'Sr',
+                'I' => 'I',
+                'II' => 'II',
+                'III' => 'III',
+                'IV' => 'IV',
+            ]),
 
             Forms\Components\TextInput::make('email')
-                ->label('Email')
                 ->email()
                 ->required()
-                ->unique(User::class),
+                ->unique('users', 'email'),
 
             Forms\Components\DatePicker::make('birthday')
-                ->label('Birthday')
                 ->required()
                 ->before(today()),
 
             Forms\Components\TextInput::make('phone')
-                ->label('Phone')
-                ->nullable()
-                ->tel()
-                ->inputMode('numeric')
-                ->dehydrateStateUsing(fn ($state) => substr(preg_replace('/\D/', '', $state ?? ''), 0, 11))
-                ->extraInputAttributes([
-                    'oninput' => "this.value = this.value.replace(/\\D/g,'').slice(0,11)",
-                ])
-                ->rules(['nullable', 'digits:11']),
+                ->regex('/^[0-9]{11}$/'),
 
-            Forms\Components\TextInput::make('purok_street')
-                ->label('Purok / Street')
-                ->nullable(),
-
-            Forms\Components\TextInput::make('city_municipality')
-                ->label('City / Municipality')
-                ->nullable(),
-
-            Forms\Components\TextInput::make('province')
-                ->label('Province')
-                ->nullable(),
+            Forms\Components\TextInput::make('region')->required(),
+            Forms\Components\TextInput::make('province')->required(),
+            Forms\Components\TextInput::make('city_municipality')->required(),
+            Forms\Components\TextInput::make('barangay')->required(),
+            Forms\Components\TextInput::make('purok_street'),
         ];
     }
 
+    /**
+     * ✅ Filament registration handler
+     */
     protected function handleRegistration(array $data): User
     {
         $birthday = Carbon::parse($data['birthday']);
         $tempPassword = $birthday->format('mdy');
 
         $user = User::create([
+            'employee_id' => $data['employee_id'],
             'first_name' => $data['first_name'],
             'middle_name' => $data['middle_name'] ?? null,
             'last_name' => $data['last_name'],
             'suffix' => $data['suffix'] ?? null,
-            'name' => implode(' ', array_filter([
+            'name' => trim(implode(' ', array_filter([
                 $data['first_name'],
                 $data['middle_name'] ?? null,
                 $data['last_name'],
                 $data['suffix'] ?? null,
-            ])),
-            'employee_id' => $data['employee_id'],
-            'role' => 'employee',
+            ]))),
             'email' => $data['email'],
             'password' => Hash::make($tempPassword),
             'birthday' => $data['birthday'],
             'phone' => $data['phone'] ?? null,
+            'region_name' => $data['region'],
+            'province' => $data['province'],
+            'city_municipality' => $data['city_municipality'],
+            'barangay_name' => $data['barangay'],
             'purok_street' => $data['purok_street'] ?? null,
-            'city_municipality' => $data['city_municipality'] ?? null,
-            'province' => $data['province'] ?? null,
+            'role' => 'employee',
             'status' => 'pending',
             'verification_status' => 'pending',
-            'email_verified_at' => null,
             'must_change_password' => true,
         ]);
 
-        // Send registration email
-        Mail::to($user->email)->send(new PendingRegistrationMail($user));
+        try {
+            Mail::to($user->email)->send(new PendingRegistrationMail($user));
+        } catch (\Throwable $e) {
+            Log::error('Registration mail failed: ' . $e->getMessage());
+        }
 
-        $this->successMessage = 'Registration successful! Your account is pending verification. Please check your email.';
+        // ✅ Optional UI feedback (will show briefly)
         $this->showSuccessMessage = true;
+        $this->successMessage = 'Registration successful! Please wait for admin verification.';
 
         return $user;
     }
 
     /**
-     * Prevent automatic login
+     * ✅ REDIRECT AFTER SUCCESSFUL REGISTRATION
      */
-    protected function authenticateUsing(): ?\Closure
+    protected function getRedirectUrl(): string
     {
-        return null;
+        return route('filament.hrms.auth.login');
     }
-
-    /**
-     * Override register method to prevent automatic login and redirect to login page
-     */
-    public function register(): ?RegistrationResponse
-{
-    $data = $this->form->getState();
-
-    $this->handleRegistration($data);
-
-    // flash message for toast after redirect
-    session()->flash('registration_success', 'Thank you for registering! Please check your Email for further details.');
-
-    // redirect manually
-    return $this->redirectRoute('filament.hrms.auth.login');
-}
 }

@@ -23,6 +23,8 @@ class User extends Authenticatable implements FilamentUser
         'role',
         'phone',
         'purok_street',
+        'region_name',     
+        'barangay_name',
         'city_municipality',
         'province',
         'profile_photo_path',
@@ -82,7 +84,8 @@ class User extends Authenticatable implements FilamentUser
      * Fix: Filament Top-Right Avatar
      * Filament will call this method to show the user's profile photo
      */
-    public function getFilamentAvatarUrl(): ?string {
+    public function getFilamentAvatarUrl(): ?string
+    {
         // If user has uploaded photo
         if ($this->profile_photo_path && file_exists(storage_path('app/public/' . $this->profile_photo_path))) {
             return asset('storage/' . $this->profile_photo_path);
@@ -112,7 +115,8 @@ class User extends Authenticatable implements FilamentUser
         return self::getRoles()[$this->role] ?? 'Unknown';
     }
 
-    public function getProfilePhotoUrlAttribute(): string {
+    public function getProfilePhotoUrlAttribute(): string
+    {
         return $this->profile_photo_path
             ? asset('storage/' . $this->profile_photo_path)
             : 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute() ?? 'User');

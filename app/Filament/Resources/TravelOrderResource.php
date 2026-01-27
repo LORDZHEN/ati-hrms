@@ -27,240 +27,241 @@ class TravelOrderResource extends Resource
     protected static ?string $modelLabel = 'Travel Order';
     protected static ?string $pluralModelLabel = 'Travel Order';
     protected static ?string $navigationGroup = 'Manage';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6;
 
-protected static function generateTravelOrderNumber(): string
-{
-    // Get current month and year
-    $monthYear = now()->format('m-Y'); // e.g., 12-2025
+    protected static function generateTravelOrderNumber(): string
+    {
+        // Get current month and year
+        $monthYear = now()->format('m-Y'); // e.g., 12-2025
 
-    // Get the last travel order for the current month
-    $lastRecord = TravelOrder::whereMonth('created_at', now()->month)
-        ->whereYear('created_at', now()->year)
-        ->latest()
-        ->first();
+        // Get the last travel order for the current month
+        $lastRecord = TravelOrder::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->latest()
+            ->first();
 
-    // Determine next number
-    $nextNumber = $lastRecord ? ((int) substr($lastRecord->travel_order_no, -3)) + 1 : 1;
+        // Determine next number
+        $nextNumber = $lastRecord ? ((int) substr($lastRecord->travel_order_no, -3)) + 1 : 1;
 
-    // Pad to 3 digits
-    $number = str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        // Pad to 3 digits
+        $number = str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
 
-    // Return formatted Travel Order Number
-    return "{$monthYear}-{$number}";
-}
+        // Return formatted Travel Order Number
+        return "{$monthYear}-{$number}";
+    }
 
     public static function form(Form $form): Form
-{
-    return $form
-        ->schema([
-            // --- Travel Order Information Section ---
-            Forms\Components\Section::make('Travel Order Information')
-    ->schema([
-        // First row: Travel Order No. | Date
-        Forms\Components\Grid::make(2)
+    {
+        return $form
             ->schema([
-                Forms\Components\TextInput::make('travel_order_no')
-                    ->label('Travel Order No.')
-                    ->default(fn() => self::generateTravelOrderNumber())
-                    ->disabled()
-                    ->dehydrated(false),
+                // --- Travel Order Information Section ---
+                Forms\Components\Section::make('Travel Order Information')
+                    ->schema([
+                        // First row: Travel Order No. | Date
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('travel_order_no')
+                                    ->label('Travel Order No.')
+                                    ->default(fn() => self::generateTravelOrderNumber())
+                                    ->disabled()
+                                    ->dehydrated(false),
 
-                Forms\Components\DatePicker::make('date')
-                    ->label('Date')
-                    ->required()
-                    ->default(now()),
-            ]),
+                                Forms\Components\DatePicker::make('date')
+                                    ->label('Date')
+                                    ->required()
+                                    ->default(now()),
+                            ]),
 
-        // Second row: Status | Travel Type
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'pending' => 'Pending Review',
+                        // Second row: Status | Travel Type
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'draft' => 'Draft',
+                                        'pending' => 'Pending Review',
+                                    ])
+                                    ->default('pending')
+                                    ->disabled()
+                                    ->required(),
+
+                                Forms\Components\Select::make('travel_type')
+                                    ->label('Travel Type')
+                                    ->options([
+                                        'solo' => 'Solo Travel',
+                                        'batch' => 'Batch Travel',
+                                    ])
+                                    ->default('solo')
+                                    ->reactive()
+                                    ->required(),
+                            ]),
+
+                        // Traveler fields (solo or batch)
+                        Forms\Components\TextInput::make('solo_employee')
+                            ->label('Traveler')
+                            ->default(fn() => Auth::user()->full_name ?? Auth::user()->name)
+                            ->disabled()
+                            ->visible(fn(callable $get) => $get('travel_type') === 'solo')
+                            ->columnSpanFull(),
+
+                        Forms\Components\Select::make('employee_ids')
+                            ->label('Select Employee(s)')
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->options(fn() => User::where('role', 'employee')
+                                ->orWhere('id', Auth::id())
+                                ->pluck('name', 'id'))
+                            ->required(fn(callable $get) => $get('travel_type') === 'batch')
+                            ->visible(fn(callable $get) => $get('travel_type') === 'batch')
+                            ->placeholder('Search and select employee(s)')
+                            ->helperText('Select employees for batch travel')
+                            ->columnSpanFull(),
+
+                        // Salary and Station row
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('salary_per_annum')
+                                    ->label('Salary (Per Annum)')
+                                    ->numeric()
+                                    ->prefix('₱')
+                                    ->required(fn(callable $get) => $get('travel_type') === 'solo') // only required for solo
+                                    ->visible(fn(callable $get) => $get('travel_type') === 'solo') // optional: hide for batch
+                                    ->helperText('Annual salary amount (average salary for multiple employees)'),
+
+                                Forms\Components\TextInput::make('station')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('Work station/office location'),
+                            ]),
+
+                        // Position
+                        Forms\Components\TextInput::make('position')
+                            ->label('Primary Position')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Enter the primary position (or common position for batch travel)')
+                            ->helperText('For multiple employees, enter the most common position or "Various Positions"')
+                            ->columnSpanFull(),
+
+                        // Repeater for batch employee details
+                        Forms\Components\Repeater::make('employee_details')
+                            ->label('Employee Details')
+                            ->schema([
+                                Forms\Components\Grid::make(3)->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Name')
+                                        ->required()
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('position')
+                                        ->label('Position')
+                                        ->required()
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('salary')
+                                        ->label('Annual Salary')
+                                        ->numeric()
+                                        ->prefix('₱')
+                                        ->visible(false),
+                                ]),
+                            ])
+                            ->columnSpanFull()
+                            ->addActionLabel('Add Employee Details')
+                            ->helperText('Add individual details for each employee (batch only)')
+                            ->minItems(0)
+                            ->collapsible()
+                            ->visible(fn(callable $get) => $get('travel_type') === 'batch'),
+
+                        // Created By
+                        Forms\Components\Select::make('created_by')
+                            ->label('Created By')
+                            ->relationship('creator', 'email')
+                            ->searchable()
+                            ->preload()
+                            ->default(Auth::id())
+                            ->required(),
+                    ]),
+
+
+                // --- Travel Details Section ---
+                Forms\Components\Section::make('Travel Details')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\DatePicker::make('departure_date')
+                                    ->label('Departure Date')
+                                    ->required()
+                                    ->minDate(now()),
+
+                                Forms\Components\DatePicker::make('return_date')
+                                    ->label('Return Date')
+                                    ->required()
+                                    ->after('departure_date'),
+                            ]),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('report_to')
+                                    ->label('Report To')
+                                    ->required()
+                                    ->maxLength(255),
+
+                                Forms\Components\TextInput::make('destination')
+                                    ->required()
+                                    ->maxLength(255),
+                            ]),
+
+                        Forms\Components\Textarea::make('purpose_of_trip')
+                            ->label('Purpose of Trip')
+                            ->required()
+                            ->rows(3)
+                            ->columnSpanFull()
+                            ->placeholder('Please provide detailed information about the purpose of your travel...'),
+                    ]),
+
+                // --- Approval Status Section ---
+                Forms\Components\Section::make('Approval Status')
+                    ->description('This section shows the approval status of your travel order')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Toggle::make('recommended_by_assistant_director')
+                                    ->label('Recommended by Assistant Director')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+
+                                Forms\Components\Toggle::make('approved_by_center_director')
+                                    ->label('Approved by Center Director')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+                            ]),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('recommended_at')
+                                    ->label('Recommended At')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+
+                                Forms\Components\DateTimePicker::make('approved_at')
+                                    ->label('Approved At')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+                            ]),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('recommended_by')
+                                    ->label('Recommended By')
+                                    ->relationship('recommender', 'email')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+
+                                Forms\Components\Select::make('approved_by')
+                                    ->label('Approved By')
+                                    ->relationship('approver', 'email')
+                                    ->disabled(fn() => Auth::user()->role !== 'admin'),
+                            ]),
                     ])
-                    ->default('pending')
-                    ->disabled()
-                    ->required(),
+                    ->visible(fn() => Auth::user()->role === 'admin' || Auth::user()->role === 'employee'),
 
-                Forms\Components\Select::make('travel_type')
-                    ->label('Travel Type')
-                    ->options([
-                        'solo' => 'Solo Travel',
-                        'batch' => 'Batch Travel',
-                    ])
-                    ->default('solo')
-                    ->reactive()
-                    ->required(),
-            ]),
-
-        // Traveler fields (solo or batch)
-        Forms\Components\TextInput::make('solo_employee')
-            ->label('Traveler')
-            ->default(fn() => Auth::user()->full_name ?? Auth::user()->name)
-            ->disabled()
-            ->visible(fn(callable $get) => $get('travel_type') === 'solo')
-            ->columnSpanFull(),
-
-        Forms\Components\Select::make('employee_ids')
-            ->label('Select Employee(s)')
-            ->multiple()
-            ->searchable()
-            ->preload()
-            ->options(fn() => User::where('role', 'employee')
-                ->orWhere('id', Auth::id())
-                ->pluck('full_name', 'id'))
-            ->required(fn(callable $get) => $get('travel_type') === 'batch')
-            ->visible(fn(callable $get) => $get('travel_type') === 'batch')
-            ->placeholder('Search and select employee(s)')
-            ->helperText('Select employees for batch travel')
-            ->columnSpanFull(),
-
-        // Salary and Station row
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\TextInput::make('salary_per_annum')
-                    ->label('Salary (Per Annum)')
-                    ->numeric()
-                    ->prefix('₱')
-                    ->required()
-                    ->helperText('Annual salary amount (average salary for multiple employees)'),
-
-                Forms\Components\TextInput::make('station')
-                    ->required()
-                    ->maxLength(255)
-                    ->placeholder('Work station/office location'),
-            ]),
-
-        // Position
-        Forms\Components\TextInput::make('position')
-            ->label('Primary Position')
-            ->required()
-            ->maxLength(255)
-            ->placeholder('Enter the primary position (or common position for batch travel)')
-            ->helperText('For multiple employees, enter the most common position or "Various Positions"')
-            ->columnSpanFull(),
-
-        // Repeater for batch employee details
-        Forms\Components\Repeater::make('employee_details')
-            ->label('Employee Details')
-            ->schema([
-                Forms\Components\Grid::make(3)->schema([
-                    Forms\Components\TextInput::make('name')
-                        ->label('Name')
-                        ->required()
-                        ->maxLength(255),
-
-                    Forms\Components\TextInput::make('position')
-                        ->label('Position')
-                        ->required()
-                        ->maxLength(255),
-
-                    Forms\Components\TextInput::make('salary')
-                        ->label('Annual Salary')
-                        ->numeric()
-                        ->prefix('₱')
-                        ->visible(false),
-                ]),
-            ])
-            ->columnSpanFull()
-            ->addActionLabel('Add Employee Details')
-            ->helperText('Add individual details for each employee (batch only)')
-            ->minItems(0)
-            ->collapsible()
-            ->visible(fn(callable $get) => $get('travel_type') === 'batch'),
-
-        // Created By
-        Forms\Components\Select::make('created_by')
-            ->label('Created By')
-            ->relationship('creator', 'email')
-            ->searchable()
-            ->preload()
-            ->default(Auth::id())
-            ->required(),
-    ]),
-
-
-            // --- Travel Details Section ---
-            Forms\Components\Section::make('Travel Details')
-                ->schema([
-                    Forms\Components\Grid::make(2)
-                        ->schema([
-                            Forms\Components\DatePicker::make('departure_date')
-                                ->label('Departure Date')
-                                ->required()
-                                ->minDate(now()),
-
-                            Forms\Components\DatePicker::make('return_date')
-                                ->label('Return Date')
-                                ->required()
-                                ->after('departure_date'),
-                        ]),
-
-                    Forms\Components\Grid::make(2)
-                        ->schema([
-                            Forms\Components\TextInput::make('report_to')
-                                ->label('Report To')
-                                ->required()
-                                ->maxLength(255),
-
-                            Forms\Components\TextInput::make('destination')
-                                ->required()
-                                ->maxLength(255),
-                        ]),
-
-                    Forms\Components\Textarea::make('purpose_of_trip')
-                        ->label('Purpose of Trip')
-                        ->required()
-                        ->rows(3)
-                        ->columnSpanFull()
-                        ->placeholder('Please provide detailed information about the purpose of your travel...'),
-                ]),
-
-            // --- Approval Status Section ---
-            Forms\Components\Section::make('Approval Status')
-    ->description('This section shows the approval status of your travel order')
-    ->schema([
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\Toggle::make('recommended_by_assistant_director')
-                    ->label('Recommended by Assistant Director')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-
-                Forms\Components\Toggle::make('approved_by_center_director')
-                    ->label('Approved by Center Director')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-            ]),
-
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\DateTimePicker::make('recommended_at')
-                    ->label('Recommended At')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-
-                Forms\Components\DateTimePicker::make('approved_at')
-                    ->label('Approved At')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-            ]),
-
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\Select::make('recommended_by')
-                    ->label('Recommended By')
-                    ->relationship('recommender', 'email')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-
-                Forms\Components\Select::make('approved_by')
-                    ->label('Approved By')
-                    ->relationship('approver', 'email')
-                    ->disabled(fn() => Auth::user()->role !== 'admin'),
-            ]),
-    ])
-    ->visible(fn() => Auth::user()->role === 'admin' || Auth::user()->role === 'employee'),
-
-        ]);
-}
+            ]);
+    }
 
 
 
@@ -428,27 +429,27 @@ protected static function generateTravelOrderNumber(): string
 
                 // --- Admin-only approve ---
                 Tables\Actions\Action::make('approve')
-    ->label('Approve')
-    ->icon('heroicon-m-check-circle')
-    ->color('success')
-    ->visible(fn(TravelOrder $record) => Auth::user()->role === 'admin' && $record->status === 'pending')
-    ->requiresConfirmation()
-    ->modalHeading('Approve Travel Order')
-    ->modalDescription('Are you sure you want to approve this travel order?')
-    ->action(function (TravelOrder $record) {
-        $record->update([
-            'status' => 'approved',
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-            // Automatically set assistant director (any admin) as recommender
-            'recommended_by_assistant_director' => true,
-            'recommended_by' => Auth::id(),
-        ]);
+                    ->label('Approve')
+                    ->icon('heroicon-m-check-circle')
+                    ->color('success')
+                    ->visible(fn(TravelOrder $record) => Auth::user()->role === 'admin' && $record->status === 'pending')
+                    ->requiresConfirmation()
+                    ->modalHeading('Approve Travel Order')
+                    ->modalDescription('Are you sure you want to approve this travel order?')
+                    ->action(function (TravelOrder $record) {
+                        $record->update([
+                            'status' => 'approved',
+                            'approved_by' => Auth::id(),
+                            'approved_at' => now(),
+                            // Automatically set assistant director (any admin) as recommender
+                            'recommended_by_assistant_director' => true,
+                            'recommended_by' => Auth::id(),
+                        ]);
 
-        // Notify creator
-        $record->creator->notify(new TravelOrderStatusUpdated($record));
-    })
-    ->after(fn($record) => Notification::make()->title('Travel order approved successfully')->success()->send()),
+                        // Notify creator
+                        $record->creator->notify(new TravelOrderStatusUpdated($record));
+                    })
+                    ->after(fn($record) => Notification::make()->title('Travel order approved successfully')->success()->send()),
 
                 // --- Admin-only reject ---
                 Tables\Actions\Action::make('reject')

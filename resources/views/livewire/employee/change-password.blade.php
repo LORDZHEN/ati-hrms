@@ -1,11 +1,11 @@
 <div class="max-w-3xl mx-auto space-y-6">
 
-    {{-- Modern Button to Open Modal --}}
+    {{-- Open Modal Button --}}
     <x-filament::button
-        color="danger"
-        icon="heroicon-o-lock-closed"
         wire:click="$set('changingPassword', true)"
-        class="w-full justify-center text-white bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 transition-all duration-300 shadow-lg transform hover:scale-105"
+        icon="heroicon-o-lock-closed"
+        color="danger"
+        class="w-full justify-center py-3 text-base font-semibold rounded-xl shadow-sm"
     >
         Change Password
     </x-filament::button>
@@ -13,155 +13,187 @@
     {{-- Success Toast --}}
     <div
     x-data="{ show: false, message: '' }"
-    x-on:password-updated.window="message = $event.detail.message; show = true; setTimeout(() => show = false, 3000)"
-    x-on:password-updated.window="$wire.on('passwordUpdated', message => { show = true; setTimeout(() => show = false, 3000); })"
-    x-show="show"
-    x-transition.opacity
-    class="fixed top-5 right-5 p-4 bg-green-500 dark:bg-green-600 text-white rounded-lg shadow-lg z-50"
->
-    <span x-text="message"></span>
-</div>
+    x-on:password-updated.window="
+    @this.set('changingPassword', false);
+    setTimeout(() => {
+        message = $event.detail.message;
+        show = true;
+        setTimeout(() => window.location.reload(), 2000);
+    }, 300);
+"
 
+    x-show="show"
+        x-transition
+        class="fixed top-6 right-6 z-50 flex items-center gap-3 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg"
+>
+        <x-heroicon-o-check-circle class="w-5 h-5" />
+        <span x-text="message"></span>
+    </div>
 
     {{-- Modal --}}
     @if ($changingPassword)
+    <div
+        x-data="{ show: @entangle('changingPassword') }"
+        x-show="show"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900"
+    >
         <div
-            x-data="{ show: @entangle('changingPassword') }"
             x-show="show"
-            x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            x-transition.scale
+            @click.away="show = false"
+            class="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700"
         >
-            <div
-                x-show="show"
-                x-transition
-                @click.away="show = false"
-                class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-2xl p-8 border border-gray-200 dark:border-gray-700"
-            >
 
-                {{-- Header --}}
-                <div class="mb-6 text-center md:text-left">
-                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-3 justify-center md:justify-start">
-                        <x-heroicon-o-lock-closed class="w-7 h-7 text-red-500" />
-                        Update Password
-                    </h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        For security, make sure your new password is strong and unique.
-                    </p>
+            {{-- Header --}}
+            <div class="px-8 py-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 rounded-xl bg-red-100 dark:bg-red-900/30">
+                        <x-heroicon-o-lock-closed class="w-6 h-6 text-red-600" />
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+                            Update Password
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Choose a strong password to keep your account secure
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Form --}}
+            <form wire:submit.prevent="updatePassword" class="px-8 py-6 space-y-6">
+
+                {{-- Current Password --}}
+                <div x-data="{ show: false }" class="space-y-1">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Current Password
+                    </label>
+
+                    <x-filament::input.wrapper class="mt-2">
+                        <x-filament::input
+                            x-bind:type="show ? 'text' : 'password'"
+                            wire:model.defer="current_password"
+                            placeholder="Enter current password"
+                            class="rounded-xl px-4 py-2"
+                        />
+                        <x-slot name="suffix">
+                            <button type="button" @click="show = !show">
+                                <x-heroicon-o-eye x-show="!show" class="w-5 h-5 text-gray-400" />
+                                <x-heroicon-o-eye-slash x-show="show" class="w-5 h-5 text-gray-400" />
+                            </button>
+                        </x-slot>
+                    </x-filament::input.wrapper>
+
+                    @error('current_password')
+                        <p class="text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                {{-- Form --}}
-                <form wire:submit.prevent="updatePassword" class="space-y-5">
+                {{-- New Password --}}
+                <div x-data="{ showNew: false }" class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        New Password
+                    </label>
+                    <p class="text-xs text-gray-500">
+                        Must contain uppercase, lowercase, number, and special character
+                    </p>
 
-                    {{-- Current Password --}}
-                    <div class="space-y-1" x-data="{ show: false }">
-    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Current Password
-    </label>
+                    <x-filament::input.wrapper class="mt-2">
+                        <x-filament::input
+                            x-bind:type="showNew ? 'text' : 'password'"
+                            wire:model.live="password"
+                            placeholder="Create new password"
+                            class="rounded-xl px-4 py-2 transition-all"
+                            @class([
+                                'ring-2 ring-red-500' => $passwordStrength === 'weak',
+                                'ring-2 ring-amber-400' => $passwordStrength === 'medium',
+                                'ring-2 ring-emerald-500' => $passwordStrength === 'strong',
+                            ])
+                        />
+                        <x-slot name="suffix">
+                            <button type="button" @click="showNew = !showNew">
+                                <x-heroicon-o-eye x-show="!showNew" class="w-5 h-5 text-gray-400" />
+                                <x-heroicon-o-eye-slash x-show="showNew" class="w-5 h-5 text-gray-400" />
+                            </button>
+                        </x-slot>
+                    </x-filament::input.wrapper>
 
-    <x-filament::input.wrapper>
-        <x-filament::input
-            x-bind:type="show ? 'text' : 'password'"
-            wire:model.defer="current_password"
-            placeholder="Enter your current password"
-            class="rounded-2xl"
-        />
+                    {{-- Strength Bar --}}
+                    @if ($password)
+                        <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                                class="h-full transition-all
+                                @if($passwordStrength === 'weak') bg-red-500 w-1/3
+                                @elseif($passwordStrength === 'medium') bg-amber-400 w-2/3
+                                @else bg-emerald-500 w-full
+                                @endif">
+                            </div>
+                        </div>
+                    @endif
 
-        <x-slot name="suffix">
-            <button type="button"
-                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                @click="show = !show">
+                    @if ($passwordStrength === 'strong')
+                        <p class="text-xs font-medium text-emerald-600">
+                            Strong password ✔
+                        </p>
+                    @endif
+                </div>
 
-                <x-heroicon-o-eye x-show="!show" class="w-5 h-5" />
-                <x-heroicon-o-eye-slash x-show="show" class="w-5 h-5" />
-            </button>
-        </x-slot>
-    </x-filament::input.wrapper>
+                {{-- Confirm Password --}}
+                <div x-data="{ showConfirm: false }" class="space-y-1">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Confirm Password
+                    </label>
 
-    @error('current_password')
-        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-    @enderror
-</div>
+                    <x-filament::input.wrapper class="mt-2">
+                        <x-filament::input
+                            x-bind:type="showConfirm ? 'text' : 'password'"
+                            wire:model.live="password_confirmation"
+                            placeholder="Confirm password"
+                            class="rounded-xl px-4 py-2 transition-all"
+                            @class([
+                                'ring-2 ring-emerald-500' => $passwordsMatch === true,
+                                'ring-2 ring-red-500' => $passwordsMatch === false,
+                            ])
+                        />
+                        <x-slot name="suffix">
+                            <button type="button" @click="showConfirm = !showConfirm">
+                                <x-heroicon-o-eye x-show="!showConfirm" class="w-5 h-5 text-gray-400" />
+                                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-5 h-5 text-gray-400" />
+                            </button>
+                        </x-slot>
+                    </x-filament::input.wrapper>
 
-                    {{-- New Password --}}
-<div class="space-y-1" x-data="{ showNew: false }">
-    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-        New Password
-    </label>
+                    @if ($passwordsMatch === true)
+                        <p class="text-xs text-emerald-600">Passwords match ✔</p>
+                    @elseif ($passwordsMatch === false)
+                        <p class="text-xs text-red-600">Passwords do not match ✖</p>
+                    @endif
+                </div>
 
-    <x-filament::input.wrapper>
-        <x-filament::input
-            x-bind:type="showNew ? 'text' : 'password'"
-            wire:model.defer="password"
-            placeholder="Enter a new password"
-            class="rounded-2xl"
-        />
+                {{-- Actions --}}
+                <div class="flex justify-end gap-3 pt-4">
+                    <x-filament::button
+                        type="submit"
+                        icon="heroicon-o-check"
+                        color="primary"
+                        class="rounded-xl px-6"
+                        :disabled="$passwordStrength !== 'strong'"
+                    >
+                        Save Password
+                    </x-filament::button>
 
-        <x-slot name="suffix">
-            <button type="button"
-                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                @click="showNew = !showNew">
+                    <x-filament::button
+                        color="gray"
+                        wire:click="$set('changingPassword', false)"
+                        class="rounded-xl"
+                    >
+                        Cancel
+                    </x-filament::button>
+                </div>
 
-                <x-heroicon-o-eye x-show="!showNew" class="w-5 h-5" />
-                <x-heroicon-o-eye-slash x-show="showNew" class="w-5 h-5" />
-            </button>
-        </x-slot>
-    </x-filament::input.wrapper>
-
-    @error('password')
-        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-    @enderror
-</div>
-
-{{-- Confirm New Password --}}
-<div class="space-y-1" x-data="{ showConfirm: false }">
-    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Confirm New Password
-    </label>
-
-    <x-filament::input.wrapper>
-        <x-filament::input
-            x-bind:type="showConfirm ? 'text' : 'password'"
-            wire:model.defer="password_confirmation"
-            placeholder="Confirm your new password"
-            class="rounded-2xl"
-        />
-
-        <x-slot name="suffix">
-            <button type="button"
-                class="text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                @click="showConfirm = !showConfirm">
-
-                <x-heroicon-o-eye x-show="!showConfirm" class="w-5 h-5" />
-                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-5 h-5" />
-            </button>
-        </x-slot>
-    </x-filament::input.wrapper>
-
-    @error('password_confirmation')
-        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-    @enderror
-</div>
-
-                    {{-- Actions --}}
-                    <div class="flex flex-col md:flex-row items-center md:justify-end gap-3 mt-4">
-                        <x-filament::button 
-                            type="submit" 
-                            icon="heroicon-o-check-circle" 
-                            color="success" 
-                            class="w-full md:w-auto bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-md transform hover:scale-105 transition-all duration-300"
-                        >
-                            Save New Password
-                        </x-filament::button>
-                        <x-filament::button 
-                            color="secondary" 
-                            wire:click="$set('changingPassword', false)" 
-                            class="w-full md:w-auto"
-                        >
-                            Cancel
-                        </x-filament::button>
-                    </div>
-                </form>
-            </div>
+            </form>
         </div>
+    </div>
     @endif
 </div>

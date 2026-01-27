@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application for Leave - Print</title>
+    {{-- <title>Application for Leave - Print</title> --}}
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -209,18 +209,18 @@
         }
 
         .details-section-content .field-label {
-            font-size: 13px;
+            font-size: 11px;
             margin-bottom: 4px;
             font-weight: bold;
         }
 
         .details-section-content .leave-type-item {
-            font-size: 12px;
+            font-size: 11px;
             margin-bottom: 3px;
         }
 
         .details-section-content .leave-details-text {
-            font-size: 14px;
+            font-size: 11px;
             line-height: 1.5;
             margin-bottom: 8px;
         }
@@ -355,7 +355,7 @@
                             </div>
                         @endforeach
 
-                        <div style="margin-top: 5px; font-size: 12px;">
+                        <div style="margin-top: 5px; font-size: 10px;">
                             <strong>Specify Other:</strong>
                             <span class="underline" style="width: 120px;">{{ $leaveApplication->other_leave_type ?? '' }}</span>
                         </div>
@@ -398,6 +398,32 @@
             </table>
         </div>
 
+        <!-- Section 6.C -->
+        <table>
+            <tr>
+                <td width="50%" style="padding: 4px; vertical-align: top;">
+                    <strong>6.C NUMBER OF WORKING DAYS APPLIED FOR</strong><br>
+                    <span class="underline" style="width: 60px;">
+                        {{ $leaveApplication->number_of_working_days ?? '' }}
+                    </span>
+                    <br><br>
+                    <strong>Inclusive Dates:</strong><br>
+                    <span class="underline" style="width: 90%;">
+                        {{ $leaveApplication->inclusive_dates ?? '' }}
+                    </span>
+                </td>
+
+                <td width="50%" style="padding: 4px; vertical-align: top;">
+                    <strong>6.D COMMUTATION</strong><br>
+                    <span class="checkbox {{ $leaveApplication->commutation == 'requested' ? 'checked' : '' }}"></span>
+                    Requested<br>
+                    <span class="checkbox {{ $leaveApplication->commutation == 'not_requested' ? 'checked' : '' }}"></span>
+                    Not Requested
+                </td>
+            </tr>
+        </table>
+
+
         <!-- Section 6.D: Leave Credits -->
         <table>
             <tr>
@@ -422,27 +448,87 @@
             </tr>
         </table>
 
-        <!-- Section 7 -->
-        <table>
-            <tr>
-                <td style="padding: 4px; vertical-align: top;">
-                    <strong>7. RECOMMENDING APPROVAL / DISAPPROVAL</strong><br>
-                    <div class="signature-area">
-                        <span class="signature-line">{{ $leaveApplication->authorized_officer ?? '' }}</span>
-                        <div class="signature-label">Immediate Supervisor
-                            @if($leaveApplication->status === 'disapproved')
-                                <br><small>Reason: {{ $leaveApplication->disapproval_reason }}</small>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="signature-area" style="margin-top: 15px;">
-                        <span class="signature-line"></span>
-                        <div class="signature-label">Head of Office</div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
+        <!-- ================= SECTION 7 ================= -->
+<table>
+    <tr>
+        <td colspan="2" class="section-header">
+            7. DETAILS OF ACTION ON APPLICATION
+        </td>
+    </tr>
+
+    <!-- 7.A -->
+    <tr>
+        <td width="50%" style="padding: 4px; vertical-align: top;">
+            <strong>7.A CERTIFICATION OF LEAVE CREDITS</strong>
+
+            <table class="credits-table">
+                <tr>
+                    <td></td>
+                    <td><strong>Vacation</strong></td>
+                    <td><strong>Sick</strong></td>
+                </tr>
+                <tr>
+                    <td>Balance</td>
+                    <td>{{ $leaveApplication->employee?->vl_balance ?? '' }}</td>
+                    <td>{{ $leaveApplication->employee?->sl_balance ?? '' }}</td>
+                </tr>
+            </table>
+
+            <div class="signature-area" style="margin-top: 12px;">
+                <span class="signature-line"></span>
+                <div class="signature-label">
+                    Authorized Officer
+                </div>
+            </div>
+        </td>
+
+        <!-- 7.B -->
+        <td width="50%" style="padding: 4px; vertical-align: top;">
+            <strong>7.B RECOMMENDATION</strong><br><br>
+
+            <span class="checkbox {{ $leaveApplication->status === 'approved' ? 'checked' : '' }}"></span>
+            For Approval<br>
+
+            <span class="checkbox {{ $leaveApplication->status === 'disapproved' ? 'checked' : '' }}"></span>
+            For Disapproval
+        </td>
+    </tr>
+
+    <!-- 7.C & 7.D -->
+    <tr>
+        <td width="50%" style="padding: 4px; vertical-align: top;">
+            <strong>7.C APPROVED FOR</strong><br><br>
+            <span class="underline" style="width: 60px;">
+                {{ $leaveApplication->approved_days ?? '' }}
+            </span>
+            days<br><br>
+            <strong>Inclusive Dates:</strong><br>
+            <span class="underline" style="width: 90%;">
+                {{ $leaveApplication->approved_dates ?? '' }}
+            </span>
+        </td>
+
+        <td width="50%" style="padding: 4px; vertical-align: top;">
+            <strong>7.D DISAPPROVED DUE TO</strong><br><br>
+            <span class="underline" style="width: 95%;">
+                {{ $leaveApplication->disapproval_reason ?? '' }}
+            </span>
+        </td>
+    </tr>
+
+    <!-- Final Signature -->
+    <tr>
+        <td colspan="2" style="padding: 8px; text-align: center;">
+            <span class="signature-line">
+                {{ $leaveApplication->authorized_officer ?? '' }}
+            </span>
+            <div class="signature-label">
+                Head of Agency / Authorized Official
+            </div>
+        </td>
+    </tr>
+</table>
+
 
     <div class="footer">
         ATI-QF/AHRMO-09 Rev.03 Effectivity Date: July 09, 2021 Director

@@ -14,12 +14,18 @@
         <div
             x-data="{ show: @entangle('editingProfile') }"
             x-show="show"
-            x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            x-transition.opacity.duration.300ms
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         >
             <div
                 x-show="show"
                 x-transition
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
                 @click.away="show = false"
                 class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700"
             >
@@ -40,14 +46,15 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 New Profile Picture
                             </label>
-
                             <input
                                 type="file"
                                 wire:model="photo"
                                 accept="image/*"
                                 class="block w-full text-sm text-gray-700 dark:text-white file:border file:rounded file:px-3 file:py-1.5"
                             >
-
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Maximum file size: 5 MB
+                            </p>
                             <div wire:loading wire:target="photo" class="text-xs text-gray-500 mt-1">Uploading…</div>
                             @error('photo') <p class="text-red-600 text-sm">{{ $message }}</p> @enderror
                         </div>

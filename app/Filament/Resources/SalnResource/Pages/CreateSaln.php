@@ -28,12 +28,20 @@ class CreateSaln extends CreateRecord
         ];
     }
 
-    protected function afterCreate(): void
+    protected function mutateFormDataBeforeCreate(array $data): array
     {
-        parent::afterCreate();
+        $data['user_id'] = auth()->id();
+        return $data;
+    }
 
+    protected function afterCreateRecord(): void
+    {
         // Notify all admins
         $admins = User::where('role', 'admin')->get();
-        Notification::send($admins, new NewSalnFiled($this->record));
+
+        Notification::send(
+            $admins,
+            new NewSalnFiled($this->record)
+        );
     }
 }

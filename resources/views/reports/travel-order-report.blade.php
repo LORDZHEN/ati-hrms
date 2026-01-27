@@ -106,7 +106,11 @@
     </div>
 
     <h2>Travel Order Report</h2>
-
+@if($from && $to)
+        <p style="text-align:center; font-size:11px;">
+            Showing from {{ \Carbon\Carbon::parse($from)->format('M d, Y') }} to {{ \Carbon\Carbon::parse($to)->format('M d, Y') }}
+        </p>
+    @endif
     <table>
         <thead>
             <tr>
@@ -146,7 +150,22 @@
             @endforeach
         </tbody>
     </table>
+<br><br><br>
+    <table style="width:100%; border:none;">
+        <tr>
+            <td style="width:50%; text-align:center; border:none;">
+                <strong>Prepared by:</strong><br><br><br>
+                <u>{{ auth()->user()->name }}</u><br>
+                <span style="font-size:11px;">System Administrator</span>
+            </td>
 
+            <td style="width:50%; text-align:center; border:none;">
+                <strong>Accomplished by:</strong><br><br><br>
+                <u>{{ auth()->user()->name }}</u><br>
+                <span style="font-size:11px;">HR Officer</span>
+            </td>
+        </tr>
+    </table>
     <script>
         // Auto-print
         window.onload = function() {

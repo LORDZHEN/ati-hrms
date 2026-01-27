@@ -29,6 +29,7 @@ class PersonalDataSheet extends Model
         'tin_no',
         'agency_employee_no',
         'remarks',
+        'status',
         'year',
 
         // Citizenship
@@ -87,7 +88,37 @@ class PersonalDataSheet extends Model
         'education',
         'eligibilities',
         'work_experience',
-        'user_id',
+        'user_id', // foreign key linking to User
+
+        // C3
+        'voluntary_work',
+        'learning_development',
+        'special_skills',
+        'non_academic_distinctions',
+        'membership_association',
+
+        // C4
+        'related_third_degree',
+        'related_third_degree_details',
+        'related_fourth_degree',
+        'related_fourth_degree_details',
+        'has_admin_case',
+        'admin_case_details',
+        'has_criminal_case',
+        'criminal_case_status',
+        'criminal_case_date_filed',
+        'has_conviction',
+        'conviction_details',
+        'has_been_separated',
+        'separation_details',
+        'has_election_candidacy',
+        'election_candidacy_details',
+        'is_indigenous',
+        'indigenous_details',
+        'has_disability',
+        'disability_details',
+        'is_solo_parent',
+        'solo_parent_details',
     ];
 
     protected $casts = [
@@ -102,156 +133,114 @@ class PersonalDataSheet extends Model
         'education' => 'array',
         'eligibilities' => 'array',
         'work_experience' => 'array',
+        'voluntary_work' => 'array',
+        'learning_development' => 'array',
+        'special_skills' => 'array',
+        'non_academic_distinctions' => 'array',
+        'membership_association' => 'array',
+        'related_third_degree' => 'boolean',
+        'related_fourth_degree' => 'boolean',
+        'is_indigenous' => 'boolean',
+        'has_disability' => 'boolean',
+        'is_solo_parent' => 'boolean',
+        'criminal_case_date_filed' => 'date',
     ];
 
-    // Accessor for full name
+    /* ============================================================
+       RELATIONSHIPS
+    ============================================================ */
+
+    /**
+     * Each PDS belongs to a User (employee)
+     */
+    public function employee()
+{
+    return $this->belongsTo(\App\Models\User::class, 'user_id', 'id');
+}
+
+
+    /* ============================================================
+       ACCESSORS
+    ============================================================ */
+
     public function getFullNameAttribute(): string
     {
         $name = $this->first_name;
 
-        if ($this->middle_name) {
-            $name .= ' ' . $this->middle_name;
-        }
-
+        if ($this->middle_name) $name .= ' ' . $this->middle_name;
         $name .= ' ' . $this->surname;
-
-        if ($this->name_extension) {
-            $name .= ' ' . $this->name_extension;
-        }
+        if ($this->name_extension) $name .= ' ' . $this->name_extension;
 
         return $name;
     }
 
-    // Accessor for complete residential address
     public function getResidentialAddressAttribute(): string
     {
-        $address = [];
-
-        if ($this->res_house_block_lot_no) {
-            $address[] = $this->res_house_block_lot_no;
-        }
-        if ($this->res_street) {
-            $address[] = $this->res_street;
-        }
-        if ($this->res_subdivision_village) {
-            $address[] = $this->res_subdivision_village;
-        }
-        if ($this->res_barangay) {
-            $address[] = $this->res_barangay;
-        }
-        if ($this->res_city_municipality) {
-            $address[] = $this->res_city_municipality;
-        }
-        if ($this->res_province) {
-            $address[] = $this->res_province;
-        }
-        if ($this->res_zip_code) {
-            $address[] = $this->res_zip_code;
-        }
-
-        return implode(', ', $address);
+        return implode(', ', array_filter([
+            $this->res_house_block_lot_no,
+            $this->res_street,
+            $this->res_subdivision_village,
+            $this->res_barangay,
+            $this->res_city_municipality,
+            $this->res_province,
+            $this->res_zip_code,
+        ]));
     }
 
-    // Accessor for complete permanent address
     public function getPermanentAddressAttribute(): string
     {
-        $address = [];
-
-        if ($this->perm_house_block_lot_no) {
-            $address[] = $this->perm_house_block_lot_no;
-        }
-        if ($this->perm_street) {
-            $address[] = $this->perm_street;
-        }
-        if ($this->perm_subdivision_village) {
-            $address[] = $this->perm_subdivision_village;
-        }
-        if ($this->perm_barangay) {
-            $address[] = $this->perm_barangay;
-        }
-        if ($this->perm_city_municipality) {
-            $address[] = $this->perm_city_municipality;
-        }
-        if ($this->perm_province) {
-            $address[] = $this->perm_province;
-        }
-        if ($this->perm_zip_code) {
-            $address[] = $this->perm_zip_code;
-        }
-
-        return implode(', ', $address);
+        return implode(', ', array_filter([
+            $this->perm_house_block_lot_no,
+            $this->perm_street,
+            $this->perm_subdivision_village,
+            $this->perm_barangay,
+            $this->perm_city_municipality,
+            $this->perm_province,
+            $this->perm_zip_code,
+        ]));
     }
 
-    // Accessor for spouse full name
     public function getSpouseFullNameAttribute(): ?string
     {
-        if (!$this->spouse_first_name && !$this->spouse_surname) {
-            return null;
-        }
+        if (!$this->spouse_first_name && !$this->spouse_surname) return null;
 
         $name = $this->spouse_first_name;
-
-        if ($this->spouse_middle_name) {
-            $name .= ' ' . $this->spouse_middle_name;
-        }
-
-        if ($this->spouse_surname) {
-            $name .= ' ' . $this->spouse_surname;
-        }
-
-        if ($this->spouse_name_extension) {
-            $name .= ' ' . $this->spouse_name_extension;
-        }
+        if ($this->spouse_middle_name) $name .= ' ' . $this->spouse_middle_name;
+        $name .= ' ' . $this->spouse_surname;
+        if ($this->spouse_name_extension) $name .= ' ' . $this->spouse_name_extension;
 
         return $name;
     }
 
-    // Accessor for father full name
     public function getFatherFullNameAttribute(): ?string
     {
-        if (!$this->father_first_name && !$this->father_surname) {
-            return null;
-        }
+        if (!$this->father_first_name && !$this->father_surname) return null;
 
         $name = $this->father_first_name;
-
-        if ($this->father_middle_name) {
-            $name .= ' ' . $this->father_middle_name;
-        }
-
-        if ($this->father_surname) {
-            $name .= ' ' . $this->father_surname;
-        }
-
-        if ($this->father_name_extension) {
-            $name .= ' ' . $this->father_name_extension;
-        }
+        if ($this->father_middle_name) $name .= ' ' . $this->father_middle_name;
+        $name .= ' ' . $this->father_surname;
+        if ($this->father_name_extension) $name .= ' ' . $this->father_name_extension;
 
         return $name;
     }
 
-    // Accessor for mother full name
     public function getMotherFullNameAttribute(): ?string
     {
-        if (!$this->mother_first_name && !$this->mother_surname) {
-            return null;
-        }
+        if (!$this->mother_first_name && !$this->mother_surname) return null;
 
         $name = $this->mother_first_name;
-
-        if ($this->mother_middle_name) {
-            $name .= ' ' . $this->mother_middle_name;
-        }
-
-        if ($this->mother_surname) {
-            $name .= ' ' . $this->mother_surname;
-        }
+        if ($this->mother_middle_name) $name .= ' ' . $this->mother_middle_name;
+        $name .= ' ' . $this->mother_surname;
 
         return $name;
     }
 
-    public function user()
+    /* ============================================================
+       HELPER METHODS
+    ============================================================ */
+
+    public function isApproved(): bool
     {
-        return $this->belongsTo(User::class);
+        return $this->status === 'approved';
     }
 }

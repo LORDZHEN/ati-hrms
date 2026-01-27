@@ -14,31 +14,42 @@ class EditSaln extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [Actions\DeleteAction::make()];
+        return [
+            Actions\DeleteAction::make()
+                ->visible(fn() => auth()->user()?->is_admin),
+        ];
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        if (!auth()->user()->hasRole('admin')) {
+        if (!auth()->user()?->is_admin) {
             unset($data['remarks']);
         }
+
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (!auth()->user()->hasRole('admin')) {
+        if (!auth()->user()?->is_admin) {
             unset($data['remarks']);
         }
+
         return $data;
     }
 
     protected function getFormSchema(): array
     {
         $schema = parent::getFormSchema();
-        $schema[] = Section::make('Admin Remarks')->schema([
-            Textarea::make('remarks')->label('Remarks')->rows(3)->visible(fn() => auth()->user()->hasRole('admin')),
-        ]);
+
+        $schema[] = Section::make('Admin Remarks')
+            ->schema([
+                Textarea::make('remarks')
+                    ->label('Remarks')
+                    ->rows(3)
+                    ->visible(fn() => auth()->user()?->is_admin),
+            ]);
+
         return $schema;
     }
 }

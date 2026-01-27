@@ -4,7 +4,7 @@
         {{-- Modern Profile Card --}}
         <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
             <div class="relative flex flex-col md:flex-row items-center md:items-start p-6 gap-6">
-                
+
                 {{-- Profile Photo --}}
                 <div class="flex-shrink-0">
                     <img

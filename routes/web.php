@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\LeaveApplication;
 use App\Models\TravelOrder;
 use App\Http\Controllers\PersonalDataSheetPrintController;
+use App\Models\PersonalDataSheet;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,35 +52,177 @@ Route::get('/admin/employee-report', function () {
         abort(403, 'Unauthorized');
     }
 
-    $status = request('status'); // optional filter
+    $status = request('status');
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
     $query = User::where('role', 'employee');
 
     if ($status) {
         $query->where('status', $status);
     }
 
-    $employees = $query->get();
+    if ($from && $to) {
+        $query->whereBetween('created_at', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
 
-    // Use dot notation for subfolder 'reports'
-    return view('reports.employee-report', compact('employees', 'status'));
-})->middleware(['auth'])->name('employee.report');
+    $employees = $query
+        ->orderBy('last_name')
+        ->get();
+
+    return view('reports.employee-report', compact(
+        'employees',
+        'status',
+        'from',
+        'to',
+        'period'
+    ));
+})
+    ->middleware(['auth'])
+    ->name('employee.report');
+
 
 Route::get('/leave-applications/report', function () {
-    $leaveApplications = LeaveApplication::all();
-    return view('reports.leave-application-report', compact('leaveApplications'));
-})->name('leave-applications.report');
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
+
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
+    $query = LeaveApplication::with('employee');
+
+    if ($from && $to) {
+        $query->whereBetween('created_at', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
+
+    $leaveApplications = $query
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return view('reports.leave-application-report', compact(
+        'leaveApplications',
+        'from',
+        'to',
+        'period'
+    ));
+})
+    ->middleware(['auth'])
+    ->name('leave-applications.report');
+
 
 Route::get('/locator-slip/report', function () {
-    $locatorSlips = \App\Models\LocatorSlip::all();
-    return view('reports.locator-slip-report', compact('locatorSlips'));
-})->name('locator-slip.report');
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
+
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
+    $query = \App\Models\LocatorSlip::query();
+
+    if ($from && $to) {
+        $query->whereBetween('created_at', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
+
+    $locatorSlips = $query->orderBy('created_at', 'desc')->get();
+
+    return view('reports.locator-slip-report', compact(
+        'locatorSlips',
+        'from',
+        'to',
+        'period'
+    ));
+})->middleware(['auth'])->name('locator-slip.report');
+
+Route::get('/pds/report', function () {
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin')
+        abort(403);
+
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
+    $query = PersonalDataSheet::query()->with('employee');
+
+    if ($from && $to) {
+        $query->whereBetween('created_at', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
+
+    $personalDataSheets = $query->orderBy('created_at', 'desc')->get();
+
+    return view('reports.pds-report', compact('personalDataSheets', 'from', 'to', 'period'));
+})->middleware(['auth'])->name('pds.report');
+
 
 Route::get('/travel-orders/report', function () {
-    $travelOrders = TravelOrder::all(); // Fetch all travel orders
-    return view('reports.travel-order-report', compact('travelOrders'));
-})->middleware(['auth'])->name('travel-order.report');
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin')
+        abort(403);
 
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
+    $query = \App\Models\TravelOrder::query();
+
+    if ($from && $to) {
+        $query->whereBetween('departure_date', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
+
+    $travelOrders = $query->orderBy('departure_date', 'desc')->get();
+
+    return view('reports.travel-order-report', compact('travelOrders', 'from', 'to', 'period'));
+})
+    ->middleware(['auth'])
+    ->name('travel-order.report');
+
+
+// SALN Comprehensive Report Route
 Route::get('/saln/report', function () {
-    $salns = \App\Models\Saln::with('user')->get();
-    return view('reports.saln-report', compact('salns'));
-})->middleware(['auth'])->name('saln.report');
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin')
+        abort(403);
+
+    $from = request('from');
+    $to = request('to');
+    $period = request('period');
+
+    $query = \App\Models\Saln::with('user');
+
+    if ($from && $to) {
+        $query->whereBetween('as_of_date', [
+            \Carbon\Carbon::parse($from)->startOfDay(),
+            \Carbon\Carbon::parse($to)->endOfDay(),
+        ]);
+    }
+
+    $salns = $query->orderBy('as_of_date', 'desc')->get();
+
+    return view('reports.saln-report', compact('salns', 'from', 'to', 'period'));
+})
+    ->middleware(['auth'])
+    ->name('saln.report');
+
+

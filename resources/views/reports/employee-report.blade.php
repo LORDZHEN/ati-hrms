@@ -137,6 +137,13 @@
     </div>
 
     <h2>Employee Comprehensive Report</h2>
+@if($from && $to)
+    <p style="text-align:center; font-size:11px;">
+        Report Period: <strong>{{ ucfirst($period) }}</strong><br>
+        Coverage: {{ \Carbon\Carbon::parse($from)->format('M d, Y') }}
+        to {{ \Carbon\Carbon::parse($to)->format('M d, Y') }}
+    </p>
+@endif
 
     <table>
         <thead>
@@ -155,7 +162,7 @@
         <tbody>
             @foreach($employees as $emp)
             <tr>
-                <td>{{ $emp->employee_id_number }}</td>
+                <td>{{ $emp->employee_id }}</td>
                 <td>{{ $emp->name }}</td>
                 <td>{{ $emp->email }}</td>
                 <td>{{ $emp->birthday?->format('M d, Y') }}</td>
@@ -168,6 +175,23 @@
             @endforeach
         </tbody>
     </table>
+<br><br><br>
+
+<table style="width:100%; border:none;">
+    <tr>
+        <td style="width:50%; text-align:center; border:none;">
+            <strong>Prepared by:</strong><br><br><br>
+            <u>{{ auth()->user()->name }}</u><br>
+            <span style="font-size:11px;">System Administrator</span>
+        </td>
+
+        <td style="width:50%; text-align:center; border:none;">
+            <strong>Accomplished by:</strong><br><br><br>
+            <u>{{ auth()->user()->name }}</u><br>
+            <span style="font-size:11px;">HR Officer</span>
+        </td>
+    </tr>
+</table>
 
 </body>
 </html>

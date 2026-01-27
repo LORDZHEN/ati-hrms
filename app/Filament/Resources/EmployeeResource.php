@@ -28,7 +28,7 @@ class EmployeeResource extends Resource
     protected static ?string $modelLabel = 'Employee';
     protected static ?string $pluralModelLabel = 'Employees';
     protected static ?string $navigationGroup = 'Settings';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -148,6 +148,11 @@ class EmployeeResource extends Resource
                         : $query->whereNull('email_verified_at')),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make()
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->visible(fn () => auth()->user()?->role === 'admin'),
+
                 Tables\Actions\Action::make('verify')
                     ->label('Verify')
                     ->icon('heroicon-o-check-badge')
@@ -233,6 +238,7 @@ class EmployeeResource extends Resource
     {
         return [
             'index' => Pages\ListEmployees::route('/'),
+            'view'  => Pages\ViewEmployee::route('/{record}'),
             'edit' => Pages\EditEmployee::route('/{record}/edit'),
             'create' => Pages\CreateEmployee::route('/create'),
         ];

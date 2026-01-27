@@ -9,10 +9,22 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+
+use Filament\Forms\Components\{
+    Wizard,
+    Wizard\Step,
+    Section,
+    Grid,
+    TextInput,
+    DatePicker,
+    Select,
+    Radio,
+    Checkbox,
+    Repeater,
+    Textarea
+};
 
 class PersonalDataSheetResource extends Resource
 {
@@ -20,677 +32,742 @@ class PersonalDataSheetResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'Personal Data Sheet';
-    protected static ?string $title = 'Personal Data Sheets';
-    protected static ?string $slug = 'personal-data-sheet';
+    protected static ?string $pluralModelLabel = 'Personal Data Sheet';
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationGroup = 'Manage';
-    protected static ?int $navigationSort = 5;
 
+    /* -----------------------------------------------------------------
+     | FORM
+     |-----------------------------------------------------------------*/
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Textarea::make('remarks')
-                    ->label('Remarks from Admin')
-                    ->disabled()
-                    ->rows(5)
-                    ->columnSpanFull()
-                    ->visible(fn($record) => filled($record?->remarks)),
-                Forms\Components\Wizard::make([
-                    // Step 1: Personal Information
-                    Forms\Components\Wizard\Step::make('Personal Information')
-                        ->icon('heroicon-o-user')
-                        ->description('Basic personal details and contact information')
-                        ->schema([
-                            // Basic Personal Information
-                            Forms\Components\Section::make('Basic Information')
-                                ->schema([
-                                    Forms\Components\TextInput::make('surname')
-                                        ->label('SURNAME')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->afterStateHydrated(function (TextInput $component, $state) {
-                                            if (!$state) {
-                                                $user = Auth::user();
-                                                $component->state(Auth::user()?->last_name);
-                                            }
-                                        }),
+        $isLocked = fn($record) =>
+            Auth::user()->role === 'employee' &&
+            $record?->status === 'approved';
 
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('first_name')
-                                                ->label('FIRST NAME')
-                                                ->required()
-                                                ->maxLength(255)
-                                                ->afterStateHydrated(function (TextInput $component, $state) {
-                                                    if (!$state) {
-                                                        $user = Auth::user();
-                                                        $component->state(Auth::user()?->first_name);
-                                                    }
-                                                }),
-                                            Forms\Components\TextInput::make('name_extension')
-                                                ->label('NAME EXTENSION (JR., SR.)')
-                                                ->maxLength(255),
-                                        ]),
+        return $form->schema([
 
-                                    Forms\Components\TextInput::make('middle_name')
-                                        ->label('MIDDLE NAME')
-                                        ->maxLength(255),
+            /* ADMIN REMARKS (READ ONLY) */
+            Textarea::make('remarks')
+                ->label('Remarks from Admin')
+                ->rows(4)
+                ->columnSpanFull()
+                ->disabled()
+                ->hidden(fn($record) => blank($record?->remarks)),
 
-                                    Forms\Components\DatePicker::make('date_of_birth')
-                                        ->label('DATE OF BIRTH (mm/dd/yyyy)')
-                                        ->required()
-                                        ->afterStateHydrated(function (DatePicker $component, $state) {
-                                            if (!$state) {
-                                                $user = Auth::user();
-                                                $component->state(Auth::user()?->birthday);
-                                            }
-                                        }),
+            Wizard::make([
 
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Radio::make('sex')
-                                                ->label('SEX')
-                                                ->options([
-                                                    'male' => 'Male',
-                                                    'female' => 'Female',
-                                                ])
-                                                ->inline()
-                                                ->required(),
+                /* =========================================================
+                | C1 – PERSONAL INFORMATION (Items 1–26)
+                |=========================================================*/
+                Step::make('C1. PERSONAL INFORMATION')
+                    ->icon('heroicon-o-user')
+                    ->schema([
 
-                                            Forms\Components\Radio::make('civil_status')
-                                                ->label('CIVIL STATUS')
-                                                ->options([
-                                                    'single' => 'Single',
-                                                    'married' => 'Married',
-                                                    'widowed' => 'Widowed',
-                                                    'separated' => 'Separated',
-                                                    'others' => 'Others',
-                                                ])
-                                                ->required(),
-                                        ]),
+                        /* -------------------------------------------------
+                         | I. PERSONAL INFORMATION (1–26)
+                         |-------------------------------------------------*/
+                        Section::make('I. PERSONAL INFORMATION')
+                            ->schema([
 
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('height')
-                                                ->label('HEIGHT (cm)')
-                                                ->numeric()
-                                                ->step(0.01),
-                                            Forms\Components\TextInput::make('weight')
-                                                ->label('WEIGHT (kg)')
-                                                ->numeric()
-                                                ->step(0.1),
-                                        ]),
-
-                                    Forms\Components\TextInput::make('blood_type')
-                                        ->label('BLOOD TYPE')
-                                        ->maxLength(10),
-                                ])
-                                ->columns(1),
-
-                            // Government IDs
-                            Forms\Components\Section::make('Government IDs')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('gsis_id_no')
-                                                ->label('GSIS ID NO.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('pag_ibig_id_no')
-                                                ->label('PAG-IBIG ID NO.')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('philhealth_no')
-                                                ->label('PHILHEALTH NO.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('sss_no')
-                                                ->label('SSS NO.')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('tin_no')
-                                                ->label('TIN NO.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('agency_employee_no')
-                                                ->label('AGENCY EMPLOYEE NO.')
-                                                ->maxLength(255),
-                                        ]),
+                                // 1–3
+                                Grid::make(3)->schema([
+                                    TextInput::make('surname')->label('1. SURNAME')->required()
+                                        ->disabled($isLocked),
+                                    TextInput::make('first_name')->label('2. FIRST NAME')->required()
+                                        ->disabled($isLocked),
+                                    TextInput::make('middle_name')->label('3. MIDDLE NAME')
+                                        ->disabled($isLocked),
                                 ]),
 
-                            // Citizenship Section
-                            Forms\Components\Section::make('Citizenship')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Checkbox::make('filipino')
-                                                ->label('Filipino'),
-                                            Forms\Components\Checkbox::make('dual_citizenship')
-                                                ->label('Dual Citizenship')
-                                                ->reactive(),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\Checkbox::make('by_birth')
-                                                ->label('by birth')
-                                                ->visible(fn($get) => $get('dual_citizenship')),
-                                            Forms\Components\Checkbox::make('by_naturalization')
-                                                ->label('by naturalization')
-                                                ->visible(fn($get) => $get('dual_citizenship')),
-                                        ]),
-
-                                    Forms\Components\TextInput::make('country')
-                                        ->label('If holder of dual citizenship, Pls. indicate country:')
-                                        ->visible(fn($get) => $get('dual_citizenship'))
-                                        ->maxLength(255),
+                                // 4–5
+                                Grid::make(2)->schema([
+                                    TextInput::make('name_extension')->label('4. NAME EXTENSION (JR., SR.)')
+                                        ->disabled($isLocked),
+                                    DatePicker::make('date_of_birth')->label('5. DATE OF BIRTH')->required()
+                                        ->disabled($isLocked),
                                 ]),
 
-                            // Residential Address Section
-                            Forms\Components\Section::make('Residential Address')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('res_house_block_lot_no')
-                                                ->label('House/Block/Lot No.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('res_street')
-                                                ->label('Street')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(3)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('res_subdivision_village')
-                                                ->label('Subdivision/Village')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('res_barangay')
-                                                ->label('Barangay')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('res_city_municipality')
-                                                ->label('City/Municipality')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('res_province')
-                                                ->label('Province')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('res_zip_code')
-                                                ->label('ZIP CODE')
-                                                ->maxLength(10),
-                                        ]),
+                                // 6–8
+                                Grid::make(3)->schema([
+                                    TextInput::make('place_of_birth')->label('6. PLACE OF BIRTH')
+                                        ->disabled($isLocked),
+                                    Radio::make('sex')->label('7. SEX')->options([
+                                        'Male' => 'Male',
+                                        'Female' => 'Female',
+                                    ])->inline()
+                                        ->disabled($isLocked),
+                                    Radio::make('civil_status')->label('8. CIVIL STATUS')->options([
+                                        'Single' => 'Single',
+                                        'Married' => 'Married',
+                                        'Widowed' => 'Widowed',
+                                        'Separated' => 'Separated',
+                                        'Others' => 'Others',
+                                    ])
+                                        ->disabled($isLocked),
                                 ]),
 
-                            // Permanent Address Section
-                            Forms\Components\Section::make('Permanent Address')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('perm_house_block_lot_no')
-                                                ->label('House/Block/Lot No.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('perm_street')
-                                                ->label('Street')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(3)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('perm_subdivision_village')
-                                                ->label('Subdivision/Village')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('perm_barangay')
-                                                ->label('Barangay')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('perm_city_municipality')
-                                                ->label('City/Municipality')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('perm_province')
-                                                ->label('Province')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('perm_zip_code')
-                                                ->label('ZIP CODE')
-                                                ->maxLength(10),
-                                        ]),
+                                // 9–10
+                                Grid::make(2)->schema([
+                                    TextInput::make('height')->label('9. HEIGHT (m)'),
+                                    TextInput::make('weight')->label('10. WEIGHT (kg)'),
                                 ]),
 
-                            // Contact Information
-                            Forms\Components\Section::make('Contact Information')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('telephone_no')
-                                                ->label('TELEPHONE NO.')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('mobile_no')
-                                                ->label('MOBILE NO.')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\TextInput::make('email_address')
-                                        ->label('E-MAIL ADDRESS (if any)')
-                                        ->email()
-                                        ->maxLength(255),
+                                // 11–15
+                                Grid::make(3)->schema([
+                                    TextInput::make('blood_type')->label('11. BLOOD TYPE'),
+                                    TextInput::make('gsis_id_no')->label('12. GSIS ID NO.'),
+                                    TextInput::make('pag_ibig_id_no')->label('13. PAG-IBIG ID NO.'),
                                 ]),
-                        ]),
-
-                    // Step 2: Family Background
-                    Forms\Components\Wizard\Step::make('Family Background')
-                        ->icon('heroicon-o-users')
-                        ->description('Information about spouse, parents, and children')
-                        ->schema([
-                            // Spouse Information
-                            Forms\Components\Section::make('Spouse Information')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('spouse_surname')
-                                                ->label("SPOUSE'S SURNAME")
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('spouse_first_name')
-                                                ->label('FIRST NAME')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(3)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('spouse_name_extension')
-                                                ->label('NAME EXTENSION (JR., SR.)')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('spouse_middle_name')
-                                                ->label('MIDDLE NAME')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('spouse_occupation')
-                                                ->label('OCCUPATION')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('spouse_employer_business_name')
-                                                ->label('EMPLOYER/BUSINESS NAME')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('spouse_business_address')
-                                                ->label('BUSINESS ADDRESS')
-                                                ->maxLength(255),
-                                        ]),
-
-                                    Forms\Components\TextInput::make('spouse_telephone_no')
-                                        ->label('TELEPHONE NO.')
-                                        ->maxLength(255),
+                                Grid::make(3)->schema([
+                                    TextInput::make('philhealth_no')->label('14. PHILHEALTH NO.'),
+                                    TextInput::make('sss_no')->label('15. SSS NO.'),
+                                    TextInput::make('tin_no')->label('TIN'),
                                 ]),
 
-                            // Father Information
-                            Forms\Components\Section::make('Father\'s Information')
-                                ->schema([
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('father_surname')
-                                                ->label('SURNAME')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('father_first_name')
-                                                ->label('FIRST NAME')
-                                                ->maxLength(255),
+                                // 16–18 Citizenship
+                                Section::make('16. CITIZENSHIP')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            Checkbox::make('filipino')->label('Filipino'),
+                                            Checkbox::make('dual_citizenship')->label('Dual Citizenship'),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            Checkbox::make('by_birth')->label('By Birth'),
+                                            Checkbox::make('by_naturalization')->label('By Naturalization'),
+                                        ]),
+                                        TextInput::make('citizenship_country')
+                                            ->label('18. If holder of dual citizenship, indicate country'),
+                                    ]),
+
+                                // 19–22 Residential Address
+                                Section::make('17. RESIDENTIAL ADDRESS')
+                                    ->schema([
+                                        TextInput::make('res_house_no')->label('House/Block/Lot No.'),
+                                        TextInput::make('res_street')->label('Street'),
+                                        TextInput::make('res_barangay')->label('Barangay'),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('res_city')->label('City/Municipality'),
+                                            TextInput::make('res_province')->label('Province'),
+                                        ]),
+                                        TextInput::make('res_zip')->label('ZIP CODE'),
+                                    ]),
+
+                                // 23–26 Permanent + Contact
+                                Section::make('18. PERMANENT ADDRESS & CONTACT')
+                                    ->schema([
+                                        TextInput::make('perm_house_no')->label('House/Block/Lot No.'),
+                                        TextInput::make('perm_street')->label('Street'),
+                                        TextInput::make('perm_barangay')->label('Barangay'),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('perm_city')->label('City/Municipality'),
+                                            TextInput::make('perm_province')->label('Province'),
+                                        ]),
+                                        TextInput::make('perm_zip')->label('ZIP CODE'),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('telephone_no')->label('19. TELEPHONE NO.'),
+                                            TextInput::make('mobile_no')->label('20. MOBILE NO.'),
+                                        ]),
+                                        TextInput::make('email')->label('21. E-MAIL ADDRESS (if any)'),
+                                    ]),
+                            ]),
+
+                        /* -------------------------------------------------
+                         | II. FAMILY BACKGROUND
+                         |-------------------------------------------------*/
+                        Section::make('II. FAMILY BACKGROUND')
+                            ->schema([
+                                TextInput::make('spouse_surname')->label('21. SPOUSE SURNAME'),
+                                TextInput::make('spouse_first_name')->label('FIRST NAME'),
+                                TextInput::make('spouse_middle_name')->label('MIDDLE NAME'),
+                                TextInput::make('spouse_occupation')->label('OCCUPATION'),
+                                TextInput::make('spouse_employer')->label('EMPLOYER/BUSINESS NAME'),
+                                TextInput::make('spouse_business_address')->label('BUSINESS ADDRESS'),
+                                TextInput::make('spouse_telephone')->label('TELEPHONE NO.'),
+
+                                Repeater::make('children')
+                                    ->label('NAME OF CHILDREN')
+                                    ->schema([
+                                        TextInput::make('name')->label('NAME OF CHILD'),
+                                        DatePicker::make('birthdate')->label('DATE OF BIRTH'),
+                                    ])
+                                    ->defaultItems(1)
+                                    ->minItems(1)
+                                    ->maxItems(12)
+                                    ->addable(true)
+                                    ->deletable(false),
+                            ]),
+
+                        /* -------------------------------------------------
+                         | III. EDUCATIONAL BACKGROUND
+                         |-------------------------------------------------*/
+                        Section::make('III. EDUCATIONAL BACKGROUND')
+                            ->schema([
+                                Repeater::make('education')
+                                    ->schema([
+                                        Select::make('level')->label('26. LEVEL')->options([
+                                            'Elementary' => 'Elementary',
+                                            'Secondary' => 'Secondary',
+                                            'Vocational' => 'Vocational / Trade Course',
+                                            'College' => 'College',
+                                            'Graduate Studies' => 'Graduate Studies',
+                                        ]),
+                                        TextInput::make('school_name')->label('NAME OF SCHOOL'),
+                                        TextInput::make('degree')->label('BASIC EDUCATION / DEGREE'),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('from')->label('FROM'),
+                                            TextInput::make('to')->label('TO'),
+                                        ]),
+                                        TextInput::make('units_earned')->label('HIGHEST LEVEL / UNITS EARNED'),
+                                        TextInput::make('year_graduated')->label('YEAR GRADUATED'),
+                                        TextInput::make('honors')->label('SCHOLARSHIP / HONORS'),
+                                    ])
+                                    ->defaultItems(3)
+                                    ->minItems(3)
+                                    ->maxItems(10)
+                                    ->addable(true)
+                                    ->deletable(false),
+                            ]),
+                    ]),
+
+
+                /* =========================================================
+                 | C2 – CIVIL SERVICE ELIGIBILITY
+                 |=========================================================*/
+                Step::make('C2. CIVIL SERVICE ELIGIBILITY & WORK EXPERIENCE')
+                    ->icon('heroicon-o-briefcase')
+                    ->schema([
+
+                        /* =================================================
+                         | IV. CIVIL SERVICE ELIGIBILITY
+                         |=================================================*/
+                        Section::make('IV. CIVIL SERVICE ELIGIBILITY')
+                            ->schema([
+                                Repeater::make('civil_service_eligibility')
+                                    ->schema([
+                                        TextInput::make('career_service')
+                                            ->label('CAREER SERVICE / RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS / CES / CSEE')
+                                            ->columnSpan(2),
+
+                                        TextInput::make('rating')
+                                            ->label('RATING'),
+
+                                        DatePicker::make('exam_date')
+                                            ->label('DATE OF EXAM / CONFERMENT'),
+
+                                        TextInput::make('exam_place')
+                                            ->label('PLACE OF EXAM / CONFERMENT')
+                                            ->columnSpan(2),
+
+                                        TextInput::make('license_no')
+                                            ->label('LICENSE NUMBER'),
+
+                                        DatePicker::make('validity_date')
+                                            ->label('DATE OF VALIDITY'),
+                                    ])
+                                    ->columns(7)
+                                    ->defaultItems(1)   // ✅ CSC fixed rows
+                                    ->minItems(0)
+                                    ->maxItems(7)
+                                    ->addable(true)
+                                    ->deletable(true)
+                                    ->reorderable(false),
+                            ]),
+
+                        /* =================================================
+                         | V. WORK EXPERIENCE
+                         |=================================================*/
+                        Section::make('V. WORK EXPERIENCE (Include private employment. Start from your most recent work)')
+                            ->schema([
+                                Repeater::make('work_experience')
+                                    ->schema([
+                                        Grid::make(2)->schema([
+                                            DatePicker::make('from_date')
+                                                ->label('INCLUSIVE DATES (FROM)'),
+
+                                            DatePicker::make('to_date')
+                                                ->label('INCLUSIVE DATES (TO)'),
                                         ]),
 
-                                    Forms\Components\Grid::make(2)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('father_name_extension')
-                                                ->label('NAME EXTENSION (JR., SR.)')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('father_middle_name')
-                                                ->label('MIDDLE NAME')
-                                                ->maxLength(255),
-                                        ]),
-                                ]),
+                                        TextInput::make('position_title')
+                                            ->label('POSITION TITLE')
+                                            ->columnSpan(2),
 
-                            // Mother Information
-                            Forms\Components\Section::make('Mother\'s Maiden Name')
-                                ->schema([
-                                    Forms\Components\Grid::make(3)
-                                        ->schema([
-                                            Forms\Components\TextInput::make('mother_surname')
-                                                ->label('SURNAME')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('mother_first_name')
-                                                ->label('FIRST NAME')
-                                                ->maxLength(255),
-                                            Forms\Components\TextInput::make('mother_middle_name')
-                                                ->label('MIDDLE NAME')
-                                                ->maxLength(255),
-                                        ]),
-                                ]),
+                                        TextInput::make('department_agency')
+                                            ->label('DEPARTMENT / AGENCY / OFFICE / COMPANY')
+                                            ->columnSpan(2),
 
-                            // Children Information
-                            Forms\Components\Section::make('Children Information')
-                                ->schema([
-                                    Forms\Components\Repeater::make('children')
-                                        ->label('NAME OF CHILDREN (Write full name and list all)')
+                                        TextInput::make('monthly_salary')
+                                            ->label('MONTHLY SALARY')
+                                            ->numeric(),
+
+                                        TextInput::make('salary_grade_step')
+                                            ->label('SALARY GRADE & STEP (if applicable)'),
+
+                                        TextInput::make('status_of_appointment')
+                                            ->label('STATUS OF APPOINTMENT'),
+
+                                        Radio::make('government_service')
+                                            ->label('GOV’T SERVICE (Y / N)')
+                                            ->options([
+                                                'Y' => 'Y',
+                                                'N' => 'N',
+                                            ])
+                                            ->inline(),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(1)  // ✅ CSC fixed continuation rows
+                                    ->minItems(0)
+                                    ->maxItems(28)
+                                    ->addable(true)
+                                    ->deletable(true)
+                                    ->reorderable(false),
+                            ]),
+                    ]),
+
+
+                /* =========================================================
+                | C3 – VOLUNTARY WORK, L&D, OTHER INFORMATION
+                |=========================================================*/
+                Step::make('C3. VOLUNTARY WORK, L&D & OTHER INFORMATION')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->schema([
+
+                        /* =================================================
+                         | VI. VOLUNTARY WORK OR INVOLVEMENT
+                         |=================================================*/
+                        Section::make('VI. VOLUNTARY WORK OR INVOLVEMENT IN CIVIC / NON-GOVERNMENT / PEOPLE / VOLUNTARY ORGANIZATION/S')
+                            ->schema([
+                                Repeater::make('voluntary_work')
+                                    ->schema([
+                                        TextInput::make('organization_name')
+                                            ->label('NAME & ADDRESS OF ORGANIZATION')
+                                            ->columnSpan(2),
+
+                                        Grid::make(2)->schema([
+                                            DatePicker::make('from_date')
+                                                ->label('INCLUSIVE DATES (FROM)'),
+
+                                            DatePicker::make('to_date')
+                                                ->label('INCLUSIVE DATES (TO)'),
+                                        ]),
+
+                                        TextInput::make('hours')
+                                            ->label('NUMBER OF HOURS')
+                                            ->numeric(),
+
+                                        TextInput::make('position')
+                                            ->label('POSITION / NATURE OF WORK'),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(1)   // ✅ CSC fixed rows
+                                    ->minItems(0)
+                                    ->maxItems(7)
+                                    ->addable(true)
+                                    ->deletable(true)
+                                    ->reorderable(false),
+                            ]),
+
+                        /* =================================================
+                         | VII. LEARNING AND DEVELOPMENT (L&D)
+                         |=================================================*/
+                        Section::make('VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS / TRAINING PROGRAMS ATTENDED')
+                            ->schema([
+                                Repeater::make('learning_development')
+                                    ->schema([
+                                        TextInput::make('training_title')
+                                            ->label('TITLE OF LEARNING AND DEVELOPMENT INTERVENTIONS / TRAINING PROGRAMS')
+                                            ->columnSpan(2),
+
+                                        Grid::make(2)->schema([
+                                            DatePicker::make('from_date')
+                                                ->label('INCLUSIVE DATES (FROM)'),
+
+                                            DatePicker::make('to_date')
+                                                ->label('INCLUSIVE DATES (TO)'),
+                                        ]),
+
+                                        TextInput::make('hours')
+                                            ->label('NUMBER OF HOURS')
+                                            ->numeric(),
+
+                                        TextInput::make('type')
+                                            ->label('TYPE OF LD (Managerial / Supervisory / Technical / etc.)'),
+
+                                        TextInput::make('conducted_by')
+                                            ->label('CONDUCTED / SPONSORED BY')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(1)  // ✅ CSC continuation rows
+                                    ->minItems(0)
+                                    ->maxItems(21)
+                                    ->addable(true)
+                                    ->deletable(true)
+                                    ->reorderable(false),
+                            ]),
+
+                        /* =================================================
+                         | VIII. OTHER INFORMATION
+                         |=================================================*/
+                        Section::make('VIII. OTHER INFORMATION')
+                            ->schema([
+                                Grid::make(3)->schema([
+
+                                    Repeater::make('special_skills')
+                                        ->label('31. SPECIAL SKILLS AND HOBBIES')
                                         ->schema([
-                                            Forms\Components\Grid::make(2)
-                                                ->schema([
-                                                    Forms\Components\TextInput::make('child_name')
-                                                        ->label('Full Name')
-                                                        ->required()
-                                                        ->maxLength(255),
-                                                    Forms\Components\DatePicker::make('child_date_of_birth')
-                                                        ->label('Date of Birth (mm/dd/yyyy)')
-                                                        ->required(),
-                                                ]),
+                                            TextInput::make('skill')->label(''),
                                         ])
-                                        ->collapsed()
-                                        ->itemLabel(fn(array $state): ?string => $state['child_name'] ?? null)
-                                        ->addActionLabel('Add Child')
-                                        ->maxItems(10),
-                                ]),
-                        ]),
+                                        ->defaultItems(1)
+                                        ->minItems(0)
+                                        ->maxItems(7)
+                                        ->addable(true)
+                                        ->deletable(true),
 
-                    // Step 3: Educational Background
-                    Forms\Components\Wizard\Step::make('Educational Background')
-                        ->icon('heroicon-o-academic-cap')
-                        ->description('Educational history and qualifications')
-                        ->schema([
-                            Forms\Components\Section::make('Educational Records')
-                                ->schema([
-                                    Forms\Components\Repeater::make('education')
+                                    Repeater::make('non_academic_distinctions')
+                                        ->label('32. NON-ACADEMIC DISTINCTIONS / RECOGNITION')
                                         ->schema([
-                                            Forms\Components\Grid::make(2)
-                                                ->schema([
-                                                    Forms\Components\Select::make('level')
-                                                        ->label('LEVEL')
-                                                        ->options([
-                                                            'elementary' => 'ELEMENTARY',
-                                                            'junior high scool' => 'JUNIOR HIGH SCHOOL',
-                                                            'senior high school' => 'SENIOR HIGH SCHOOL',
-                                                            'vocational' => 'VOCATIONAL/TRADE COURSE',
-                                                            'college' => 'COLLEGE',
-                                                            'graduate' => 'GRADUATE STUDIES',
-                                                        ])
-                                                        ->required(),
-
-                                                    Forms\Components\TextInput::make('school_name')
-                                                        ->label('NAME OF SCHOOL (Write in full)')
-                                                        ->required()
-                                                        ->maxLength(255),
-                                                ]),
-
-                                            Forms\Components\TextInput::make('basic_education_degree_course')
-                                                ->label('BASIC EDUCATION/DEGREE/COURSE (Write in full)')
-                                                ->maxLength(255),
-
-                                            Forms\Components\Grid::make(3)
-                                                ->schema([
-                                                    Forms\Components\TextInput::make('period_from')
-                                                        ->label('Period From')
-                                                        ->maxLength(4)
-                                                        ->placeholder('e.g., 2015'),
-
-                                                    Forms\Components\TextInput::make('period_to')
-                                                        ->label('Period To')
-                                                        ->maxLength(4)
-                                                        ->placeholder('e.g., 2019'),
-
-                                                    Forms\Components\TextInput::make('year_graduated')
-                                                        ->label('YEAR GRADUATED')
-                                                        ->maxLength(4),
-                                                ]),
-
-                                            Forms\Components\TextInput::make('highest_level_units_earned')
-                                                ->label('HIGHEST LEVEL/UNITS EARNED (if not graduated)')
-                                                ->maxLength(255),
-
-                                            Forms\Components\TextInput::make('scholarship_academic_honors')
-                                                ->label('SCHOLARSHIP/ACADEMIC HONORS RECEIVED')
-                                                ->maxLength(255),
+                                            TextInput::make('distinction')->label(''),
                                         ])
-                                        ->collapsed()
-                                        ->itemLabel(fn(array $state): ?string => $state['school_name'] ?? 'Educational Record')
-                                        ->addActionLabel('Add Educational Record')
-                                        ->defaultItems(3)
-                                        ->maxItems(10)
-                                        ->columnSpanFull(),
-                                ]),
+                                        ->defaultItems(1)
+                                        ->minItems(0)
+                                        ->maxItems(7)
+                                        ->addable(true)
+                                        ->deletable(true),
 
-                        ]),
-                    // Step 4: Civil Service Eligibility
-                    Forms\Components\Wizard\Step::make('Civil Service Eligibility')
-                        ->icon('heroicon-o-check-badge')
-                        ->description('Civil service exams and eligibility records')
-                        ->schema([
-                            Forms\Components\Section::make('Eligibility Details')
-                                ->schema([
-                                    Forms\Components\Repeater::make('eligibilities')
-                                        ->label('Eligibility Information')
+                                    Repeater::make('membership_association')
+                                        ->label('33. MEMBERSHIP IN ASSOCIATION / ORGANIZATION')
                                         ->schema([
-                                            Forms\Components\Grid::make(2)->schema([
-                                                Forms\Components\TextInput::make('eligibility')
-                                                    ->label('CAREER SERVICE/RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS/CES/CSEE BARANGAY ELIGIBILITY / DRIVER\'S LICENSE')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                Forms\Components\TextInput::make('rating')
-                                                    ->label('RATING (If Applicable)')
-                                                    ->maxLength(100),
-                                            ]),
-                                            Forms\Components\Grid::make(2)->schema([
-                                                Forms\Components\DatePicker::make('date_of_examination')
-                                                    ->label('Date of Examination / Conferment')
-                                                    ->required(),
-                                                Forms\Components\TextInput::make('place_of_examination')
-                                                    ->label('Place of Examination / Conferment')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                            ]),
-                                            Forms\Components\Grid::make(2)->schema([
-                                                Forms\Components\TextInput::make('license_number')
-                                                    ->label('License Number (if applicable)')
-                                                    ->maxLength(100),
-                                                Forms\Components\DatePicker::make('license_validity')
-                                                    ->label('Date of Validity (if applicable)'),
-                                            ]),
+                                            TextInput::make('organization')->label(''),
                                         ])
-                                        ->collapsed()
-                                        ->addActionLabel('Add Eligibility')
-                                        ->itemLabel(fn(array $state): ?string => $state['eligibility'] ?? null)
-                                        ->maxItems(10)
-                                        ->columnSpanFull(),
+                                        ->defaultItems(1)
+                                        ->minItems(0)
+                                        ->maxItems(7)
+                                        ->addable(true)
+                                        ->deletable(true),
                                 ]),
-                        ]),
-                    // Step 5: Work Experience
-                    Forms\Components\Wizard\Step::make('Work Experience')
-                        ->icon('heroicon-o-briefcase')
-                        ->description('Work history in public and private sectors')
-                        ->schema([
-                            Forms\Components\Section::make('Work History')
-                                ->schema([
-                                    Forms\Components\Repeater::make('work_experience')
-                                        ->label('Work Experience')
-                                        ->schema([
-                                            Forms\Components\Grid::make(2)->schema([
-                                                Forms\Components\TextInput::make('position_title')
-                                                    ->label('Position Title')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                Forms\Components\TextInput::make('department_agency')
-                                                    ->label('Department / Agency / Office / Company')
-                                                    ->required()
-                                                    ->maxLength(255),
+                            ]),
+                    ]),
+
+                /* =========================================================
+| C4 – OTHER INFORMATION (Items 34–40)
+|=========================================================*/
+                Step::make('C4. OTHER INFORMATION')
+                    ->icon('heroicon-o-exclamation-circle')
+                    ->schema([
+
+                        Section::make('IX. OTHER INFORMATION')
+                            ->description('Answer the following questions truthfully. If YES, give details.')
+                            ->schema([
+
+                                /* 34 */
+                                Section::make('34. Are you related by consanguinity or affinity to any of the following:')
+                                    ->schema([
+                                        Checkbox::make('related_third_degree')
+                                            ->label('a. Within the third degree (for National Government Employees)')
+                                            ->reactive(),
+
+                                        Textarea::make('related_third_degree_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('related_third_degree')),
+
+                                        Checkbox::make('related_fourth_degree')
+                                            ->label('b. Within the fourth degree (for Local Government Employees)')
+                                            ->reactive(),
+
+                                        Textarea::make('related_fourth_degree_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('related_fourth_degree')),
+                                    ]),
+
+                                /* 35 */
+                                Section::make('35. Have you ever been found guilty of any administrative offense?')
+                                    ->schema([
+                                        Radio::make('has_admin_case')
+                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
+                                            ->inline()
+                                            ->reactive(),
+
+                                        Textarea::make('admin_case_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('has_admin_case') === 'Yes'),
+                                    ]),
+
+                                /* 36 */
+                                Section::make('36. Have you been criminally charged before any court?')
+                                    ->schema([
+                                        Radio::make('has_criminal_case')
+                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
+                                            ->inline()
+                                            ->reactive(),
+
+                                        Grid::make(2)
+                                            ->visible(fn($get) => $get('has_criminal_case') === 'Yes')
+                                            ->schema([
+                                                TextInput::make('criminal_case_status')
+                                                    ->label('Status of Case/s'),
+
+                                                DatePicker::make('criminal_case_date_filed')
+                                                    ->label('Date Filed'),
                                             ]),
-                                            Forms\Components\Grid::make(3)->schema([
-                                                Forms\Components\DatePicker::make('from')
-                                                    ->label('From')
-                                                    ->required(),
-                                                Forms\Components\DatePicker::make('to')
-                                                    ->label('To')
-                                                    ->required(),
-                                                Forms\Components\TextInput::make('monthly_salary')
-                                                    ->label('Monthly Salary')
-                                                    ->numeric()
-                                                    ->maxLength(100),
+                                    ]),
+
+                                /* 37 */
+                                Section::make('37. Have you ever been convicted of any crime or violation of any law?')
+                                    ->schema([
+                                        Radio::make('has_conviction')
+                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
+                                            ->inline()
+                                            ->reactive(),
+
+                                        Textarea::make('conviction_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('has_conviction') === 'Yes'),
+                                    ]),
+
+                                /* 38 */
+                                Section::make('38. Have you ever been separated from the service?')
+                                    ->schema([
+                                        Radio::make('has_been_separated')
+                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
+                                            ->inline()
+                                            ->reactive(),
+
+                                        Textarea::make('separation_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('has_been_separated') === 'Yes'),
+                                    ]),
+
+                                /* 39 */
+                                Section::make('39. Have you ever been a candidate in a national or local election?')
+                                    ->schema([
+                                        Radio::make('has_election_candidacy')
+                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
+                                            ->inline()
+                                            ->reactive(),
+
+                                        Textarea::make('election_candidacy_details')
+                                            ->label('If YES, give details')
+                                            ->rows(2)
+                                            ->visible(fn($get) => $get('has_election_candidacy') === 'Yes'),
+                                    ]),
+
+                                /* 40 */
+                                Section::make('40. Do you belong to any of the following?')
+                                    ->schema([
+                                        Checkbox::make('is_indigenous')
+                                            ->label('a. Indigenous Group')
+                                            ->reactive(),
+
+                                        TextInput::make('indigenous_details')
+                                            ->label('Please specify')
+                                            ->visible(fn($get) => $get('is_indigenous')),
+
+                                        Checkbox::make('has_disability')
+                                            ->label('b. Person with Disability')
+                                            ->reactive(),
+
+                                        TextInput::make('disability_details')
+                                            ->label('Please specify')
+                                            ->visible(fn($get) => $get('has_disability')),
+
+                                        Checkbox::make('is_solo_parent')
+                                            ->label('c. Solo Parent')
+                                            ->reactive(),
+
+                                        TextInput::make('solo_parent_details')
+                                            ->label('Please specify')
+                                            ->visible(fn($get) => $get('is_solo_parent')),
+                                    ]),
+                                /* =================================================
+                                | 41. REFERENCES
+                                |=================================================*/
+                                Section::make('41. REFERENCES (Person not related by consanguinity or affinity)')
+                                    ->schema([
+                                        Repeater::make('references')
+                                            ->schema([
+                                                TextInput::make('name')->label('NAME')->required(),
+                                                TextInput::make('address')->label('ADDRESS')->required(),
+                                                TextInput::make('tel')->label('TEL. NO.'),
+                                            ])
+                                            ->columns(3)
+                                            ->defaultItems(3)     // CSC requires 3 references
+                                            ->minItems(3)
+                                            ->maxItems(3)
+                                            ->addable(false)
+                                            ->deletable(false),
+                                    ]),
+
+                                /* =================================================
+                                | 42. GOVERNMENT ISSUED ID
+                                |=================================================*/
+                                Section::make('42. GOVERNMENT ISSUED ID')
+                                    ->schema([
+                                        Select::make('gov_id_type')
+                                            ->label('Government Issued ID')
+                                            ->options([
+                                                'Passport' => 'Passport',
+                                                'GSIS' => 'GSIS',
+                                                'SSS' => 'SSS',
+                                                'PRC' => 'PRC',
+                                                'Driver’s License' => 'Driver’s License',
+                                                'Others' => 'Others',
                                             ]),
-                                            Forms\Components\Grid::make(2)->schema([
-                                                Forms\Components\TextInput::make('salary_grade')
-                                                    ->label('Salary Grade & Step (if applicable)')
-                                                    ->maxLength(100),
-                                                Forms\Components\TextInput::make('status_of_appointment')
-                                                    ->label('Status of Appointment')
-                                                    ->maxLength(100),
-                                            ]),
-                                            Forms\Components\TextInput::make('is_gov_service')
-                                                ->label('Gov’t Service (Y/N)')
-                                                ->maxLength(1),
-                                        ])
-                                        ->collapsed()
-                                        ->addActionLabel('Add Work Experience')
-                                        ->itemLabel(fn(array $state): ?string => $state['position_title'] ?? 'Work Record')
-                                        ->maxItems(20)
-                                        ->columnSpanFull(),
-                                ]),
-                        ]),
-                ])
-                    ->columnSpanFull()
-                    ->persistStepInQueryString()
-            ]);
+
+                                        TextInput::make('gov_id_no')
+                                            ->label('ID / License / Passport No.'),
+
+                                        TextInput::make('gov_id_issued')
+                                            ->label('Date / Place of Issuance'),
+                                    ]),
+
+                                /* =================================================
+                                | SIGNATURE & DATE (DATA ONLY – IMAGE NOT REQUIRED)
+                                |=================================================*/
+                                Section::make('DECLARATION')
+                                    ->schema([
+                                        DatePicker::make('date_accomplished')
+                                            ->label('Date Accomplished'),
+                                    ]),
+                            ]),
+                    ]),
+
+            ])
+                ->columnSpanFull()
+                ->persistStepInQueryString(),
+
+        ]);
+
+
     }
 
+    /* -----------------------------------------------------------------
+     | TABLE
+     |-----------------------------------------------------------------*/
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('year')
-                    ->label('Year')
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Employee')
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('surname')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('surname')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('first_name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('created_at')->date()->sortable(),
+
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'warning' => 'submitted',
+                        'success' => 'approved',
+                        'danger' => 'disapproved',
+                    ])
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('first_name')
-                    ->searchable()
-                    ->sortable(),
+            ])
 
-                Tables\Columns\TextColumn::make('middle_name')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+            ->actions([
+                Tables\Actions\Action::make('approve')
+                    ->label('Approve')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(
+                        fn($record) =>
+                        Auth::user()->role === 'admin' &&
+                        $record->status !== 'approved'
+                    )
+                    ->action(
+                        fn($record) =>
+                        $record->update(['status' => 'approved'])
+                    ),
 
-                Tables\Columns\TextColumn::make('date_of_birth')
-                    ->date()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('sex')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'male' => 'blue',
-                        'female' => 'pink',
+                Tables\Actions\Action::make('disapprove')
+                    ->label('Disapprove')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(
+                        fn($record) =>
+                        Auth::user()->role === 'admin' &&
+                        $record->status !== 'disapproved'
+                    )
+                    ->form([
+                        Textarea::make('remarks')
+                            ->label('Reason for Disapproval')
+                            ->rows(4)
+                            ->required(),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update([
+                            'status' => 'disapproved',
+                            'remarks' => $data['remarks'],
+                        ]);
                     }),
 
-                Tables\Columns\TextColumn::make('civil_status')
-                    ->badge(),
 
-                Tables\Columns\TextColumn::make('email_address')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Actions\Action::make('remarks')
+                    ->label('Add Remarks')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('warning')
+                    ->visible(fn($record) => Auth::user()->role === 'admin')
+                    ->form([
+                        Textarea::make('remarks')
+                            ->label('Admin Remarks')
+                            ->rows(5)
+                            ->required(),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update([
+                            'remarks' => $data['remarks'],
+                        ]);
+                    }),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('year')
-                    ->options(
-                        fn() => PersonalDataSheet::select('year')->distinct()->pluck('year', 'year')->sortDesc()
-                    )
-                    ->label('Filter by Year'),
 
-                Tables\Filters\SelectFilter::make('sex')
-                    ->options([
-                        'male' => 'Male',
-                        'female' => 'Female',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('civil_status')
-                    ->options([
-                        'single' => 'Single',
-                        'married' => 'Married',
-                        'widowed' => 'Widowed',
-                        'separated' => 'Separated',
-                        'others' => 'Others',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('print')
-                    ->label('Print')
+                    ->label('Print PDS')
                     ->icon('heroicon-o-printer')
-                    ->url(fn($record) => route('pds.print', $record->id))
+                    ->visible(fn($record) => $record->status === 'approved')
+                    ->url(
+                        fn($record) =>
+                        route('pds.print', $record)
+                    )
                     ->openUrlInNewTab(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(
+                        fn($record) =>
+                        Auth::user()->role === 'employee' &&
+                        $record->status !== 'approved'
+                    )
+                    ->visible(fn() => Auth::user()->role === 'employee'),
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('user_id', auth()->id());
+        $query = parent::getEloquentQuery();
+
+        if (Auth::user()->role === 'employee') {
+            $query->where('user_id', Auth::id());
+        }
+
+        return $query;
     }
+
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListPersonalDataSheets::route('/'),
             'create' => Pages\CreatePersonalDataSheet::route('/create'),
-            //'view' => Pages\ViewPersonalDataSheet::route('/{record}'),
             'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
         ];
-    }
-    public static function getNavigationBadge(): ?string
-    {
-        $user = auth()->user();
-        if (!(auth()->user()?->is_admin ?? false)) {
-            return null; // No badge for non-admin users
-        }
-
-        // Only show badge for admins
-        if ($user && $user->is_admin) {
-            $count = PersonalDataSheet::where('status', 'pending')->count();
-            return $count > 0 ? (string) $count : null;
-        }
-
-        return null;
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        $user = auth()->user();
-        if (!(auth()->user()?->is_admin ?? false)) {
-            return null; // No badge for non-admin users
-        }
-
-        if ($user && $user->is_admin) {
-            $count = PersonalDataSheet::where('status', 'pending')->count();
-            return $count > 0 ? 'warning' : 'success';
-        }
-
-        return null;
     }
 }

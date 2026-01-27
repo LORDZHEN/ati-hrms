@@ -31,52 +31,51 @@ class LeaveApplicationResource extends Resource
             ->schema([
                 // Employee Info
                 Forms\Components\Section::make('Employee Information')
-    ->description('Auto-filled personal details')
-    ->icon('heroicon-o-user')
-    ->schema([
-        Forms\Components\Grid::make(2)
-            ->schema([
-                Forms\Components\TextInput::make('first_name')
-                    ->label('First Name')
-                    ->disabled()
-                    ->afterStateHydrated(function ($component, $state, $record) {
-                        $component->state($record->employee?->first_name ?? auth()->user()->first_name);
-                    })
-                    ->required(),
+                    ->description('Auto-filled personal details')
+                    ->icon('heroicon-o-user')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('first_name')
+                                    ->label('First Name')
+                                    ->disabled()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->first_name ?? auth()->user()->first_name);
+                                    })
+                                    ->required(),
 
-                Forms\Components\TextInput::make('middle_name')
-                    ->label('Middle Name')
-                    ->disabled()
-                    ->afterStateHydrated(function ($component, $state, $record) {
-                        $component->state($record->employee?->middle_name ?? auth()->user()->middle_name);
-                    }),
+                                Forms\Components\TextInput::make('middle_name')
+                                    ->label('Middle Name')
+                                    ->disabled()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->middle_name ?? auth()->user()->middle_name);
+                                    }),
 
-                Forms\Components\TextInput::make('last_name')
-                    ->label('Last Name')
-                    ->disabled()
-                    ->afterStateHydrated(function ($component, $state, $record) {
-                        $component->state($record->employee?->last_name ?? auth()->user()->last_name);
-                    })
-                    ->required(),
+                                Forms\Components\TextInput::make('last_name')
+                                    ->label('Last Name')
+                                    ->disabled()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->last_name ?? auth()->user()->last_name);
+                                    })
+                                    ->required(),
 
-                Forms\Components\TextInput::make('office_department')
-                    ->label('Office/Department')
-                    ->disabled()
-                    ->afterStateHydrated(function ($component, $state, $record) {
-                        $component->state($record->employee?->department ?? auth()->user()->department);
-                    }),
+                                Forms\Components\TextInput::make('office_department')
+                                    ->label('Office/Department')
+                                    ->disabled()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->department ?? auth()->user()->department);
+                                    }),
 
-                Forms\Components\TextInput::make('position')
-                    ->label('Position')
-                    ->disabled()
-                    ->afterStateHydrated(function ($component, $state, $record) {
-                        $component->state($record->employee?->position ?? auth()->user()->position);
-                    }),
-            ]),
-    ])
-    ->collapsible()
-    ->collapsed(false),
-
+                                Forms\Components\TextInput::make('position')
+                                    ->label('Position')
+                                    ->disabled()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->employee?->position ?? auth()->user()->position);
+                                    }),
+                            ]),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
 
                 // Leave Type
                 Forms\Components\Section::make('Leave Type Selection')
@@ -141,6 +140,12 @@ class LeaveApplicationResource extends Resource
                                     ->label('Leave Date From')
                                     ->required()
                                     ->reactive()
+                                    ->minDate(function (Forms\Get $get) {
+                                        if ($get('type_of_leave') === 'vacation_leave') {
+                                            return now()->addDays(5)->startOfDay();
+                                        }
+                                        return now();
+                                    })
                                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                         if ($state && $get('leave_date_to')) {
                                             $from = \Carbon\Carbon::parse($state);
@@ -153,6 +158,7 @@ class LeaveApplicationResource extends Resource
                                     ->label('Leave Date To')
                                     ->required()
                                     ->reactive()
+                                    ->minDate(fn(Forms\Get $get) => $get('leave_date_from'))
                                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                         if ($state && $get('leave_date_from')) {
                                             $from = \Carbon\Carbon::parse($get('leave_date_from'));
@@ -160,6 +166,11 @@ class LeaveApplicationResource extends Resource
                                             $set('number_of_working_days', $from->diffInWeekdays($to) + 1);
                                         }
                                     }),
+
+                                Forms\Components\TextInput::make('inclusive_dates')
+                                    ->label('Inclusive Dates')
+                                    ->disabled()
+                                    ->reactive(),
 
                                 Forms\Components\Radio::make('commutation')
                                     ->label('Commutation')
@@ -214,6 +225,16 @@ class LeaveApplicationResource extends Resource
                     ->collapsible()
                     ->collapsed(false),
 
+                // Auto-fill Date of Filing
+                Forms\Components\DatePicker::make('date_of_filing')
+                    ->label('Date of Filing')
+                    ->default(fn() => now())
+                    ->disabled(),
+                
+                Forms\Components\Placeholder::make('previous_leave_action')
+                    ->label('Previous Leave Action')
+                    ->content(fn($get) => $get('previous_leave_action') ?? 'No previous leave action'),
+
                 // Approval Section
                 Forms\Components\Section::make('Approval & Processing Status')
                     ->description('Only admins can approve or disapprove')
@@ -266,7 +287,14 @@ class LeaveApplicationResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => $record->status === 'pending'),
+                    ->visible(fn($record) => $record->status === 'pending')
+                    ->after(function ($record) {
+                        // Notify on creation
+                        if ($record->wasRecentlyCreated) {
+                            $notification = new \App\Notifications\LeaveApplicationSubmitted($record);
+                            $notification->notifyUser($record->employee);
+                        }
+                    }),
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn($record) => $record->status === 'pending'),
                 Tables\Actions\Action::make('print')
@@ -274,8 +302,8 @@ class LeaveApplicationResource extends Resource
                     ->icon('heroicon-o-printer')
                     ->color('gray')
                     ->url(fn($record) => route('leave_application.print', $record))
-                    ->openUrlInNewTab(),
-
+                    ->openUrlInNewTab()
+                    ->visible(fn($record) => $record->status === 'approved'),
 
                 // Admin Approve Action
                 Tables\Actions\Action::make('approve')
@@ -289,13 +317,13 @@ class LeaveApplicationResource extends Resource
                             'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                             'date_approved_disapproved' => now(),
                         ]);
-                        $record->employee->notify(new \App\Notifications\LeaveApplicationStatusUpdated($record));
+                        $notification = new \App\Notifications\LeaveApplicationStatusUpdated($record);
+                        $notification->notifyUser($record->employee);
                     }),
 
                 // Admin Disapprove Action
                 Tables\Actions\Action::make('disapprove')
                     ->label('Disapprove')
-                    // ->icon('heroicon-o-x')
                     ->color('danger')
                     ->visible(fn($record) => auth()->user()->role === 'admin' && $record->status === 'pending')
                     ->form([
@@ -310,7 +338,8 @@ class LeaveApplicationResource extends Resource
                             'disapproval_reason' => $data['disapproval_reason'],
                             'date_approved_disapproved' => now(),
                         ]);
-                        $record->employee->notify(new \App\Notifications\LeaveApplicationStatusUpdated($record));
+                        $notification = new \App\Notifications\LeaveApplicationStatusUpdated($record);
+                        $notification->notifyUser($record->employee);
                     }),
             ])
             ->bulkActions([])
@@ -318,34 +347,30 @@ class LeaveApplicationResource extends Resource
             ->modifyQueryUsing(fn(Builder $query) => auth()->user()->role === 'admin' ? $query : $query->where('employee_id', auth()->id()));
     }
 
-
     public static function getRelations(): array
     {
         return [];
     }
-    // Show badge on navigation for pending leave applications (admin only)
+
     public static function getNavigationBadge(): ?string
     {
         if (!(auth()->user()?->is_admin ?? false)) {
-            return null; // No badge for non-admin users
+            return null;
         }
 
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
 
-    // Optional: change badge color dynamically (admin only)
     public static function getNavigationBadgeColor(): ?string
     {
         if (!(auth()->user()?->is_admin ?? false)) {
-            return null; // No badge color for non-admin users
+            return null;
         }
 
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? 'warning' : 'success';
     }
-
-
 
     public static function getPages(): array
     {

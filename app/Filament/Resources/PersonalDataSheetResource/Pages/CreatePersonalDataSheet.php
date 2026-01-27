@@ -3,15 +3,27 @@
 namespace App\Filament\Resources\PersonalDataSheetResource\Pages;
 
 use App\Filament\Resources\PersonalDataSheetResource;
-use Filament\Actions;
-use Filament\Resources\Pages\CreateRecord;
-use Filament\Notifications\Notification;
+use App\Models\User;
 use App\Notifications\PDSSubmittedNotification;
+use Filament\Actions;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 
 class CreatePersonalDataSheet extends CreateRecord
 {
     protected static string $resource = PersonalDataSheetResource::class;
+
+    /**
+     * 🔑 REQUIRED: Attach PDS to logged-in user
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['user_id'] = Auth::id();
+
+        return $data;
+    }
 
     protected function getFormActions(): array
     {
@@ -27,22 +39,28 @@ class CreatePersonalDataSheet extends CreateRecord
                 ->color('secondary'),
         ];
     }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
+    /**
+     * 🔔 Notify admins after successful submission
+     */
     protected function afterCreate(): void
-{
-    // Notify Admins
-    $admins = User::where('role', 'admin')->get();
+    {
+        $admins = User::where('role', 'admin')->get();
 
-    LaravelNotification::send($admins, new PDSSubmittedNotification(auth()->user(), $this->record));
+        LaravelNotification::send(
+            $admins,
+            new PDSSubmittedNotification(Auth::user(), $this->record)
+        );
 
-    // Optionally, show toast to current user
-    Notification::make()
-        ->title('PDS Submitted Successfully!')
-        ->success()
-        ->send();
-}
+        Notification::make()
+            ->title('PDS Submitted Successfully!')
+            ->body('Your Personal Data Sheet has been sent for review.')
+            ->success()
+            ->send();
+    }
 }
