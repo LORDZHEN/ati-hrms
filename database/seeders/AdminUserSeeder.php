@@ -12,7 +12,7 @@ class AdminUserSeeder extends Seeder
     {
         User::firstOrCreate(
             [
-                'email' => 'admin@hrms.com',
+                'email' => 'ati.rtrc.hr@gmail.com',
             ],
             [
                 'name' => 'System Administrator',

@@ -5,23 +5,18 @@ namespace App\Filament\Resources\EmployeeResource\Pages;
 use App\Filament\Resources\EmployeeResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
 class ListEmployees extends ListRecords
 {
     protected static string $resource = EmployeeResource::class;
 
-    protected function getTableQuery(): Builder
-    {
-        return parent::getTableQuery();
-    }
-
     protected function getHeaderActions(): array
     {
-        $actions = auth()->user()?->role === 'admin'
+        return auth()->user()?->role === 'admin'
             ? [
                 Actions\Action::make('generateReport')
                     ->label('Generate Report')
@@ -30,6 +25,15 @@ class ListEmployees extends ListRecords
                     ->modalHeading('Generate Employee Report')
                     ->modalSubmitActionLabel('Generate')
                     ->form([
+                        Select::make('status')
+                            ->label('Account Status')
+                            ->options([
+                                '' => 'All',
+                                'active' => 'Active',
+                                'inactive' => 'Inactive',
+                            ])
+                            ->required(),
+
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
@@ -69,6 +73,7 @@ class ListEmployees extends ListRecords
                     ])
                     ->action(function (array $data) {
                         return redirect()->route('employee.report', [
+                            'status' => $data['status'],
                             'period' => $data['period'],
                             'from' => $data['from'],
                             'to' => $data['to'],
@@ -77,7 +82,5 @@ class ListEmployees extends ListRecords
                     ->openUrlInNewTab(),
             ]
             : [];
-
-        return $actions;
     }
 }

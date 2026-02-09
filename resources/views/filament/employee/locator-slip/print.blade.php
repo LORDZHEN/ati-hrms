@@ -67,28 +67,68 @@
             margin-bottom: 3px;
         }
 
+        .transaction-type {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 5px; /* space between box and text */
+            font-weight: bold;
+        }
+
         .checkbox {
             display: inline-block;
             width: 12px;
             height: 12px;
             border: 1px solid #000;
             text-align: center;
+            vertical-align: middle;
+            line-height: 12px;
+            font-weight: bold;
+            font-size: 10px;
+            color: white; /* default text color */
+        }
+
+        .checkbox.checked {
+            background-color: green; /* fill the box with green */
+            border-color: green;     make border green too
         }
 
         .checkbox.checked::before {
             content: '✓';
+            color: white;  /* white checkmark */
+            display: block;
+            text-align: center;
+            line-height: 12px;
         }
 
+        /* Underline Out/In time */
+        .underline {
+            text-decoration: underline;
+            font-weight: bold;
+        }
+        
         @media print {
-            .no-print {
-                display: none;
-            }
 
-            body {
-                margin: 0;
-                padding: 0;
-            }
+        @page {
+            size: landscape;
+            margin: 12mm;
         }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .no-print {
+            display: none;
+        }
+    }
     </style>
 </head>
 
@@ -108,9 +148,15 @@
             <div class="title">LOCATOR SLIP</div>
 
             {{-- Transaction Type --}}
-            <div class="section">
-                <span class="checkbox {{ $record->transaction_type === 'personal' ? 'checked' : '' }}"></span> Personal Transaction
-                <span class="checkbox {{ $record->transaction_type === 'official' ? 'checked' : '' }}" style="margin-left: 20px;"></span> Official Business
+            <div class="section transaction-type">
+                <label class="checkbox-label">
+                    <span class="checkbox {{ $record->transaction_type === 'personal' ? 'checked' : '' }}"></span>
+                    Personal Transaction
+                </label>
+                <label class="checkbox-label" style="margin-left: 20px;">
+                    <span class="checkbox {{ $record->transaction_type === 'official' ? 'checked' : '' }}"></span>
+                    Official Business
+                </label>
             </div>
 
             <div class="section"><span class="label">Name:</span> {{ $record->employee_name }}</div>
@@ -129,20 +175,20 @@
 
             <div class="section">
                 <span class="label">Out:</span>
-                {{ \Carbon\Carbon::parse($record->out_time)->format('h:i A') }}
+                <span class="underline">{{ \Carbon\Carbon::parse($record->out_time)->format('h:i A') }}</span>
 
                 <span class="label" style="margin-left: 40px;">In:</span>
-                {{ $record->in_time ? \Carbon\Carbon::parse($record->in_time)->format('h:i A') : 'N/A' }}
+                <span class="underline">{{ $record->in_time ? \Carbon\Carbon::parse($record->in_time)->format('h:i A') : 'N/A' }}</span>
             </div>
 
-            {{-- Status --}}
+            {{-- Status
             <div class="section">
                 <span class="label">Status:</span>
 
                 <span class="checkbox {{ $record->status === 'pending' ? 'checked' : '' }}"></span> Pending
                 <span class="checkbox {{ $record->status === 'approved' ? 'checked' : '' }}" style="margin-left: 15px;"></span> Approved
                 <span class="checkbox {{ $record->status === 'rejected' ? 'checked' : '' }}" style="margin-left: 15px;"></span> Rejected
-            </div>
+            </div> --}}
 
             @if($record->status === 'rejected')
             <div class="section"><span class="label">Rejection Reason:</span> {{ $record->rejection_reason }}</div>

@@ -160,8 +160,12 @@ class TravelOrder extends Model
     /**
      * Auto-generate travel_order_no in format mm-yyyy-0001
      */
+    /**
+     * Auto-generate travel_order_no and save traveler names
+     */
     protected static function booted()
     {
+        // Runs when creating a new travel order
         static::creating(function ($travelOrder) {
             // Set creator
             $travelOrder->created_by = Auth::id();
@@ -181,6 +185,39 @@ class TravelOrder extends Model
 
                 $travelOrder->travel_order_no = "{$month}-{$year}-{$sequence}";
             }
+
+            // --- Save Traveler Name(s) ---
+            if ($travelOrder->travel_type === 'solo') {
+                $travelOrder->name = Auth::user()->full_name ?? Auth::user()->name;
+            } elseif ($travelOrder->travel_type === 'batch') {
+                if (!empty($travelOrder->employee_ids) && is_array($travelOrder->employee_ids)) {
+                    $names = User::whereIn('id', $travelOrder->employee_ids)
+                        ->pluck('full_name')
+                        ->toArray();
+                    $travelOrder->name = implode(', ', $names);
+                }
+            }
         });
+
+        // Runs when updating an existing travel order
+        static::updating(function ($travelOrder) {
+            if ($travelOrder->travel_type === 'solo') {
+                $travelOrder->name = Auth::user()->full_name ?? Auth::user()->name;
+            } elseif ($travelOrder->travel_type === 'batch') {
+                if (!empty($travelOrder->employee_ids) && is_array($travelOrder->employee_ids)) {
+                    $names = User::whereIn('id', $travelOrder->employee_ids)
+                        ->pluck('full_name')
+                        ->toArray();
+                    $travelOrder->name = implode(', ', $names);
+                }
+            }
+        });
+    }
+
+
+
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
     }
 }

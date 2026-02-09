@@ -8,8 +8,18 @@ use App\Http\Controllers\TravelOrderPrintController;
 use App\Models\User;
 use App\Models\LeaveApplication;
 use App\Models\TravelOrder;
+use App\Models\LocatorSlip;
 use App\Http\Controllers\PersonalDataSheetPrintController;
 use App\Models\PersonalDataSheet;
+use Carbon\Carbon;
+use App\Livewire\Employee\Pds\EditPds;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/pds/edit', function () {
+        return view('pds.edit');
+    })->name('pds.edit');
+});
+
 
 /*
 |--------------------------------------------------------------------------
@@ -95,6 +105,7 @@ Route::get('/leave-applications/report', function () {
     $from = request('from');
     $to = request('to');
     $period = request('period');
+    $status = request('status'); // <-- add this line
 
     $query = LeaveApplication::with('employee');
 
@@ -105,20 +116,24 @@ Route::get('/leave-applications/report', function () {
         ]);
     }
 
-    $leaveApplications = $query
-        ->orderBy('created_at', 'desc')
-        ->get();
+    // Filter by status if not "All"
+    if ($status && $status !== 'all') {
+        $query->where('status', $status);
+    }
 
+    $leaveApplications = $query->orderBy('created_at', 'desc')->get();
+
+    // Pass $status to the view
     return view('reports.leave-application-report', compact(
         'leaveApplications',
         'from',
         'to',
-        'period'
+        'period',
+        'status'  // <-- pass it here
     ));
 })
     ->middleware(['auth'])
     ->name('leave-applications.report');
-
 
 Route::get('/locator-slip/report', function () {
     $user = auth()->user();
@@ -129,23 +144,31 @@ Route::get('/locator-slip/report', function () {
     $from = request('from');
     $to = request('to');
     $period = request('period');
+    $status = request('status') ?? 'all';
 
-    $query = \App\Models\LocatorSlip::query();
+    $query = LocatorSlip::query();
 
     if ($from && $to) {
         $query->whereBetween('created_at', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
         ]);
+    }
+
+    // Filter by status
+    if ($status && $status !== 'all') {
+        $query->where('status', $status);
     }
 
     $locatorSlips = $query->orderBy('created_at', 'desc')->get();
 
+    // Pass status to blade
     return view('reports.locator-slip-report', compact(
         'locatorSlips',
         'from',
         'to',
-        'period'
+        'period',
+        'status'
     ));
 })->middleware(['auth'])->name('locator-slip.report');
 
@@ -175,28 +198,38 @@ Route::get('/pds/report', function () {
 
 Route::get('/travel-orders/report', function () {
     $user = auth()->user();
-    if (!$user || $user->role !== 'admin')
+    if (!$user || $user->role !== 'admin') {
         abort(403);
+    }
 
     $from = request('from');
     $to = request('to');
     $period = request('period');
+    $status = request('status') ?? 'all';
 
-    $query = \App\Models\TravelOrder::query();
+    $query = TravelOrder::query();
 
     if ($from && $to) {
         $query->whereBetween('departure_date', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
         ]);
+    }
+
+    if ($status && $status !== 'all') {
+        $query->where('status', $status);
     }
 
     $travelOrders = $query->orderBy('departure_date', 'desc')->get();
 
-    return view('reports.travel-order-report', compact('travelOrders', 'from', 'to', 'period'));
-})
-    ->middleware(['auth'])
-    ->name('travel-order.report');
+    return view('reports.travel-order-report', compact(
+        'travelOrders',
+        'from',
+        'to',
+        'period',
+        'status'
+    ));
+})->middleware(['auth'])->name('travel-order.report');
 
 
 // SALN Comprehensive Report Route

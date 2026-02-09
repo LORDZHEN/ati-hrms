@@ -39,6 +39,9 @@ class LocatorSlipResource extends Resource
                                     ->label('Personal Transaction')
                                     ->reactive()
                                     ->required()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->transaction_type === 'personal');
+                                    })
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         if ($state) {
                                             $set('transaction_type', 'personal');
@@ -50,6 +53,9 @@ class LocatorSlipResource extends Resource
                                     ->default(true)
                                     ->reactive()
                                     ->required()
+                                    ->afterStateHydrated(function ($component, $state, $record) {
+                                        $component->state($record->transaction_type === 'official');
+                                    })
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         if ($state) {
                                             $set('transaction_type', 'official');
@@ -66,7 +72,9 @@ class LocatorSlipResource extends Resource
                                     ->disabled()
                                     ->dehydrated()
                                     ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->employee?->name ?? auth()->user()->name);
+                                        if ($record) {
+                                            $component->state($record->employee?->name);
+                                        }
                                     })
                                     ->required(),
 
@@ -80,12 +88,12 @@ class LocatorSlipResource extends Resource
                                     ->required(),
                             ]),
 
-                        Forms\Components\TextInput::make('office_department')
+                        Forms\Components\TextInput::make('department')
                             ->label('Department')
                             ->disabled()
                             ->dehydrated()
                             ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->office_department ?? auth()->user()->department);
+                                $component->state($record->employee?->department ?? auth()->user()->department);
                             })
                             ->required(),
 
@@ -195,8 +203,13 @@ class LocatorSlipResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+
                 Tables\Actions\EditAction::make()
-                    ->visible(fn(LocatorSlip $record) => $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)),
+                    ->visible(
+                        fn(LocatorSlip $record) =>
+                        $record->status === 'pending' &&
+                        (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)
+                    ),
 
                 Action::make('print')
                     ->label('Print')
@@ -204,43 +217,8 @@ class LocatorSlipResource extends Resource
                     ->url(fn($record) => route('locator_slip.print', $record->id))
                     ->openUrlInNewTab()
                     ->visible(fn($record) => $record->status === 'approved'),
-
-                // Admin Approve
-                Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        $record->update([
-                            'status' => 'approved',
-                            'approved_by' => auth()->user()->name,
-                            'approved_at' => now(),
-                        ]);
-                        $notification = new \App\Notifications\LocatorSlipStatusUpdated($record);
-                        $notification->notifyUser($record->user);
-                    })
-                    ->visible(fn($record) => $record->status === 'pending' && auth()->user()->role === 'admin'),
-
-                // Admin Disapprove
-                Action::make('disapprove')
-                    ->label('Disapprove')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->form([
-                        Forms\Components\Textarea::make('admin_remarks')->label('Reason for Disapproval')->required()->rows(3),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'status' => 'disapproved',
-                            'approved_by' => auth()->user()->name,
-                            'admin_remarks' => $data['admin_remarks'],
-                        ]);
-                        $notification = new \App\Notifications\LocatorSlipStatusUpdated($record);
-                        $notification->notifyUser($record->user);
-                    })
-                    ->visible(fn($record) => $record->status === 'pending' && auth()->user()->role === 'admin'),
             ])
+
             ->bulkActions([])
             ->modifyQueryUsing(fn(Builder $query) => auth()->user()->role === 'admin' ? $query : $query->where('user_id', auth()->id()))
             ->defaultSort('created_at', 'desc');
@@ -252,6 +230,7 @@ class LocatorSlipResource extends Resource
             'index' => Pages\ListLocatorSlips::route('/'),
             'create' => Pages\CreateLocatorSlip::route('/create'),
             'edit' => Pages\EditLocatorSlip::route('/{record}/edit'),
+            'view' => Pages\ViewLocatorSlip::route('/{record}'),
         ];
     }
 
@@ -267,21 +246,25 @@ class LocatorSlipResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (!(auth()->user()?->is_admin ?? false)) {
+        if (auth()->user()?->role !== 'admin') {
             return null;
         }
 
         $count = LocatorSlip::where('status', 'pending')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
+
     public static function getNavigationBadgeColor(): ?string
     {
-        if (!(auth()->user()?->is_admin ?? false)) {
+        if (auth()->user()?->role !== 'admin') {
             return null;
         }
 
         $count = LocatorSlip::where('status', 'pending')->count();
+
         return $count > 0 ? 'warning' : 'success';
     }
+
 }

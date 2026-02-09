@@ -15,12 +15,10 @@ class ListLocatorSlips extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        // Actions everyone can see
         $actions = [
             Actions\CreateAction::make(),
         ];
 
-        // Only show "Generate Report" for admin users
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
@@ -29,6 +27,20 @@ class ListLocatorSlips extends ListRecords
                 ->modalHeading('Generate Locator Slip Report')
                 ->modalSubmitActionLabel('Generate')
                 ->form([
+                    // Status dropdown
+                    Select::make('status')
+                        ->label('Locator Slip Status')
+                        ->nullable() // allow "All"
+                        ->options([
+                            'all' => 'All',
+                            'pending' => 'Pending',
+                            'approved' => 'Approved',
+                            'disapproved' => 'Disapproved',
+                        ])
+                        ->default('all')
+                        ->reactive(),
+
+                    // Period dropdown
                     Select::make('period')
                         ->label('Report Period')
                         ->options([
@@ -65,6 +77,7 @@ class ListLocatorSlips extends ListRecords
                 ])
                 ->action(function (array $data) {
                     return redirect()->route('locator-slip.report', [
+                        'status' => $data['status'] ?? 'all',
                         'period' => $data['period'],
                         'from' => $data['from'],
                         'to' => $data['to'],

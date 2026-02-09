@@ -53,20 +53,20 @@
 
         <tr>
             <td>2. DATE OF BIRTH</td>
-            <td>{{ optional($pds->birthdate)->format('m/d/Y') }}</td>
+            {{ optional($pds->date_of_birth)->format('m/d/Y') }}
             <td>3. PLACE OF BIRTH</td>
-            <td>{{ $pds->birthplace }}</td>
+            {{ $pds->place_of_birth }}
         </tr>
 
         <tr>
             <td>4. SEX</td>
             <td>
-                <span class="checkbox">{!! $pds->sex === 'male' ? '&#10003;' : '' !!}</span> Male
-                <span class="checkbox">{!! $pds->sex === 'female' ? '&#10003;' : '' !!}</span> Female
+                <span class="checkbox">{!! $pds->sex === 'Male' ? '&#10003;' : '' !!}</span> Male
+                <span class="checkbox">{!! $pds->sex === 'Female' ? '&#10003;' : '' !!}</span> Female
             </td>
             <td>5. CIVIL STATUS</td>
             <td>
-                @foreach(['single','married','widowed','separated'] as $status)
+                @foreach(['Single','Married','Widowed','Separated'] as $status)
                     <span class="checkbox">{!! $pds->civil_status === $status ? '&#10003;' : '' !!}</span>
                     {{ ucfirst($status) }}
                 @endforeach
@@ -77,7 +77,7 @@
             <td>6. CITIZENSHIP</td>
             <td colspan="3">
                 <span class="checkbox">{!! $pds->citizenship === 'filipino' ? '&#10003;' : '' !!}</span> Filipino
-                <span class="checkbox">{!! $pds->citizenship === 'dual' ? '&#10003;' : '' !!}</span> Dual Citizenship
+                <span class="checkbox">{!! $pds->citizenship === 'dual_citizenship' ? '&#10003;' : '' !!}</span> Dual Citizenship
                 {{ $pds->citizenship_details }}
             </td>
         </tr>

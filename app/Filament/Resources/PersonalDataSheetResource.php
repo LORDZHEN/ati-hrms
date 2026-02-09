@@ -760,6 +760,26 @@ class PersonalDataSheetResource extends Resource
 
         return $query;
     }
+    public static function getNavigationBadge(): ?string
+    {
+        if (auth()->user()?->role !== 'admin') {
+            return null;
+        }
+
+        $count = PersonalDataSheet::where('status', 'submitted')->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+    public static function getNavigationBadgeColor(): ?string
+    {
+        if (auth()->user()?->role !== 'admin') {
+            return null;
+        }
+
+        $count = PersonalDataSheet::where('status', 'submitted')->count();
+
+        return $count > 0 ? 'warning' : 'success';
+    }
 
 
     public static function getPages(): array

@@ -188,28 +188,44 @@
 
     /* Activity cards enhanced */
     .activity-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
+    background: white;
+    border-radius: 16px;
+    padding: 16px 20px;
+    transition: all 0.3s ease, border-left 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-left: 4px solid transparent;
+}
 
     .dark .activity-card {
-        background: #374151;
-        border-color: #4b5563;
-    }
+    background: #1f2937;
+    border-color: transparent;
+}
 
     .activity-card:hover {
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+    transform: translateX(6px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
 
     .dark .activity-card:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .activity-card[data-type="Leave Application"] {
+    border-left-color: #3b82f6;
+    }
+    .activity-card[data-type="Travel Order"] {
+        border-left-color: #fbbf24;
+    }
+    .activity-card[data-type="DTR Approval"] {
+        border-left-color: #10b981;
+    }
+    .activity-card[data-type="SALN Upload"] {
+        border-left-color: #ec4899;
+    }
+    .activity-card[data-type="Locator Slip"] {
+        border-left-color: #8b5cf6;
     }
 
     .activity-icon-wrapper {
@@ -512,7 +528,9 @@
                         };
                     @endphp
 
-                    <div class="activity-card stagger-item" style="animation-delay: {{ $index * 0.1 }}s">
+                    <div class="activity-card stagger-item"
+                        style="animation-delay: {{ $index * 0.1 }}s"
+                        data-type="{{ $activity['type'] }}">
                         <div class="activity-icon-wrapper {{ $colorClasses['icon_bg'] }}">
                             <x-dynamic-component :component="$activity['icon']"
                                 class="w-6 h-6 {{ $colorClasses['text'] }}" />

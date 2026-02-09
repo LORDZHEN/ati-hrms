@@ -15,7 +15,7 @@ class LocatorSlip extends Model
         'transaction_type',
         'employee_name',
         'position',
-        // 'department',
+        'department',
         'office_department',
         'destination',
         'purpose',
@@ -68,5 +68,8 @@ class LocatorSlip extends Model
         });
     }
 
-
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

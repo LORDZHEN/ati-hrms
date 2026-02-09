@@ -153,44 +153,44 @@ class EmployeeResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->visible(fn () => auth()->user()?->role === 'admin'),
 
-                Tables\Actions\Action::make('verify')
-                    ->label('Verify')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('success')
-                    ->hidden(fn($record) => !is_null($record->email_verified_at))
-                    ->requiresConfirmation()
-                    ->action(function ($record, $livewire) {
-                        $birthday = $record->birthday?->format('mdY');
+                // Tables\Actions\Action::make('verify')
+                //     ->label('Verify')
+                //     ->icon('heroicon-o-check-badge')
+                //     ->color('success')
+                //     ->hidden(fn($record) => !is_null($record->email_verified_at))
+                //     ->requiresConfirmation()
+                //     ->action(function ($record, $livewire) {
+                //         $birthday = $record->birthday?->format('mdY');
 
-                        if (!$birthday || strlen($birthday) !== 8) {
-                            Notification::make()
-                                ->title('Invalid birthday format')
-                                ->danger()
-                                ->body('Failed to format the birthday into MMDDYYYY.')
-                                ->send();
-                            return;
-                        }
+                //         if (!$birthday || strlen($birthday) !== 8) {
+                //             Notification::make()
+                //                 ->title('Invalid birthday format')
+                //                 ->danger()
+                //                 ->body('Failed to format the birthday into MMDDYYYY.')
+                //                 ->send();
+                //             return;
+                //         }
 
-                        $record->update([
-                            'email_verified_at' => now(),
-                            'password' => bcrypt($birthday),
-                            'must_change_password' => true,
-                            'status' => 'active',
-                            'verification_status' => 'verified',
-                        ]);
+                //         $record->update([
+                //             'email_verified_at' => now(),
+                //             'password' => bcrypt($birthday),
+                //             'must_change_password' => true,
+                //             'status' => 'active',
+                //             'verification_status' => 'verified',
+                //         ]);
 
-                        Mail::to($record->email)->send(new AccountVerifiedMail($record, $birthday));
+                //         Mail::to($record->email)->send(new AccountVerifiedMail($record, $birthday));
 
-                        Notification::make()
-                            ->title('Account Verified')
-                            ->body("Temporary password: **{$birthday}**. Email sent.")
-                            ->success()
-                            ->persistent()
-                            ->send();
+                //         Notification::make()
+                //             ->title('Account Verified')
+                //             ->body("Temporary password: **{$birthday}**. Email sent.")
+                //             ->success()
+                //             ->persistent()
+                //             ->send();
 
-                        $livewire->dispatch('refresh');
-                    })
-                    ->after(fn($record, $livewire) => $livewire->dispatch('refresh')),
+                //         $livewire->dispatch('refresh');
+                //     })
+                //     ->after(fn($record, $livewire) => $livewire->dispatch('refresh')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

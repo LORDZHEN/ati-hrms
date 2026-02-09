@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TravelOrderResource\Pages;
 
 use App\Filament\Resources\TravelOrderResource;
 use Filament\Actions;
+use App\Models\TravelOrder;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
@@ -15,9 +16,7 @@ class ListTravelOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $actions = [
-            Actions\CreateAction::make(),
-        ];
+        $actions = [Actions\CreateAction::make()];
 
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
@@ -27,6 +26,17 @@ class ListTravelOrders extends ListRecords
                 ->modalHeading('Generate Travel Order Report')
                 ->modalSubmitActionLabel('Generate')
                 ->form([
+                    Select::make('status')
+                        ->label('Travel Order Status')
+                        ->options([
+                            'all' => 'All',
+                            'recommended' => 'Recommended',
+                            'approved' => 'Approved',
+                            'rejected' => 'Rejected',
+                        ])
+                        ->default('all')
+                        ->required(),
+
                     Select::make('period')
                         ->label('Report Period')
                         ->options([
@@ -56,9 +66,10 @@ class ListTravelOrders extends ListRecords
                 ])
                 ->action(function (array $data) {
                     return redirect()->route('travel-order.report', [
+                        'status' => $data['status'] ?? 'all',
                         'period' => $data['period'],
-                        'from'   => $data['from'],
-                        'to'     => $data['to'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
                     ]);
                 })
                 ->openUrlInNewTab();
@@ -66,4 +77,5 @@ class ListTravelOrders extends ListRecords
 
         return $actions;
     }
+
 }

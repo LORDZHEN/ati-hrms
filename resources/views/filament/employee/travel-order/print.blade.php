@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 9px;
+            font-size: 15px;
             line-height: 1.2;
             margin: 10px;
             color: #333;
@@ -121,7 +121,7 @@
             border-bottom: 1px solid #333;
             padding: 1px 3px;
             min-height: 12px;
-            font-size: 8px;
+            font-size: 12px;
         }
 
         .signature-section {
@@ -144,12 +144,13 @@
         .signature-title {
             font-weight: bold;
             margin-bottom: 3px;
-            font-size: 8px;
+            font-size: 11px;
         }
 
         .signature-role {
+            font-weight: bold;
             font-style: italic;
-            font-size: 7px;
+            font-size: 10px;
         }
 
         .footer-info {
@@ -318,7 +319,7 @@
             </div>
         @endif
     </div>
-            
+
 
                 <div class="signature-box">
     <div class="signature-title">APPROVED:</div>

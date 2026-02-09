@@ -132,6 +132,7 @@ class PersonalDataSheet extends Model
         'children' => 'array',
         'education' => 'array',
         'eligibilities' => 'array',
+        'civil_service_eligibility' => 'array',
         'work_experience' => 'array',
         'voluntary_work' => 'array',
         'learning_development' => 'array',
@@ -144,6 +145,7 @@ class PersonalDataSheet extends Model
         'has_disability' => 'boolean',
         'is_solo_parent' => 'boolean',
         'criminal_case_date_filed' => 'date',
+        'references' => 'array',
     ];
 
     /* ============================================================
@@ -154,9 +156,9 @@ class PersonalDataSheet extends Model
      * Each PDS belongs to a User (employee)
      */
     public function employee()
-{
-    return $this->belongsTo(\App\Models\User::class, 'user_id', 'id');
-}
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id', 'id');
+    }
 
 
     /* ============================================================
@@ -167,9 +169,11 @@ class PersonalDataSheet extends Model
     {
         $name = $this->first_name;
 
-        if ($this->middle_name) $name .= ' ' . $this->middle_name;
+        if ($this->middle_name)
+            $name .= ' ' . $this->middle_name;
         $name .= ' ' . $this->surname;
-        if ($this->name_extension) $name .= ' ' . $this->name_extension;
+        if ($this->name_extension)
+            $name .= ' ' . $this->name_extension;
 
         return $name;
     }
@@ -202,34 +206,42 @@ class PersonalDataSheet extends Model
 
     public function getSpouseFullNameAttribute(): ?string
     {
-        if (!$this->spouse_first_name && !$this->spouse_surname) return null;
+        if (!$this->spouse_first_name && !$this->spouse_surname)
+            return null;
 
         $name = $this->spouse_first_name;
-        if ($this->spouse_middle_name) $name .= ' ' . $this->spouse_middle_name;
+        if ($this->spouse_middle_name)
+            $name .= ' ' . $this->spouse_middle_name;
         $name .= ' ' . $this->spouse_surname;
-        if ($this->spouse_name_extension) $name .= ' ' . $this->spouse_name_extension;
+        if ($this->spouse_name_extension)
+            $name .= ' ' . $this->spouse_name_extension;
 
         return $name;
     }
 
     public function getFatherFullNameAttribute(): ?string
     {
-        if (!$this->father_first_name && !$this->father_surname) return null;
+        if (!$this->father_first_name && !$this->father_surname)
+            return null;
 
         $name = $this->father_first_name;
-        if ($this->father_middle_name) $name .= ' ' . $this->father_middle_name;
+        if ($this->father_middle_name)
+            $name .= ' ' . $this->father_middle_name;
         $name .= ' ' . $this->father_surname;
-        if ($this->father_name_extension) $name .= ' ' . $this->father_name_extension;
+        if ($this->father_name_extension)
+            $name .= ' ' . $this->father_name_extension;
 
         return $name;
     }
 
     public function getMotherFullNameAttribute(): ?string
     {
-        if (!$this->mother_first_name && !$this->mother_surname) return null;
+        if (!$this->mother_first_name && !$this->mother_surname)
+            return null;
 
         $name = $this->mother_first_name;
-        if ($this->mother_middle_name) $name .= ' ' . $this->mother_middle_name;
+        if ($this->mother_middle_name)
+            $name .= ' ' . $this->mother_middle_name;
         $name .= ' ' . $this->mother_surname;
 
         return $name;

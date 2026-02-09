@@ -8,17 +8,29 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Carbon\Carbon;
+use Filament\Forms\Components\ViewField;
 
 class ListPersonalDataSheets extends ListRecords
 {
     protected static string $resource = PersonalDataSheetResource::class;
 
+    /**
+     * 🔹 Customize header actions
+     */
     protected function getHeaderActions(): array
     {
         $actions = [
-            Actions\CreateAction::make(),
+            Actions\Action::make('createPDS')
+                ->label('New Personal Data Sheet')
+                ->color('primary')
+                ->modalHeading('New Personal Data Sheet')
+                ->modalWidth('6xl')
+                ->form([
+                    ViewField::make('pdsForm')->view('livewire.employee.pds.edit-pds')
+                ]),
         ];
 
+        // Admin-only report generation action
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
@@ -57,8 +69,8 @@ class ListPersonalDataSheets extends ListRecords
                 ->action(function (array $data) {
                     return redirect()->route('pds.report', [
                         'period' => $data['period'],
-                        'from'   => $data['from'],
-                        'to'     => $data['to'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
                     ]);
                 })
                 ->openUrlInNewTab();

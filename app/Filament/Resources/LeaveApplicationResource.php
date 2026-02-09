@@ -230,7 +230,7 @@ class LeaveApplicationResource extends Resource
                     ->label('Date of Filing')
                     ->default(fn() => now())
                     ->disabled(),
-                
+
                 Forms\Components\Placeholder::make('previous_leave_action')
                     ->label('Previous Leave Action')
                     ->content(fn($get) => $get('previous_leave_action') ?? 'No previous leave action'),
@@ -286,17 +286,21 @@ class LeaveApplicationResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+
                 Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => $record->status === 'pending')
-                    ->after(function ($record) {
-                        // Notify on creation
-                        if ($record->wasRecentlyCreated) {
-                            $notification = new \App\Notifications\LeaveApplicationSubmitted($record);
-                            $notification->notifyUser($record->employee);
-                        }
-                    }),
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->role === 'employee'
+                        && $record->status === 'pending'
+                    ),
+
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn($record) => $record->status === 'pending'),
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->role === 'employee'
+                        && $record->status === 'pending'
+                    ),
+
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
@@ -304,44 +308,8 @@ class LeaveApplicationResource extends Resource
                     ->url(fn($record) => route('leave_application.print', $record))
                     ->openUrlInNewTab()
                     ->visible(fn($record) => $record->status === 'approved'),
-
-                // Admin Approve Action
-                Tables\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check')
-                    ->color('success')
-                    ->visible(fn($record) => auth()->user()->role === 'admin' && $record->status === 'pending')
-                    ->action(function (LeaveApplication $record) {
-                        $record->update([
-                            'status' => 'approved',
-                            'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                            'date_approved_disapproved' => now(),
-                        ]);
-                        $notification = new \App\Notifications\LeaveApplicationStatusUpdated($record);
-                        $notification->notifyUser($record->employee);
-                    }),
-
-                // Admin Disapprove Action
-                Tables\Actions\Action::make('disapprove')
-                    ->label('Disapprove')
-                    ->color('danger')
-                    ->visible(fn($record) => auth()->user()->role === 'admin' && $record->status === 'pending')
-                    ->form([
-                        Forms\Components\Textarea::make('disapproval_reason')
-                            ->label('Reason for Disapproval')
-                            ->required(),
-                    ])
-                    ->action(function (LeaveApplication $record, array $data) {
-                        $record->update([
-                            'status' => 'disapproved',
-                            'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                            'disapproval_reason' => $data['disapproval_reason'],
-                            'date_approved_disapproved' => now(),
-                        ]);
-                        $notification = new \App\Notifications\LeaveApplicationStatusUpdated($record);
-                        $notification->notifyUser($record->employee);
-                    }),
             ])
+
             ->bulkActions([])
             ->defaultSort('date_of_filing', 'desc')
             ->modifyQueryUsing(fn(Builder $query) => auth()->user()->role === 'admin' ? $query : $query->where('employee_id', auth()->id()));
@@ -354,23 +322,27 @@ class LeaveApplicationResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (!(auth()->user()?->is_admin ?? false)) {
+        if (auth()->user()?->role !== 'admin') {
             return null;
         }
 
         $count = LeaveApplication::where('status', 'pending')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
+
     public static function getNavigationBadgeColor(): ?string
     {
-        if (!(auth()->user()?->is_admin ?? false)) {
+        if (auth()->user()?->role !== 'admin') {
             return null;
         }
 
         $count = LeaveApplication::where('status', 'pending')->count();
+
         return $count > 0 ? 'warning' : 'success';
     }
+
 
     public static function getPages(): array
     {
@@ -378,6 +350,7 @@ class LeaveApplicationResource extends Resource
             'index' => Pages\ListLeaveApplications::route('/'),
             'create' => Pages\CreateLeaveApplication::route('/create'),
             'edit' => Pages\EditLeaveApplication::route('/{record}/edit'),
+            'view' => Pages\ViewLeaveApplication::route('/{record}'),
         ];
     }
 }

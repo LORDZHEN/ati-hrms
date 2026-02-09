@@ -15,12 +15,10 @@ class ListLeaveApplications extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        // Start with actions everyone can see
         $actions = [
             Actions\CreateAction::make(),
         ];
 
-        // Add "Generate Report" only for admin users
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
@@ -29,6 +27,18 @@ class ListLeaveApplications extends ListRecords
                 ->modalHeading('Generate Leave Application Report')
                 ->modalSubmitActionLabel('Generate')
                 ->form([
+                    // NEW: Status dropdown
+                    Select::make('status')
+                        ->label('Leave Status')
+                        ->nullable() // <-- allow empty / null values
+                        ->options([
+                            'all' => 'All',
+                            'approved' => 'Approved',
+                            'disapproved' => 'Disapproved',
+                        ])
+                        ->default('') // default to all
+                        ->reactive(),
+
                     Select::make('period')
                         ->label('Report Period')
                         ->options([
@@ -65,9 +75,11 @@ class ListLeaveApplications extends ListRecords
                         ->label('To')
                         ->required()
                         ->after('from'),
+
                 ])
                 ->action(function (array $data) {
                     return redirect()->route('leave-applications.report', [
+                        'status' => $data['status'] ?? '',
                         'period' => $data['period'],
                         'from' => $data['from'],
                         'to' => $data['to'],
