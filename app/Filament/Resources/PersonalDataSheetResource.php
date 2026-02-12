@@ -788,6 +788,7 @@ class PersonalDataSheetResource extends Resource
             'index' => Pages\ListPersonalDataSheets::route('/'),
             'create' => Pages\CreatePersonalDataSheet::route('/create'),
             'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
+            
         ];
     }
 }

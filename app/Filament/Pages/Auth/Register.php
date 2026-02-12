@@ -3,21 +3,30 @@
 namespace App\Filament\Pages\Auth;
 
 use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Forms\Components\Section;
 use Filament\Pages\Auth\Register as BaseRegister;
+
 use App\Models\User;
+use App\Models\Region;
+use App\Models\Province;
+use App\Models\City;
+use App\Models\Barangay;
+
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+
 use App\Mail\PendingRegistrationMail;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Section;
 
 class Register extends BaseRegister
 {
     protected static string $view = 'filament.pages.auth.register';
     protected static ?string $slug = 'register';
 
-    // Required for Blade
     public bool $showSuccessMessage = false;
     public string $successMessage = '';
 
@@ -40,10 +49,9 @@ class Register extends BaseRegister
              | I. PERSONAL INFORMATION
              ===================================================== */
             Section::make('I. Personal Information')
-                ->description('Basic personal details of the employee')
                 ->schema([
+
                     Forms\Components\TextInput::make('employee_id')
-                        ->label('Employee ID')
                         ->required()
                         ->unique('users', 'employee_id'),
 
@@ -51,14 +59,15 @@ class Register extends BaseRegister
                     Forms\Components\TextInput::make('middle_name'),
                     Forms\Components\TextInput::make('last_name')->required(),
 
-                    Forms\Components\Select::make('suffix')->options([
-                        'Jr' => 'Jr',
-                        'Sr' => 'Sr',
-                        'I' => 'I',
-                        'II' => 'II',
-                        'III' => 'III',
-                        'IV' => 'IV',
-                    ]),
+                    Forms\Components\Select::make('suffix')
+                        ->options([
+                            'Jr' => 'Jr',
+                            'Sr' => 'Sr',
+                            'I' => 'I',
+                            'II' => 'II',
+                            'III' => 'III',
+                            'IV' => 'IV',
+                        ]),
 
                     Forms\Components\TextInput::make('email')
                         ->email()
@@ -70,13 +79,28 @@ class Register extends BaseRegister
                         ->before(today()),
 
                     Forms\Components\TextInput::make('phone')
-                        ->label('Mobile Number')
                         ->regex('/^[0-9]{11}$/'),
 
-                    Forms\Components\TextInput::make('region')->required(),
-                    Forms\Components\TextInput::make('province')->required(),
-                    Forms\Components\TextInput::make('city/municipality')->required(),
-                    Forms\Components\TextInput::make('barangay')->required(),
+                    /* ===============================
+                       ADDRESS CASCADING DROPDOWNS
+                       =============================== */
+
+                    Forms\Components\TextInput::make('region_id')
+                        ->label('Region')
+                        ->required(),
+
+                    Forms\Components\TextInput::make('province_id')
+                        ->label('Province')
+                        ->required(),
+
+                    Forms\Components\TextInput::make('city_id')
+                        ->label('City / Municipality')
+                        ->required(),
+
+                    Forms\Components\TextInput::make('barangay_id')
+                        ->label('Barangay')
+                        ->required(),
+
                     Forms\Components\TextInput::make('purok_street'),
                 ])
                 ->columns(2),
@@ -85,17 +109,15 @@ class Register extends BaseRegister
              | II. EMPLOYMENT INFORMATION
              ===================================================== */
             Section::make('II. Employment Information')
-                ->description('Employment details to be reviewed by HR')
                 ->schema([
+
                     Forms\Components\TextInput::make('position')
-                        ->label('Position/Designation')
                         ->required(),
 
                     Forms\Components\TextInput::make('department')
                         ->required(),
 
                     Forms\Components\Select::make('employment_status')
-                        ->label('Employment Status')
                         ->options([
                             'Permanent' => 'Permanent',
                             'Contractual' => 'Contractual',
@@ -108,16 +130,12 @@ class Register extends BaseRegister
         ];
     }
 
-    /**
-     * Handle registration
-     */
     protected function handleRegistration(array $data): User
     {
         $birthday = Carbon::parse($data['birthday']);
         $tempPassword = $birthday->format('mdy');
 
         $user = User::create([
-            // Personal Info
             'employee_id' => $data['employee_id'],
             'first_name' => $data['first_name'],
             'middle_name' => $data['middle_name'] ?? null,
@@ -134,19 +152,16 @@ class Register extends BaseRegister
             'birthday' => $data['birthday'],
             'phone' => $data['phone'] ?? null,
 
-            // Address
-            'region_name' => $data['region'],
-            'province' => $data['province'],
-            'city/municipality' => $data['city_municipality'],
-            'barangay_name' => $data['barangay'],
+            'region_id' => $data['region_id'],
+            'province_id' => $data['province_id'],
+            'city_id' => $data['city_id'],
+            'barangay_id' => $data['barangay_id'],
             'purok_street' => $data['purok_street'] ?? null,
 
-            // Employment Info
             'position' => $data['position'],
             'department' => $data['department'],
             'employment_status' => $data['employment_status'],
 
-            // System Defaults
             'role' => User::ROLE_EMPLOYEE,
             'status' => 'pending',
             'verification_status' => 'pending',

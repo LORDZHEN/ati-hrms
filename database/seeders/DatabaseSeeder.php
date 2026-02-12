@@ -25,14 +25,15 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         // Seed regions → provinces → cities → barangays
-        $this->call([
-            RegionSeeder::class,
-            ProvinceSeeder::class,
-            CitySeeder::class,
-            BarangaySeeder::class,
-        ]);
+        // $this->call([
+        //     RegionSeeder::class,
+        //     ProvinceSeeder::class,
+        //     CitySeeder::class,
+        //     BarangaySeeder::class,
+        // ]);
 
         // Seed admin user
-        //$this->call(AdminUserSeeder::class);
+        $this->call(AdminUserSeeder::class);
+        $this->call(EmployeeUserSeeder::class);
     }
 }

@@ -8,29 +8,28 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Carbon\Carbon;
-use Filament\Forms\Components\ViewField;
 
 class ListPersonalDataSheets extends ListRecords
 {
     protected static string $resource = PersonalDataSheetResource::class;
 
-    /**
-     * 🔹 Customize header actions
-     */
     protected function getHeaderActions(): array
     {
-        $actions = [
-            Actions\Action::make('createPDS')
-                ->label('New Personal Data Sheet')
-                ->color('primary')
-                ->modalHeading('New Personal Data Sheet')
-                ->modalWidth('6xl')
-                ->form([
-                    ViewField::make('pdsForm')->view('livewire.employee.pds.edit-pds')
-                ]),
-        ];
+        $actions = [];
 
-        // Admin-only report generation action
+        // ✅ Create PDS (Livewire modal)
+        $actions[] = Actions\Action::make('createPDS')
+            ->label('New Personal Data Sheet')
+            ->color('primary')
+            ->modalHeading('New Personal Data Sheet')
+            ->modalWidth('7xl')
+            ->form([
+                \Filament\Forms\Components\Livewire::make(
+                    \App\Livewire\Employee\Pds\EditPds::class
+                ),
+            ]);
+
+        // ✅ Admin-only report generation
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
@@ -50,29 +49,28 @@ class ListPersonalDataSheets extends ListRecords
                         ->reactive()
                         ->afterStateUpdated(function ($state, callable $set) {
                             $now = Carbon::now();
-                            if ($state === 'weekly') {
-                                $set('from', $now->startOfWeek()->toDateString());
-                                $set('to', $now->endOfWeek()->toDateString());
-                            }
-                            if ($state === 'monthly') {
-                                $set('from', $now->startOfMonth()->toDateString());
-                                $set('to', $now->endOfMonth()->toDateString());
-                            }
-                            if ($state === 'yearly') {
-                                $set('from', $now->startOfYear()->toDateString());
-                                $set('to', $now->endOfYear()->toDateString());
-                            }
+
+                            match ($state) {
+                                'weekly' => [
+                                    $set('from', $now->startOfWeek()->toDateString()),
+                                    $set('to', $now->endOfWeek()->toDateString()),
+                                ],
+                                'monthly' => [
+                                    $set('from', $now->startOfMonth()->toDateString()),
+                                    $set('to', $now->endOfMonth()->toDateString()),
+                                ],
+                                'yearly' => [
+                                    $set('from', $now->startOfYear()->toDateString()),
+                                    $set('to', $now->endOfYear()->toDateString()),
+                                ],
+                            };
                         }),
-                    DatePicker::make('from')->label('From')->required(),
-                    DatePicker::make('to')->label('To')->required()->after('from'),
+                    DatePicker::make('from')->required(),
+                    DatePicker::make('to')->required()->after('from'),
                 ])
-                ->action(function (array $data) {
-                    return redirect()->route('pds.report', [
-                        'period' => $data['period'],
-                        'from' => $data['from'],
-                        'to' => $data['to'],
-                    ]);
-                })
+                ->action(fn (array $data) =>
+                    redirect()->route('pds.report', $data)
+                )
                 ->openUrlInNewTab();
         }
 

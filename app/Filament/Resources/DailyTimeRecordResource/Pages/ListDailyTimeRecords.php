@@ -11,10 +11,10 @@ class ListDailyTimeRecords extends ListRecords
 {
     protected static string $resource = DailyTimeRecordResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return Auth::user()->role === \App\Models\User::ROLE_ADMIN
-            ? [Actions\CreateAction::make()]
-            : [];
-    }
+    // protected function getHeaderActions(): array
+    // {
+    //     return Auth::user()->role === \App\Models\User::ROLE_ADMIN
+    //         ? [Actions\CreateAction::make()]
+    //         : [];
+    // }
 }

@@ -22,9 +22,10 @@ class AdminUserSeeder extends Seeder
                 'status'     => 'active',
                 'must_change_password' => false,
                 'phone' => '09123456789',
-                'purok_street' => 'Main Street',
-                'city_municipality' => 'Panabo City',
-                'province' => 'Davao del Norte',
+                'barangay_id' => 'Gredu',
+                'city_id' => 'Panabo',
+                'province_id' => 'Davao Del Norte',
+                'region_id' => 'Region XI',
                 'birthday' => '1990-01-01',
             ]
         );

@@ -11,93 +11,34 @@ class PersonalDataSheet extends Model
 
     protected $fillable = [
         // Personal Information
+        'user_id',
         'surname',
         'first_name',
-        'name_extension',
         'middle_name',
+        'name_extension',
         'date_of_birth',
         'place_of_birth',
         'sex',
         'civil_status',
-        'height',
-        'weight',
-        'blood_type',
-        'gsis_id_no',
-        'pag_ibig_id_no',
-        'philhealth_no',
-        'sss_no',
-        'tin_no',
-        'agency_employee_no',
-        'remarks',
-        'status',
-        'year',
-
-        // Citizenship
         'filipino',
         'dual_citizenship',
-        'by_birth',
-        'by_naturalization',
-        'country',
-
-        // Residential Address
-        'res_house_block_lot_no',
-        'res_street',
-        'res_subdivision_village',
-        'res_barangay',
-        'res_city_municipality',
-        'res_province',
-        'res_zip_code',
-
-        // Permanent Address
-        'perm_house_block_lot_no',
-        'perm_street',
-        'perm_subdivision_village',
-        'perm_barangay',
-        'perm_city_municipality',
-        'perm_province',
-        'perm_zip_code',
-
-        // Contact Information
-        'telephone_no',
-        'mobile_no',
-        'email_address',
-
-        // Family Background - Spouse
+        'dual_citizenship_country',
+        'mobile',
+        'email',
         'spouse_surname',
         'spouse_first_name',
-        'spouse_name_extension',
-        'spouse_middle_name',
         'spouse_occupation',
-        'spouse_employer_business_name',
-        'spouse_business_address',
-        'spouse_telephone_no',
-
-        // Family Background - Father
-        'father_surname',
         'father_first_name',
-        'father_name_extension',
-        'father_middle_name',
-
-        // Family Background - Mother
-        'mother_surname',
         'mother_first_name',
-        'mother_middle_name',
-
-        // Children and Education (JSON fields)
         'children',
         'education',
-        'eligibilities',
+        'civil_service_eligibility', // Standardized to match component usage
         'work_experience',
-        'user_id', // foreign key linking to User
-
-        // C3
         'voluntary_work',
         'learning_development',
         'special_skills',
         'non_academic_distinctions',
         'membership_association',
-
-        // C4
         'related_third_degree',
         'related_third_degree_details',
         'related_fourth_degree',
@@ -119,7 +60,59 @@ class PersonalDataSheet extends Model
         'disability_details',
         'is_solo_parent',
         'solo_parent_details',
+        'references',
+        'gov_id_type',
+        'gov_id_no',
+        'gov_id_issued',
+        'date_accomplished',
+        // Retained original fields for compatibility (you can remove unused ones)
+        'height',
+        'weight',
+        'blood_type',
+        'gsis_id_no',
+        'pag_ibig_id_no',
+        'philhealth_no',
+        'sss_no',
+        'tin_no',
+        'agency_employee_no',
+        'remarks',
+        'status',
+        'year',
+        // 'by_birth',
+        // 'by_naturalization',
+        // 'country',
+        'res_house_block_lot_no',
+        'res_street',
+        'res_subdivision_village',
+        'res_barangay',
+        'res_city_municipality',
+        'res_province',
+        'res_zip_code',
+        'perm_house_block_lot_no',
+        'perm_street',
+        'perm_subdivision_village',
+        'perm_barangay',
+        'perm_city_municipality',
+        'perm_province',
+        'perm_zip_code',
+        'telephone_no',
+        'mobile_no',
+        'email_address',
+        'spouse_name_extension',
+        'spouse_middle_name',
+        'spouse_employer_business_name',
+        'spouse_business_address',
+        'spouse_telephone_no',
+        'father_surname',
+        'father_first_name',
+        'father_name_extension',
+        'father_middle_name',
+        'mother_surname',
+        'mother_first_name',
+        'mother_middle_name',
+
     ];
+
 
     protected $casts = [
         'date_of_birth' => 'date',
@@ -131,7 +124,6 @@ class PersonalDataSheet extends Model
         'weight' => 'decimal:1',
         'children' => 'array',
         'education' => 'array',
-        'eligibilities' => 'array',
         'civil_service_eligibility' => 'array',
         'work_experience' => 'array',
         'voluntary_work' => 'array',
@@ -145,6 +137,11 @@ class PersonalDataSheet extends Model
         'has_disability' => 'boolean',
         'is_solo_parent' => 'boolean',
         'criminal_case_date_filed' => 'date',
+        'has_admin_case' => 'boolean',
+        'has_criminal_case' => 'boolean',
+        'has_conviction' => 'boolean',
+        'has_been_separated' => 'boolean',
+        'has_election_candidacy' => 'boolean',
         'references' => 'array',
     ];
 

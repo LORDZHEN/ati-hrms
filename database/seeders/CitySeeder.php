@@ -12,8 +12,11 @@ class CitySeeder extends Seeder
     {
         $cities = [
             'Davao del Norte' => [
+                // Cities
+                'Island Garden City of Samal',
                 'Panabo City',
                 'Tagum City',
+                // Municipalities
                 'Asuncion',
                 'Braulio E. Dujali',
                 'Carmen',
@@ -25,7 +28,9 @@ class CitySeeder extends Seeder
             ],
 
             'Davao del Sur' => [
+                // City
                 'Digos City',
+                // Municipalities
                 'Bansalan',
                 'Hagonoy',
                 'Kiblawan',
@@ -34,9 +39,11 @@ class CitySeeder extends Seeder
                 'Matanao',
                 'Padada',
                 'Santa Cruz',
+                'Sulop',
             ],
 
             'Davao de Oro' => [
+                // Municipalities (no cities)
                 'Compostela',
                 'Laak',
                 'Mabini',
@@ -47,33 +54,41 @@ class CitySeeder extends Seeder
                 'Nabunturan',
                 'New Bataan',
                 'Pantukan',
+                'Montevista',
             ],
 
             'Davao Occidental' => [
+                // Municipalities (no cities)
                 'Don Marcelino',
                 'Jose Abad Santos',
                 'Malita',
                 'Santa Maria',
                 'Sarangani',
-                // 'Sulop', // optional: verify
             ],
 
             'Davao Oriental' => [
+                // City
                 'Mati City',
+                // Municipalities
                 'Baganga',
+                'Banaybanay',
                 'Boston',
                 'Caraga',
                 'Cateel',
+                'Governor Generoso',
+                'Lupon',
                 'Manay',
                 'San Isidro',
                 'Tarragona',
-                'Bagumbayan',
-                'Governor Generoso',
-                'Lupon',
-                'Pantukan',
+            ],
+
+            'Davao City' => [
+                // Davao City is a highly urbanized city (HUC) and is usually listed separately
+                // It has no municipalities under it, only districts/barangays
+                // If you want to include it as a standalone entry:
+                'Davao City',
             ],
         ];
-
 
         foreach ($cities as $provinceName => $cityList) {
             $province = Province::where('name', $provinceName)->first();

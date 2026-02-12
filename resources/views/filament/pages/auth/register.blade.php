@@ -65,8 +65,8 @@
             background: transparent;      /* ✅ remove white card */
             backdrop-filter: none;        /* optional */
             border-radius: 20px;
-            padding: 32px;
-            box-shadow: none;             /* cleaner floating look */
+            padding: 10px;
+            box-shadow: none;             cleaner floating look
             animation: fadeInUp 0.4s ease;
         }
 
