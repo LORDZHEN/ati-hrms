@@ -35,7 +35,8 @@ class ViewLocatorSlip extends ViewRecord
 
                     $notification = new \App\Notifications\LocatorSlipStatusUpdated($record);
                     $notification->notifyUser($record->user);
-                }),
+                })
+                ->successRedirectUrl(LocatorSlipResource::getUrl('index')),
 
             // ❌ DISAPPROVE
             Actions\Action::make('disapprove')
@@ -62,7 +63,9 @@ class ViewLocatorSlip extends ViewRecord
 
                     $notification = new \App\Notifications\LocatorSlipStatusUpdated($record);
                     $notification->notifyUser($record->user);
-                }),
+
+                })
+                ->successRedirectUrl(LocatorSlipResource::getUrl('index')),
         ];
     }
 }

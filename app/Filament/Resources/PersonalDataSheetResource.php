@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PersonalDataSheetResource\Pages;
 use App\Models\PersonalDataSheet;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -34,11 +33,8 @@ class PersonalDataSheetResource extends Resource
     protected static ?string $navigationLabel = 'Personal Data Sheet';
     protected static ?string $pluralModelLabel = 'Personal Data Sheet';
     protected static ?int $navigationSort = 4;
-    protected static ?string $navigationGroup = 'Manage';
+    protected static ?string $navigationGroup = 'Documents';
 
-    /* -----------------------------------------------------------------
-     | FORM
-     |-----------------------------------------------------------------*/
     public static function form(Form $form): Form
     {
         $isLocked = fn($record) =>
@@ -47,7 +43,7 @@ class PersonalDataSheetResource extends Resource
 
         return $form->schema([
 
-            /* ADMIN REMARKS (READ ONLY) */
+            // Admin Remarks (if any)
             Textarea::make('remarks')
                 ->label('Remarks from Admin')
                 ->rows(4)
@@ -58,598 +54,774 @@ class PersonalDataSheetResource extends Resource
             Wizard::make([
 
                 /* =========================================================
-                | C1 – PERSONAL INFORMATION (Items 1–26)
-                |=========================================================*/
+                 | STEP 1: C1 – PERSONAL INFORMATION
+                 |=========================================================*/
                 Step::make('C1. PERSONAL INFORMATION')
+                    ->description('Personal Information, Family Background & Education')
                     ->icon('heroicon-o-user')
                     ->schema([
 
-                        /* -------------------------------------------------
-                         | I. PERSONAL INFORMATION (1–26)
-                         |-------------------------------------------------*/
+                        // I. PERSONAL INFORMATION
                         Section::make('I. PERSONAL INFORMATION')
+                            ->description('CS Form No. 212 (Revised 2020) - Items 1-23')
                             ->schema([
 
-                                // 1–3
-                                Grid::make(3)->schema([
-                                    TextInput::make('surname')->label('1. SURNAME')->required()
+                                // Name Fields (1-4)
+                                Grid::make(4)->schema([
+                                    TextInput::make('surname')
+                                        ->label('1. SURNAME')
+                                        ->required()
                                         ->disabled($isLocked),
-                                    TextInput::make('first_name')->label('2. FIRST NAME')->required()
+                                    TextInput::make('first_name')
+                                        ->label('2. FIRST NAME')
+                                        ->required()
                                         ->disabled($isLocked),
-                                    TextInput::make('middle_name')->label('3. MIDDLE NAME')
+                                    TextInput::make('middle_name')
+                                        ->label('3. MIDDLE NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('name_extension')
+                                        ->label('4. NAME EXTENSION (JR., SR)')
                                         ->disabled($isLocked),
                                 ]),
 
-                                // 4–5
+                                // Birth Details (5-6)
                                 Grid::make(2)->schema([
-                                    TextInput::make('name_extension')->label('4. NAME EXTENSION (JR., SR.)')
+                                    DatePicker::make('date_of_birth')
+                                        ->label('5. DATE OF BIRTH (mm/dd/yyyy)')
+                                        ->required()
                                         ->disabled($isLocked),
-                                    DatePicker::make('date_of_birth')->label('5. DATE OF BIRTH')->required()
+                                    TextInput::make('place_of_birth')
+                                        ->label('6. PLACE OF BIRTH')
                                         ->disabled($isLocked),
                                 ]),
 
-                                // 6–8
+                                // Sex & Civil Status (7-8)
+                                Grid::make(2)->schema([
+                                    Select::make('sex')
+                                        ->label('7. SEX')
+                                        ->options([
+                                            'Male' => 'Male',
+                                            'Female' => 'Female'
+                                        ])
+                                        ->disabled($isLocked),
+                                    Select::make('civil_status')
+                                        ->label('8. CIVIL STATUS')
+                                        ->options([
+                                            'Single' => 'Single',
+                                            'Married' => 'Married',
+                                            'Widowed' => 'Widowed',
+                                            'Separated' => 'Separated',
+                                        ])
+                                        ->disabled($isLocked),
+                                ]),
+
+                                // Physical Info (9-11)
                                 Grid::make(3)->schema([
-                                    TextInput::make('place_of_birth')->label('6. PLACE OF BIRTH')
+                                    TextInput::make('height')
+                                        ->label('9. HEIGHT (cm)')
+                                        ->numeric()
+                                        ->step(0.01)
                                         ->disabled($isLocked),
-                                    Radio::make('sex')->label('7. SEX')->options([
-                                        'Male' => 'Male',
-                                        'Female' => 'Female',
-                                    ])->inline()
+                                    TextInput::make('weight')
+                                        ->label('10. WEIGHT (kg)')
+                                        ->numeric()
+                                        ->step(0.1)
                                         ->disabled($isLocked),
-                                    Radio::make('civil_status')->label('8. CIVIL STATUS')->options([
-                                        'Single' => 'Single',
-                                        'Married' => 'Married',
-                                        'Widowed' => 'Widowed',
-                                        'Separated' => 'Separated',
-                                        'Others' => 'Others',
+                                    TextInput::make('blood_type')
+                                        ->label('11. BLOOD TYPE')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                // Government IDs (12-17)
+                                Grid::make(3)->schema([
+                                    TextInput::make('gsis_id_no')
+                                        ->label('12. GSIS ID NO.')
+                                        ->disabled($isLocked),
+                                    TextInput::make('pag_ibig_id_no')
+                                        ->label('13. PAG-IBIG ID NO.')
+                                        ->disabled($isLocked),
+                                    TextInput::make('philhealth_no')
+                                        ->label('14. PHILHEALTH NO.')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                Grid::make(3)->schema([
+                                    TextInput::make('sss_no')
+                                        ->label('15. SSS NO.')
+                                        ->disabled($isLocked),
+                                    TextInput::make('tin_no')
+                                        ->label('16. TIN NO.')
+                                        ->disabled($isLocked),
+                                    TextInput::make('agency_employee_no')
+                                        ->label('17. AGENCY EMPLOYEE NO.')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                // Citizenship (18)
+                                Section::make('18. CITIZENSHIP')
+                                    ->schema([
+                                        Grid::make(3)->schema([
+                                            Checkbox::make('filipino')
+                                                ->label('Filipino')
+                                                ->disabled($isLocked),
+                                            Checkbox::make('dual_citizenship')
+                                                ->label('Dual Citizenship')
+                                                ->disabled($isLocked),
+                                            TextInput::make('dual_citizenship_country')
+                                                ->label('If holder of dual citizenship, indicate country')
+                                                ->disabled($isLocked),
+                                        ]),
                                     ])
-                                        ->disabled($isLocked),
-                                ]),
+                                    ->compact(),
 
-                                // 9–10
-                                Grid::make(2)->schema([
-                                    TextInput::make('height')->label('9. HEIGHT (m)'),
-                                    TextInput::make('weight')->label('10. WEIGHT (kg)'),
-                                ]),
-
-                                // 11–15
-                                Grid::make(3)->schema([
-                                    TextInput::make('blood_type')->label('11. BLOOD TYPE'),
-                                    TextInput::make('gsis_id_no')->label('12. GSIS ID NO.'),
-                                    TextInput::make('pag_ibig_id_no')->label('13. PAG-IBIG ID NO.'),
-                                ]),
-                                Grid::make(3)->schema([
-                                    TextInput::make('philhealth_no')->label('14. PHILHEALTH NO.'),
-                                    TextInput::make('sss_no')->label('15. SSS NO.'),
-                                    TextInput::make('tin_no')->label('TIN'),
-                                ]),
-
-                                // 16–18 Citizenship
-                                Section::make('16. CITIZENSHIP')
+                                // Residential Address (19)
+                                Section::make('19. RESIDENTIAL ADDRESS')
                                     ->schema([
-                                        Grid::make(2)->schema([
-                                            Checkbox::make('filipino')->label('Filipino'),
-                                            Checkbox::make('dual_citizenship')->label('Dual Citizenship'),
+                                        Grid::make(3)->schema([
+                                            TextInput::make('res_house_block_lot_no')
+                                                ->label('House/Block/Lot No.')
+                                                ->disabled($isLocked),
+                                            TextInput::make('res_street')
+                                                ->label('Street')
+                                                ->disabled($isLocked),
+                                            TextInput::make('res_subdivision_village')
+                                                ->label('Subdivision/Village')
+                                                ->disabled($isLocked),
                                         ]),
-                                        Grid::make(2)->schema([
-                                            Checkbox::make('by_birth')->label('By Birth'),
-                                            Checkbox::make('by_naturalization')->label('By Naturalization'),
+                                        Grid::make(4)->schema([
+                                            TextInput::make('res_barangay')
+                                                ->label('Barangay')
+                                                ->disabled($isLocked),
+                                            TextInput::make('res_city_municipality')
+                                                ->label('City/Municipality')
+                                                ->disabled($isLocked),
+                                            TextInput::make('res_province')
+                                                ->label('Province')
+                                                ->disabled($isLocked),
+                                            TextInput::make('res_zip_code')
+                                                ->label('ZIP Code')
+                                                ->disabled($isLocked),
                                         ]),
-                                        TextInput::make('citizenship_country')
-                                            ->label('18. If holder of dual citizenship, indicate country'),
-                                    ]),
+                                    ])
+                                    ->compact(),
 
-                                // 19–22 Residential Address
-                                Section::make('17. RESIDENTIAL ADDRESS')
+                                // Permanent Address (20)
+                                Section::make('20. PERMANENT ADDRESS')
                                     ->schema([
-                                        TextInput::make('res_house_no')->label('House/Block/Lot No.'),
-                                        TextInput::make('res_street')->label('Street'),
-                                        TextInput::make('res_barangay')->label('Barangay'),
-                                        Grid::make(2)->schema([
-                                            TextInput::make('res_city')->label('City/Municipality'),
-                                            TextInput::make('res_province')->label('Province'),
-                                        ]),
-                                        TextInput::make('res_zip')->label('ZIP CODE'),
-                                    ]),
 
-                                // 23–26 Permanent + Contact
-                                Section::make('18. PERMANENT ADDRESS & CONTACT')
+                                        Checkbox::make('same_as_residential')
+                                            ->label('Same as Residential Address')
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+
+                                                if ($state) {
+                                                    // Copy Residential → Permanent
+                                                    $set('perm_house_block_lot_no', $get('res_house_block_lot_no'));
+                                                    $set('perm_street', $get('res_street'));
+                                                    $set('perm_subdivision_village', $get('res_subdivision_village'));
+                                                    $set('perm_barangay', $get('res_barangay'));
+                                                    $set('perm_city_municipality', $get('res_city_municipality'));
+                                                    $set('perm_province', $get('res_province'));
+                                                    $set('perm_zip_code', $get('res_zip_code'));
+                                                } else {
+                                                    // Optional: Clear permanent address if unchecked
+                                                    $set('perm_house_block_lot_no', null);
+                                                    $set('perm_street', null);
+                                                    $set('perm_subdivision_village', null);
+                                                    $set('perm_barangay', null);
+                                                    $set('perm_city_municipality', null);
+                                                    $set('perm_province', null);
+                                                    $set('perm_zip_code', null);
+                                                }
+                                            })
+                                            ->disabled($isLocked)
+                                            ->columnSpanFull(),
+
+                                        Grid::make(3)->schema([
+                                            TextInput::make('perm_house_block_lot_no')
+                                                ->label('House/Block/Lot No.')
+                                                ->disabled($isLocked),
+                                            TextInput::make('perm_street')
+                                                ->label('Street')
+                                                ->disabled($isLocked),
+                                            TextInput::make('perm_subdivision_village')
+                                                ->label('Subdivision/Village')
+                                                ->disabled($isLocked),
+                                        ]),
+
+                                        Grid::make(4)->schema([
+                                            TextInput::make('perm_barangay')
+                                                ->label('Barangay')
+                                                ->disabled($isLocked),
+                                            TextInput::make('perm_city_municipality')
+                                                ->label('City/Municipality')
+                                                ->disabled($isLocked),
+                                            TextInput::make('perm_province')
+                                                ->label('Province')
+                                                ->disabled($isLocked),
+                                            TextInput::make('perm_zip_code')
+                                                ->label('ZIP Code')
+                                                ->disabled($isLocked),
+                                        ]),
+                                    ])
+                                    ->compact(),
+
+                                // Contact Info (21-23)
+                                Section::make('CONTACT INFORMATION')
                                     ->schema([
-                                        TextInput::make('perm_house_no')->label('House/Block/Lot No.'),
-                                        TextInput::make('perm_street')->label('Street'),
-                                        TextInput::make('perm_barangay')->label('Barangay'),
-                                        Grid::make(2)->schema([
-                                            TextInput::make('perm_city')->label('City/Municipality'),
-                                            TextInput::make('perm_province')->label('Province'),
+                                        Grid::make(3)->schema([
+                                            TextInput::make('telephone_no')
+                                                ->label('21. TELEPHONE NO.')
+                                                ->disabled($isLocked),
+                                            TextInput::make('mobile')
+                                                ->label('22. MOBILE NO.')
+                                                ->disabled($isLocked),
+                                            TextInput::make('email')
+                                                ->label('23. E-MAIL ADDRESS (if any)')
+                                                ->email()
+                                                ->disabled($isLocked),
                                         ]),
-                                        TextInput::make('perm_zip')->label('ZIP CODE'),
-                                        Grid::make(2)->schema([
-                                            TextInput::make('telephone_no')->label('19. TELEPHONE NO.'),
-                                            TextInput::make('mobile_no')->label('20. MOBILE NO.'),
-                                        ]),
-                                        TextInput::make('email')->label('21. E-MAIL ADDRESS (if any)'),
-                                    ]),
-                            ]),
+                                    ])
+                                    ->compact(),
+                            ])
+                            ->columns(1)
+                            ->compact(),
 
-                        /* -------------------------------------------------
-                         | II. FAMILY BACKGROUND
-                         |-------------------------------------------------*/
+                        // II. FAMILY BACKGROUND
                         Section::make('II. FAMILY BACKGROUND')
+                            ->description('Items 24-27')
                             ->schema([
-                                TextInput::make('spouse_surname')->label('21. SPOUSE SURNAME'),
-                                TextInput::make('spouse_first_name')->label('FIRST NAME'),
-                                TextInput::make('spouse_middle_name')->label('MIDDLE NAME'),
-                                TextInput::make('spouse_occupation')->label('OCCUPATION'),
-                                TextInput::make('spouse_employer')->label('EMPLOYER/BUSINESS NAME'),
-                                TextInput::make('spouse_business_address')->label('BUSINESS ADDRESS'),
-                                TextInput::make('spouse_telephone')->label('TELEPHONE NO.'),
 
+                                // Spouse Information (24)
+                                Grid::make(4)->schema([
+                                    TextInput::make('spouse_surname')
+                                        ->label('24. SPOUSE\'S SURNAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('spouse_first_name')
+                                        ->label('FIRST NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('spouse_middle_name')
+                                        ->label('MIDDLE NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('spouse_name_extension')
+                                        ->label('NAME EXTENSION (JR., SR)')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                Grid::make(3)->schema([
+                                    TextInput::make('spouse_occupation')
+                                        ->label('OCCUPATION')
+                                        ->disabled($isLocked),
+                                    TextInput::make('spouse_employer_business_name')
+                                        ->label('EMPLOYER/BUSINESS NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('spouse_business_address')
+                                        ->label('BUSINESS ADDRESS')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                TextInput::make('spouse_telephone_no')
+                                    ->label('TELEPHONE NO.')
+                                    ->disabled($isLocked),
+
+                                // Father Information (25)
+                                Grid::make(4)->schema([
+                                    TextInput::make('father_surname')
+                                        ->label('25. FATHER\'S SURNAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('father_first_name')
+                                        ->label('FIRST NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('father_middle_name')
+                                        ->label('MIDDLE NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('father_name_extension')
+                                        ->label('NAME EXTENSION (JR., SR)')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                // Mother Information (26)
+                                Grid::make(3)->schema([
+                                    TextInput::make('mother_surname')
+                                        ->label('26. MOTHER\'S MAIDEN SURNAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('mother_first_name')
+                                        ->label('FIRST NAME')
+                                        ->disabled($isLocked),
+                                    TextInput::make('mother_middle_name')
+                                        ->label('MIDDLE NAME')
+                                        ->disabled($isLocked),
+                                ]),
+
+                                // Children (27)
                                 Repeater::make('children')
-                                    ->label('NAME OF CHILDREN')
+                                    ->label('27. NAME OF CHILDREN (Write full name and list all)')
                                     ->schema([
-                                        TextInput::make('name')->label('NAME OF CHILD'),
-                                        DatePicker::make('birthdate')->label('DATE OF BIRTH'),
+                                        Grid::make(2)->schema([
+                                            TextInput::make('name')
+                                                ->label('NAME OF CHILDREN')
+                                                ->required(),
+                                            DatePicker::make('birthdate')
+                                                ->label('DATE OF BIRTH (mm/dd/yyyy)')
+                                                ->required(),
+                                        ]),
                                     ])
-                                    ->defaultItems(1)
-                                    ->minItems(1)
-                                    ->maxItems(12)
-                                    ->addable(true)
-                                    ->deletable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Child')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->columns(1)
+                            ->compact(),
 
-                        /* -------------------------------------------------
-                         | III. EDUCATIONAL BACKGROUND
-                         |-------------------------------------------------*/
+                        // III. EDUCATIONAL BACKGROUND
                         Section::make('III. EDUCATIONAL BACKGROUND')
+                            ->description('Item 28')
                             ->schema([
                                 Repeater::make('education')
+                                    ->label('28. ELEMENTARY/SECONDARY/VOCATIONAL/COLLEGE/GRADUATE STUDIES')
                                     ->schema([
-                                        Select::make('level')->label('26. LEVEL')->options([
-                                            'Elementary' => 'Elementary',
-                                            'Secondary' => 'Secondary',
-                                            'Vocational' => 'Vocational / Trade Course',
-                                            'College' => 'College',
-                                            'Graduate Studies' => 'Graduate Studies',
+                                        Grid::make(6)->schema([
+                                            Select::make('level')
+                                                ->label('LEVEL')
+                                                ->options([
+                                                    'ELEMENTARY' => 'ELEMENTARY',
+                                                    'SECONDARY' => 'SECONDARY',
+                                                    'VOCATIONAL/TRADE COURSE' => 'VOCATIONAL/TRADE COURSE',
+                                                    'COLLEGE' => 'COLLEGE',
+                                                    'GRADUATE STUDIES' => 'GRADUATE STUDIES',
+                                                ])
+                                                ->required(),
+                                            TextInput::make('school_name')
+                                                ->label('NAME OF SCHOOL (Write in full)')
+                                                ->required(),
+                                            TextInput::make('degree')
+                                                ->label('BASIC EDUCATION/DEGREE/COURSE')
+                                                ->required(),
+                                            TextInput::make('from_year')
+                                                ->label('FROM (YEAR)')
+                                                ->placeholder('YYYY')
+                                                ->maxLength(4),
+                                            TextInput::make('to_year')
+                                                ->label('TO (YEAR)')
+                                                ->placeholder('YYYY')
+                                                ->maxLength(4),
+                                            TextInput::make('honors')
+                                                ->label('SCHOLARSHIP/ACADEMIC HONORS'),
                                         ]),
-                                        TextInput::make('school_name')->label('NAME OF SCHOOL'),
-                                        TextInput::make('degree')->label('BASIC EDUCATION / DEGREE'),
-                                        Grid::make(2)->schema([
-                                            TextInput::make('from')->label('FROM'),
-                                            TextInput::make('to')->label('TO'),
-                                        ]),
-                                        TextInput::make('units_earned')->label('HIGHEST LEVEL / UNITS EARNED'),
-                                        TextInput::make('year_graduated')->label('YEAR GRADUATED'),
-                                        TextInput::make('honors')->label('SCHOLARSHIP / HONORS'),
                                     ])
-                                    ->defaultItems(3)
-                                    ->minItems(3)
-                                    ->maxItems(10)
-                                    ->addable(true)
-                                    ->deletable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Education')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
+
                     ]),
 
-
                 /* =========================================================
-                 | C2 – CIVIL SERVICE ELIGIBILITY
+                 | STEP 2: C2 – CIVIL SERVICE ELIGIBILITY & WORK EXPERIENCE
                  |=========================================================*/
-                Step::make('C2. CIVIL SERVICE ELIGIBILITY & WORK EXPERIENCE')
+                Step::make('C2. ELIGIBILITY & WORK EXPERIENCE')
+                    ->description('Civil Service Eligibility and Work Experience')
                     ->icon('heroicon-o-briefcase')
                     ->schema([
 
-                        /* =================================================
-                         | IV. CIVIL SERVICE ELIGIBILITY
-                         |=================================================*/
+                        // IV. CIVIL SERVICE ELIGIBILITY
                         Section::make('IV. CIVIL SERVICE ELIGIBILITY')
+                            ->description('Item 29')
                             ->schema([
                                 Repeater::make('civil_service_eligibility')
+                                    ->label('29. CAREER SERVICE/RA 1080/BOARD/BAR/SPECIAL LAWS/CES/CSEE/DRIVER\'S LICENSE')
                                     ->schema([
-                                        TextInput::make('career_service')
-                                            ->label('CAREER SERVICE / RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS / CES / CSEE')
-                                            ->columnSpan(2),
-
-                                        TextInput::make('rating')
-                                            ->label('RATING'),
-
-                                        DatePicker::make('exam_date')
-                                            ->label('DATE OF EXAM / CONFERMENT'),
-
-                                        TextInput::make('exam_place')
-                                            ->label('PLACE OF EXAM / CONFERMENT')
-                                            ->columnSpan(2),
-
-                                        TextInput::make('license_no')
-                                            ->label('LICENSE NUMBER'),
-
-                                        DatePicker::make('validity_date')
-                                            ->label('DATE OF VALIDITY'),
+                                        Grid::make(7)->schema([
+                                            TextInput::make('career_service')
+                                                ->label('CAREER SERVICE/RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS/CES/CSEE BARANGAY ELIGIBILITY/DRIVER\'S LICENSE')
+                                                ->columnSpan(2),
+                                            TextInput::make('rating')
+                                                ->label('RATING (If Applicable)')
+                                                ->numeric(),
+                                            DatePicker::make('exam_date')
+                                                ->label('DATE OF EXAM/CONFERMENT'),
+                                            TextInput::make('place')
+                                                ->label('PLACE OF EXAM/CONFERMENT'),
+                                            TextInput::make('license_no')
+                                                ->label('LICENSE NUMBER (if applicable)'),
+                                            DatePicker::make('validity')
+                                                ->label('DATE OF VALIDITY'),
+                                        ]),
                                     ])
-                                    ->columns(7)
-                                    ->defaultItems(1)   // ✅ CSC fixed rows
-                                    ->minItems(0)
-                                    ->maxItems(7)
-                                    ->addable(true)
-                                    ->deletable(true)
-                                    ->reorderable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Eligibility')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
 
-                        /* =================================================
-                         | V. WORK EXPERIENCE
-                         |=================================================*/
-                        Section::make('V. WORK EXPERIENCE (Include private employment. Start from your most recent work)')
+                        // V. WORK EXPERIENCE
+                        Section::make('V. WORK EXPERIENCE')
+                            ->description('Item 30 - (Include private employment. Start from your recent work)')
                             ->schema([
                                 Repeater::make('work_experience')
+                                    ->label('30. WORK EXPERIENCE')
                                     ->schema([
-                                        Grid::make(2)->schema([
-                                            DatePicker::make('from_date')
-                                                ->label('INCLUSIVE DATES (FROM)'),
-
-                                            DatePicker::make('to_date')
-                                                ->label('INCLUSIVE DATES (TO)'),
+                                        Grid::make(9)->schema([
+                                            DatePicker::make('from')
+                                                ->label('FROM (mm/dd/yyyy)')
+                                                ->required(),
+                                            DatePicker::make('to')
+                                                ->label('TO (mm/dd/yyyy)')
+                                                ->required(),
+                                            TextInput::make('position')
+                                                ->label('POSITION TITLE (Write in full/Do not abbreviate)')
+                                                ->columnSpan(2)
+                                                ->required(),
+                                            TextInput::make('agency')
+                                                ->label('DEPT/AGENCY/OFFICE/COMPANY (Write in full/Do not abbreviate)')
+                                                ->columnSpan(2)
+                                                ->required(),
+                                            TextInput::make('salary')
+                                                ->label('MONTHLY SALARY')
+                                                ->numeric()
+                                                ->prefix('₱'),
+                                            TextInput::make('salary_grade')
+                                                ->label('SALARY GRADE/STEP'),
+                                            TextInput::make('status')
+                                                ->label('STATUS OF APPOINTMENT'),
+                                            Radio::make('is_government')
+                                                ->label('GOV\'T SERVICE (Y/N)')
+                                                ->boolean()
+                                                ->inline(),
                                         ]),
-
-                                        TextInput::make('position_title')
-                                            ->label('POSITION TITLE')
-                                            ->columnSpan(2),
-
-                                        TextInput::make('department_agency')
-                                            ->label('DEPARTMENT / AGENCY / OFFICE / COMPANY')
-                                            ->columnSpan(2),
-
-                                        TextInput::make('monthly_salary')
-                                            ->label('MONTHLY SALARY')
-                                            ->numeric(),
-
-                                        TextInput::make('salary_grade_step')
-                                            ->label('SALARY GRADE & STEP (if applicable)'),
-
-                                        TextInput::make('status_of_appointment')
-                                            ->label('STATUS OF APPOINTMENT'),
-
-                                        Radio::make('government_service')
-                                            ->label('GOV’T SERVICE (Y / N)')
-                                            ->options([
-                                                'Y' => 'Y',
-                                                'N' => 'N',
-                                            ])
-                                            ->inline(),
                                     ])
-                                    ->columns(2)
-                                    ->defaultItems(1)  // ✅ CSC fixed continuation rows
-                                    ->minItems(0)
-                                    ->maxItems(28)
-                                    ->addable(true)
-                                    ->deletable(true)
-                                    ->reorderable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Work Experience')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
+
                     ]),
 
-
                 /* =========================================================
-                | C3 – VOLUNTARY WORK, L&D, OTHER INFORMATION
-                |=========================================================*/
-                Step::make('C3. VOLUNTARY WORK, L&D & OTHER INFORMATION')
+                 | STEP 3: C3 – VOLUNTARY WORK, L&D & OTHER INFORMATION
+                 |=========================================================*/
+                Step::make('C3. TRAINING & OTHER INFO')
+                    ->description('Voluntary Work, Learning & Development, Other Information')
                     ->icon('heroicon-o-clipboard-document-list')
                     ->schema([
 
-                        /* =================================================
-                         | VI. VOLUNTARY WORK OR INVOLVEMENT
-                         |=================================================*/
-                        Section::make('VI. VOLUNTARY WORK OR INVOLVEMENT IN CIVIC / NON-GOVERNMENT / PEOPLE / VOLUNTARY ORGANIZATION/S')
+                        // VI. VOLUNTARY WORK
+                        Section::make('VI. VOLUNTARY WORK OR INVOLVEMENT')
+                            ->description('Item 31 - In Civic/Non-Government/People/Voluntary Organizations')
                             ->schema([
                                 Repeater::make('voluntary_work')
+                                    ->label('31. VOLUNTARY WORK')
                                     ->schema([
-                                        TextInput::make('organization_name')
-                                            ->label('NAME & ADDRESS OF ORGANIZATION')
-                                            ->columnSpan(2),
-
-                                        Grid::make(2)->schema([
+                                        Grid::make(6)->schema([
+                                            TextInput::make('organization_name')
+                                                ->label('NAME & ADDRESS OF ORGANIZATION (Write in full)')
+                                                ->columnSpan(2),
                                             DatePicker::make('from_date')
-                                                ->label('INCLUSIVE DATES (FROM)'),
-
+                                                ->label('FROM (mm/dd/yyyy)'),
                                             DatePicker::make('to_date')
-                                                ->label('INCLUSIVE DATES (TO)'),
+                                                ->label('TO (mm/dd/yyyy)'),
+                                            TextInput::make('hours')
+                                                ->label('NUMBER OF HOURS')
+                                                ->numeric(),
+                                            TextInput::make('position')
+                                                ->label('POSITION/NATURE OF WORK'),
                                         ]),
-
-                                        TextInput::make('hours')
-                                            ->label('NUMBER OF HOURS')
-                                            ->numeric(),
-
-                                        TextInput::make('position')
-                                            ->label('POSITION / NATURE OF WORK'),
                                     ])
-                                    ->columns(2)
-                                    ->defaultItems(1)   // ✅ CSC fixed rows
-                                    ->minItems(0)
-                                    ->maxItems(7)
-                                    ->addable(true)
-                                    ->deletable(true)
-                                    ->reorderable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Voluntary Work')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
 
-                        /* =================================================
-                         | VII. LEARNING AND DEVELOPMENT (L&D)
-                         |=================================================*/
-                        Section::make('VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS / TRAINING PROGRAMS ATTENDED')
+                        // VII. LEARNING AND DEVELOPMENT
+                        Section::make('VII. LEARNING AND DEVELOPMENT (L&D)')
+                            ->description('Item 32 - Interventions/Training Programs Attended')
                             ->schema([
                                 Repeater::make('learning_development')
+                                    ->label('32. L&D INTERVENTIONS/TRAINING PROGRAMS')
                                     ->schema([
-                                        TextInput::make('training_title')
-                                            ->label('TITLE OF LEARNING AND DEVELOPMENT INTERVENTIONS / TRAINING PROGRAMS')
-                                            ->columnSpan(2),
-
-                                        Grid::make(2)->schema([
+                                        Grid::make(7)->schema([
+                                            TextInput::make('training_title')
+                                                ->label('TITLE OF L&D INTERVENTIONS/TRAINING (Write in full)')
+                                                ->columnSpan(2),
                                             DatePicker::make('from_date')
-                                                ->label('INCLUSIVE DATES (FROM)'),
-
+                                                ->label('FROM (mm/dd/yyyy)'),
                                             DatePicker::make('to_date')
-                                                ->label('INCLUSIVE DATES (TO)'),
+                                                ->label('TO (mm/dd/yyyy)'),
+                                            TextInput::make('hours')
+                                                ->label('NUMBER OF HOURS')
+                                                ->numeric(),
+                                            TextInput::make('type')
+                                                ->label('TYPE OF LD (Managerial/Supervisory/Technical/etc)'),
+                                            TextInput::make('conducted_by')
+                                                ->label('CONDUCTED/SPONSORED BY (Write in full)'),
                                         ]),
-
-                                        TextInput::make('hours')
-                                            ->label('NUMBER OF HOURS')
-                                            ->numeric(),
-
-                                        TextInput::make('type')
-                                            ->label('TYPE OF LD (Managerial / Supervisory / Technical / etc.)'),
-
-                                        TextInput::make('conducted_by')
-                                            ->label('CONDUCTED / SPONSORED BY')
-                                            ->columnSpan(2),
                                     ])
-                                    ->columns(2)
-                                    ->defaultItems(1)  // ✅ CSC continuation rows
-                                    ->minItems(0)
-                                    ->maxItems(21)
-                                    ->addable(true)
-                                    ->deletable(true)
-                                    ->reorderable(false),
-                            ]),
+                                    ->defaultItems(0)
+                                    ->addActionLabel('Add Training/L&D')
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
 
-                        /* =================================================
-                         | VIII. OTHER INFORMATION
-                         |=================================================*/
+                        // VIII. OTHER INFORMATION
                         Section::make('VIII. OTHER INFORMATION')
+                            ->description('Items 33-35')
                             ->schema([
                                 Grid::make(3)->schema([
 
                                     Repeater::make('special_skills')
-                                        ->label('31. SPECIAL SKILLS AND HOBBIES')
-                                        ->schema([
-                                            TextInput::make('skill')->label(''),
-                                        ])
-                                        ->defaultItems(1)
-                                        ->minItems(0)
-                                        ->maxItems(7)
-                                        ->addable(true)
-                                        ->deletable(true),
+                                        ->label('33. SPECIAL SKILLS and HOBBIES')
+                                        ->simple(
+                                            TextInput::make('skill')
+                                                ->label('')
+                                        )
+                                        ->defaultItems(0)
+                                        ->addActionLabel('Add Skill/Hobby')
+                                        ->disabled($isLocked),
 
                                     Repeater::make('non_academic_distinctions')
-                                        ->label('32. NON-ACADEMIC DISTINCTIONS / RECOGNITION')
-                                        ->schema([
-                                            TextInput::make('distinction')->label(''),
-                                        ])
-                                        ->defaultItems(1)
-                                        ->minItems(0)
-                                        ->maxItems(7)
-                                        ->addable(true)
-                                        ->deletable(true),
+                                        ->label('34. NON-ACADEMIC DISTINCTIONS/RECOGNITION (Write in full)')
+                                        ->simple(
+                                            TextInput::make('distinction')
+                                                ->label('')
+                                        )
+                                        ->defaultItems(0)
+                                        ->addActionLabel('Add Recognition')
+                                        ->disabled($isLocked),
 
                                     Repeater::make('membership_association')
-                                        ->label('33. MEMBERSHIP IN ASSOCIATION / ORGANIZATION')
-                                        ->schema([
-                                            TextInput::make('organization')->label(''),
-                                        ])
-                                        ->defaultItems(1)
-                                        ->minItems(0)
-                                        ->maxItems(7)
-                                        ->addable(true)
-                                        ->deletable(true),
+                                        ->label('35. MEMBERSHIP IN ASSOCIATION/ORGANIZATION (Write in full)')
+                                        ->simple(
+                                            TextInput::make('organization')
+                                                ->label('')
+                                        )
+                                        ->defaultItems(0)
+                                        ->addActionLabel('Add Membership')
+                                        ->disabled($isLocked),
                                 ]),
-                            ]),
+                            ])
+                            ->compact(),
+
                     ]),
 
                 /* =========================================================
-| C4 – OTHER INFORMATION (Items 34–40)
-|=========================================================*/
-                Step::make('C4. OTHER INFORMATION')
+                 | STEP 4: C4 – QUESTIONS, REFERENCES & DECLARATION
+                 |=========================================================*/
+                Step::make('C4. QUESTIONS & DECLARATION')
+                    ->description('Answer Questions, Provide References & Declaration')
                     ->icon('heroicon-o-exclamation-circle')
                     ->schema([
 
-                        Section::make('IX. OTHER INFORMATION')
-                            ->description('Answer the following questions truthfully. If YES, give details.')
+                        // IX. QUESTIONS
+                        Section::make('IX. ANSWER THE FOLLOWING QUESTIONS')
+                            ->description('36. Are you related by consanguinity or affinity to the appointing or recommending authority, or to the chief of bureau or office or to the person who has immediate supervision over you in the Office, Bureau or Department where you will be appointed:')
                             ->schema([
 
-                                /* 34 */
-                                Section::make('34. Are you related by consanguinity or affinity to any of the following:')
+                                // Question 36a
+                                Radio::make('related_third_degree')
+                                    ->label('a. within the third degree?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('related_third_degree_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('related_third_degree') === true)
+                                    ->disabled($isLocked),
+
+                                // Question 36b
+                                Radio::make('related_fourth_degree')
+                                    ->label('b. within the fourth degree (for Local Government Unit - Career Employees)?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('related_fourth_degree_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('related_fourth_degree') === true)
+                                    ->disabled($isLocked),
+
+                                // Question 37
+                                Radio::make('has_admin_case')
+                                    ->label('37. a. Have you ever been found guilty of any administrative offense?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('admin_case_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('has_admin_case') === true)
+                                    ->disabled($isLocked),
+
+                                // Question 38
+                                Radio::make('has_criminal_case')
+                                    ->label('38. Have you been criminally charged before any court?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Grid::make(2)
                                     ->schema([
-                                        Checkbox::make('related_third_degree')
-                                            ->label('a. Within the third degree (for National Government Employees)')
-                                            ->reactive(),
+                                        DatePicker::make('criminal_case_date_filed')
+                                            ->label('If YES, Date Filed:')
+                                            ->disabled($isLocked),
+                                        TextInput::make('criminal_case_status')
+                                            ->label('Status of Case/s:')
+                                            ->disabled($isLocked),
+                                    ])
+                                    ->visible(fn($get) => $get('has_criminal_case') === true),
 
-                                        Textarea::make('related_third_degree_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('related_third_degree')),
+                                // Question 39
+                                Radio::make('has_conviction')
+                                    ->label('39. Have you ever been convicted of any crime or violation of any law, decree, ordinance or regulation by any court or tribunal?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('conviction_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('has_conviction') === true)
+                                    ->disabled($isLocked),
 
-                                        Checkbox::make('related_fourth_degree')
-                                            ->label('b. Within the fourth degree (for Local Government Employees)')
-                                            ->reactive(),
+                                // Question 40
+                                Radio::make('has_been_separated')
+                                    ->label('40. Have you ever been separated from the service in any of the following modes: resignation, retirement, dropped from the rolls, dismissal, termination, end of term, finished contract or phased out (abolition) in the public or private sector?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('separation_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('has_been_separated') === true)
+                                    ->disabled($isLocked),
 
-                                        Textarea::make('related_fourth_degree_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('related_fourth_degree')),
-                                    ]),
+                                // Question 41
+                                Radio::make('has_election_candidacy')
+                                    ->label('41. a. Have you ever been a candidate in a national or local election held within the last year (except Barangay election)?')
+                                    ->boolean()
+                                    ->inline()
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                Textarea::make('election_candidacy_details')
+                                    ->label('If YES, give details:')
+                                    ->rows(2)
+                                    ->visible(fn($get) => $get('has_election_candidacy') === true)
+                                    ->disabled($isLocked),
 
-                                /* 35 */
-                                Section::make('35. Have you ever been found guilty of any administrative offense?')
+                                // Question 42a
+                                Checkbox::make('is_indigenous')
+                                    ->label('42. a. Are you a member of any indigenous group?')
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                TextInput::make('indigenous_details')
+                                    ->label('If YES, please specify:')
+                                    ->visible(fn($get) => $get('is_indigenous'))
+                                    ->disabled($isLocked),
+
+                                // Question 42b
+                                Checkbox::make('has_disability')
+                                    ->label('b. Are you a person with disability?')
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                TextInput::make('disability_details')
+                                    ->label('If YES, please specify ID No.:')
+                                    ->visible(fn($get) => $get('has_disability'))
+                                    ->disabled($isLocked),
+
+                                // Question 42c
+                                Checkbox::make('is_solo_parent')
+                                    ->label('c. Are you a solo parent?')
+                                    ->reactive()
+                                    ->disabled($isLocked),
+                                TextInput::make('solo_parent_details')
+                                    ->label('If YES, please specify ID No.:')
+                                    ->visible(fn($get) => $get('is_solo_parent'))
+                                    ->disabled($isLocked),
+
+                            ])
+                            ->columns(1)
+                            ->compact(),
+
+                        // REFERENCES
+                        Section::make('43. REFERENCES')
+                            ->description('(Person not related by consanguinity or affinity to applicant/appointee)')
+                            ->schema([
+                                Repeater::make('references')
                                     ->schema([
-                                        Radio::make('has_admin_case')
-                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
-                                            ->inline()
-                                            ->reactive(),
+                                        Grid::make(3)->schema([
+                                            TextInput::make('name')
+                                                ->label('NAME')
+                                                ->required(),
+                                            TextInput::make('address')
+                                                ->label('ADDRESS')
+                                                ->required(),
+                                            TextInput::make('tel')
+                                                ->label('TEL. NO.'),
+                                        ]),
+                                    ])
+                                    ->defaultItems(3)
+                                    ->minItems(3)
+                                    ->maxItems(3)
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->columnSpanFull()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
 
-                                        Textarea::make('admin_case_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('has_admin_case') === 'Yes'),
-                                    ]),
+                        // GOVERNMENT ID & DECLARATION
+                        Section::make('44. DECLARATION')
+                            ->description('I declare under oath that I have personally accomplished this Personal Data Sheet which is a true, correct and complete statement pursuant to the provisions of pertinent laws, rules and regulations of the Republic of the Philippines. I authorize the agency head/authorized representative to verify/validate the contents stated herein. I agree that any misrepresentation made in this document and its attachments shall cause the filing of administrative/criminal case/s against me.')
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    TextInput::make('gov_id_type')
+                                        ->label('Government Issued ID (i.e. Passport, GSIS, SSS, PRC, Driver\'s License, etc.)')
+                                        ->disabled($isLocked),
+                                    TextInput::make('gov_id_no')
+                                        ->label('ID/License/Passport No.')
+                                        ->disabled($isLocked),
+                                    TextInput::make('gov_id_issued')
+                                        ->label('Date/Place of Issuance')
+                                        ->disabled($isLocked),
+                                ]),
 
-                                /* 36 */
-                                Section::make('36. Have you been criminally charged before any court?')
-                                    ->schema([
-                                        Radio::make('has_criminal_case')
-                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
-                                            ->inline()
-                                            ->reactive(),
+                                DatePicker::make('date_accomplished')
+                                    ->label('Date Accomplished')
+                                    ->default(now())
+                                    ->required()
+                                    ->disabled($isLocked),
+                            ])
+                            ->compact(),
 
-                                        Grid::make(2)
-                                            ->visible(fn($get) => $get('has_criminal_case') === 'Yes')
-                                            ->schema([
-                                                TextInput::make('criminal_case_status')
-                                                    ->label('Status of Case/s'),
-
-                                                DatePicker::make('criminal_case_date_filed')
-                                                    ->label('Date Filed'),
-                                            ]),
-                                    ]),
-
-                                /* 37 */
-                                Section::make('37. Have you ever been convicted of any crime or violation of any law?')
-                                    ->schema([
-                                        Radio::make('has_conviction')
-                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
-                                            ->inline()
-                                            ->reactive(),
-
-                                        Textarea::make('conviction_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('has_conviction') === 'Yes'),
-                                    ]),
-
-                                /* 38 */
-                                Section::make('38. Have you ever been separated from the service?')
-                                    ->schema([
-                                        Radio::make('has_been_separated')
-                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
-                                            ->inline()
-                                            ->reactive(),
-
-                                        Textarea::make('separation_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('has_been_separated') === 'Yes'),
-                                    ]),
-
-                                /* 39 */
-                                Section::make('39. Have you ever been a candidate in a national or local election?')
-                                    ->schema([
-                                        Radio::make('has_election_candidacy')
-                                            ->options(['Yes' => 'Yes', 'No' => 'No'])
-                                            ->inline()
-                                            ->reactive(),
-
-                                        Textarea::make('election_candidacy_details')
-                                            ->label('If YES, give details')
-                                            ->rows(2)
-                                            ->visible(fn($get) => $get('has_election_candidacy') === 'Yes'),
-                                    ]),
-
-                                /* 40 */
-                                Section::make('40. Do you belong to any of the following?')
-                                    ->schema([
-                                        Checkbox::make('is_indigenous')
-                                            ->label('a. Indigenous Group')
-                                            ->reactive(),
-
-                                        TextInput::make('indigenous_details')
-                                            ->label('Please specify')
-                                            ->visible(fn($get) => $get('is_indigenous')),
-
-                                        Checkbox::make('has_disability')
-                                            ->label('b. Person with Disability')
-                                            ->reactive(),
-
-                                        TextInput::make('disability_details')
-                                            ->label('Please specify')
-                                            ->visible(fn($get) => $get('has_disability')),
-
-                                        Checkbox::make('is_solo_parent')
-                                            ->label('c. Solo Parent')
-                                            ->reactive(),
-
-                                        TextInput::make('solo_parent_details')
-                                            ->label('Please specify')
-                                            ->visible(fn($get) => $get('is_solo_parent')),
-                                    ]),
-                                /* =================================================
-                                | 41. REFERENCES
-                                |=================================================*/
-                                Section::make('41. REFERENCES (Person not related by consanguinity or affinity)')
-                                    ->schema([
-                                        Repeater::make('references')
-                                            ->schema([
-                                                TextInput::make('name')->label('NAME')->required(),
-                                                TextInput::make('address')->label('ADDRESS')->required(),
-                                                TextInput::make('tel')->label('TEL. NO.'),
-                                            ])
-                                            ->columns(3)
-                                            ->defaultItems(3)     // CSC requires 3 references
-                                            ->minItems(3)
-                                            ->maxItems(3)
-                                            ->addable(false)
-                                            ->deletable(false),
-                                    ]),
-
-                                /* =================================================
-                                | 42. GOVERNMENT ISSUED ID
-                                |=================================================*/
-                                Section::make('42. GOVERNMENT ISSUED ID')
-                                    ->schema([
-                                        Select::make('gov_id_type')
-                                            ->label('Government Issued ID')
-                                            ->options([
-                                                'Passport' => 'Passport',
-                                                'GSIS' => 'GSIS',
-                                                'SSS' => 'SSS',
-                                                'PRC' => 'PRC',
-                                                'Driver’s License' => 'Driver’s License',
-                                                'Others' => 'Others',
-                                            ]),
-
-                                        TextInput::make('gov_id_no')
-                                            ->label('ID / License / Passport No.'),
-
-                                        TextInput::make('gov_id_issued')
-                                            ->label('Date / Place of Issuance'),
-                                    ]),
-
-                                /* =================================================
-                                | SIGNATURE & DATE (DATA ONLY – IMAGE NOT REQUIRED)
-                                |=================================================*/
-                                Section::make('DECLARATION')
-                                    ->schema([
-                                        DatePicker::make('date_accomplished')
-                                            ->label('Date Accomplished'),
-                                    ]),
-                            ]),
                     ]),
 
             ])
                 ->columnSpanFull()
-                ->persistStepInQueryString(),
+                ->persistStepInQueryString()
+                ->skippable(Auth::user()->role === 'admin'),
 
         ]);
-
-
     }
 
-    /* -----------------------------------------------------------------
-     | TABLE
-     |-----------------------------------------------------------------*/
     public static function table(Table $table): Table
     {
         return $table
@@ -659,9 +831,18 @@ class PersonalDataSheetResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('surname')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('first_name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('created_at')->date()->sortable(),
+                Tables\Columns\TextColumn::make('surname')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('first_name')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Submitted')
+                    ->date()
+                    ->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
@@ -670,10 +851,17 @@ class PersonalDataSheetResource extends Resource
                         'danger' => 'disapproved',
                     ])
                     ->sortable(),
-
             ])
-
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'submitted' => 'Submitted',
+                        'approved' => 'Approved',
+                        'disapproved' => 'Disapproved',
+                    ]),
+            ])
             ->actions([
+
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
@@ -683,6 +871,7 @@ class PersonalDataSheetResource extends Resource
                         Auth::user()->role === 'admin' &&
                         $record->status !== 'approved'
                     )
+                    ->requiresConfirmation()
                     ->action(
                         fn($record) =>
                         $record->update(['status' => 'approved'])
@@ -710,7 +899,6 @@ class PersonalDataSheetResource extends Resource
                         ]);
                     }),
 
-
                 Tables\Actions\Action::make('remarks')
                     ->label('Add Remarks')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -723,30 +911,30 @@ class PersonalDataSheetResource extends Resource
                             ->required(),
                     ])
                     ->action(function ($record, array $data) {
-                        $record->update([
-                            'remarks' => $data['remarks'],
-                        ]);
+                        $record->update(['remarks' => $data['remarks']]);
                     }),
 
-
                 Tables\Actions\Action::make('print')
-                    ->label('Print PDS')
+                    ->label('Print')
                     ->icon('heroicon-o-printer')
                     ->visible(fn($record) => $record->status === 'approved')
-                    ->url(
-                        fn($record) =>
-                        route('pds.print', $record)
-                    )
+                    ->url(fn($record) => route('pds.print', $record))
                     ->openUrlInNewTab(),
 
                 Tables\Actions\ViewAction::make(),
+
                 Tables\Actions\EditAction::make()
                     ->visible(
                         fn($record) =>
                         Auth::user()->role === 'employee' &&
                         $record->status !== 'approved'
-                    )
-                    ->visible(fn() => Auth::user()->role === 'employee'),
+                    ),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => Auth::user()->role === 'admin'),
+                ]),
             ]);
     }
 
@@ -760,6 +948,7 @@ class PersonalDataSheetResource extends Resource
 
         return $query;
     }
+
     public static function getNavigationBadge(): ?string
     {
         if (auth()->user()?->role !== 'admin') {
@@ -770,6 +959,7 @@ class PersonalDataSheetResource extends Resource
 
         return $count > 0 ? (string) $count : null;
     }
+
     public static function getNavigationBadgeColor(): ?string
     {
         if (auth()->user()?->role !== 'admin') {
@@ -781,14 +971,12 @@ class PersonalDataSheetResource extends Resource
         return $count > 0 ? 'warning' : 'success';
     }
 
-
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListPersonalDataSheets::route('/'),
             'create' => Pages\CreatePersonalDataSheet::route('/create'),
             'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
-            
         ];
     }
 }

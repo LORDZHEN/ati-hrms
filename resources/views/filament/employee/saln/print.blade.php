@@ -3,320 +3,360 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SALN - Statement of Assets, Liabilities and Net Worth</title>
+    <title>SALN - {{ $saln->declarant_family_name }}, {{ $saln->declarant_first_name }}</title>
     <style>
         @page {
             size: A4;
-            margin: 0.1in;
+            margin: 0.5in 0.75in;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            font-size: 9px;
-            line-height: 1.2;
+            font-family: 'Arial', sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
             margin: 0;
             padding: 0;
             color: #000;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
+        /* Header Styles */
         .header-date {
             text-align: right;
-            font-size: 9px;
-            margin-bottom: 10px;
+            font-size: 8pt;
+            margin-bottom: 8px;
+            line-height: 1.2;
         }
 
         .form-title {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14pt;
             text-align: center;
-            margin: 10px 0;
+            margin: 8px 0;
             text-decoration: underline;
+            letter-spacing: 0.5px;
         }
 
         .as-of-date {
             text-align: center;
-            margin: 8px 0;
-            font-size: 12px;
+            margin: 6px auto;
+            font-size: 11pt;
             border-bottom: 1px solid #000;
-            width: 300px;
-            margin-left: auto;
-            margin-right: auto;
+            width: 320px;
             padding-bottom: 2px;
+            font-weight: bold;
         }
 
         .required-by {
             text-align: center;
-            font-size: 10px;
-            margin-bottom: 15px;
+            font-size: 9pt;
+            margin-bottom: 10px;
         }
 
+        /* Checkbox Section */
         .checkbox-section {
             margin: 10px 0;
-            font-size: 10px;
+            font-size: 9pt;
+            line-height: 1.5;
+        }
+
+        .checkbox-note {
+            font-weight: bold;
+            margin-bottom: 8px;
         }
 
         .checkbox {
             display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 1px solid #000;
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid #000;
             text-align: center;
             margin-right: 5px;
             vertical-align: middle;
-            font-size: 9px;
+            font-size: 10pt;
+            line-height: 12px;
+            font-weight: bold;
         }
 
         .checked {
             background-color: #000;
+            color: #fff;
         }
 
+        /* Personal Information */
         .personal-info {
-            margin: 15px 0;
-            font-size: 9px;
+            margin: 12px 0;
+            font-size: 9pt;
         }
 
         .info-row {
             display: flex;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             align-items: baseline;
         }
 
         .info-label {
             font-weight: bold;
-            width: 120px;
+            width: 110px;
             flex-shrink: 0;
+            font-size: 8.5pt;
         }
 
         .info-value {
             border-bottom: 1px solid #000;
             flex-grow: 1;
-            min-height: 18px;
-            padding: 2px 5px;
-            margin-right: 20px;
+            min-height: 20px;
+            padding: 2px 6px;
+            margin-right: 15px;
+            position: relative;
         }
 
-        .name-fields {
+        .name-labels {
+            position: absolute;
+            bottom: -14px;
+            left: 0;
+            right: 0;
             display: flex;
-            gap: 10px;
-            margin-top: 5px;
+            gap: 8px;
+            font-size: 7.5pt;
+            font-style: italic;
         }
 
-        .name-field {
+        .name-labels span {
             flex: 1;
             text-align: center;
         }
 
-        .name-field-label {
-            font-size: 9px;
-            margin-bottom: 2px;
-        }
-
-        .name-field-value {
-            border-bottom: 1px solid #000;
-            min-height: 18px;
-            padding: 2px;
-        }
-
+        /* Section Headers */
         .section-header {
             font-weight: bold;
             text-align: center;
             text-decoration: underline;
-            margin: 20px 0 10px 0;
-            font-size: 10px;
+            margin: 15px 0 8px 0;
+            font-size: 10pt;
         }
 
         .section-subtitle {
             text-align: center;
             font-style: italic;
-            margin-bottom: 10px;
-            font-size: 9px;
+            margin-bottom: 8px;
+            font-size: 8.5pt;
         }
 
-        .children-table, .assets-table, .liabilities-table, .business-table, .relatives-table {
+        /* Tables */
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
+            margin: 8px 0;
         }
 
-        .children-table th, .children-table td,
-        .assets-table th, .assets-table td,
-        .liabilities-table th, .liabilities-table td,
-        .business-table th, .business-table td,
-        .relatives-table th, .relatives-table td {
+        th, td {
             border: 1px solid #000;
-            padding: 4px;
+            padding: 3px 4px;
             text-align: center;
             vertical-align: middle;
-            font-size: 9px;
+            font-size: 8pt;
         }
 
-        .children-table th, .assets-table th, .liabilities-table th, .business-table th, .relatives-table th {
+        th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 9px;
-        }
-
-        .assets-section {
-            margin: 15px 0;
-        }
-
-        .subsection {
-            margin: 15px 0;
-        }
-
-        .subsection-title {
-            font-weight: bold;
-            margin-bottom: 8px;
-            font-size: 9px;
-        }
-
-        .subtotal-row {
-            font-weight: bold;
-            text-align: right;
-        }
-
-        .total-row {
-            font-weight: bold;
-            font-size: 10px;
-            text-align: right;
-            margin: 10px 0;
-            border-bottom: 1px solid #000;
-            padding-bottom: 2px;
-        }
-
-        .net-worth-section {
-            border: 2px solid #000;
-            padding: 8px;
-            margin: 15px 0;
-            text-align: center;
-            font-weight: bold;
-            font-size: 10px;
-        }
-
-        .certification {
-            text-align: justify;
-            font-size: 10px;
-            margin: 15px 0;
-            line-height: 1.3;
-        }
-
-        .signature-section {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
-
-        .signature-left, .signature-right {
-            width: 45%;
-        }
-
-        .signature-line {
-            border-bottom: 1px solid #000;
-            margin: 20px 0 5px 0;
-            text-align: center;
-            height: 30px;
-        }
-
-        .signature-label {
-            text-align: center;
-            font-size: 10px;
-            margin-bottom: 10px;
-        }
-
-        .id-info {
-            margin-top: 10px;
-            font-size: 10px;
-        }
-
-        .id-line {
-            border-bottom: 1px solid #000;
-            margin: 3px 0;
-            min-height: 14px;
-            padding: 2px;
-        }
-
-        .oath-section {
-            margin-top: 25px;
-            text-align: center;
-        }
-
-        .oath-signature {
-            margin-top: 25px;
-            text-align: center;
-        }
-
-        .page-number {
-            text-align: right;
-            margin-top: 15px;
-            font-size: 10px;
-        }
-
-        .note-section {
-            margin-top: 20px;
-            border-top: 2px solid #000;
-            padding-top: 10px;
-            font-size: 9px;
-        }
-
-        .page-break {
-            page-break-before: always;
-        }
-
-        .compact-row {
-            height: 22px;
+            font-size: 7.5pt;
+            line-height: 1.2;
         }
 
         .left-align {
             text-align: left !important;
         }
 
-        .checkbox-group {
-            margin: 8px 0;
+        .compact-row {
+            height: 22px;
         }
 
         .filled-value {
+            font-weight: 500;
+        }
+
+        /* Subtotal and Total Rows */
+        .subtotal-row {
             font-weight: bold;
-            color: #000;
+            background-color: #f9f9f9;
         }
 
-        @media print {
-            body { -webkit-print-color-adjust: exact; }
-            .no-print { display: none; }
+        .total-row {
+            font-weight: bold;
+            font-size: 9.5pt;
+            text-align: right;
+            margin: 6px 0;
+            padding: 4px 0;
+            border-top: 2px solid #000;
+            border-bottom: 1px solid #000;
         }
 
+        /* Net Worth Box */
+        .net-worth-section {
+            border: 2px solid #000;
+            padding: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10pt;
+            background-color: #f5f5f5;
+        }
+
+        /* Certification */
+        .certification {
+            text-align: justify;
+            font-size: 8.5pt;
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        /* Signature Section */
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            gap: 30px;
+        }
+
+        .signature-box {
+            width: 48%;
+        }
+
+        .signature-line {
+            border-bottom: 1.5px solid #000;
+            margin: 20px 0 5px 0;
+            text-align: center;
+            height: 25px;
+        }
+
+        .signature-label {
+            text-align: center;
+            font-size: 8.5pt;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .id-info {
+            margin-top: 6px;
+            font-size: 8pt;
+        }
+
+        .id-line {
+            border-bottom: 1px solid #000;
+            margin: 2px 0;
+            min-height: 14px;
+            padding: 1px 3px;
+        }
+
+        /* Oath Section */
+        .oath-section {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .oath-text {
+            text-decoration: underline;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 8.5pt;
+            line-height: 1.4;
+        }
+
+        .oath-signature {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        /* Page Number */
+        .page-number {
+            text-align: right;
+            margin-top: 10px;
+            font-size: 8.5pt;
+            font-weight: bold;
+        }
+
+        /* Notes Section */
+        .note-section {
+            margin-top: 12px;
+            border-top: 2px solid #000;
+            padding-top: 6px;
+            font-size: 7.5pt;
+            line-height: 1.3;
+        }
+
+        /* Page Break */
+        .page-break {
+            page-break-before: always;
+            page-break-inside: avoid;
+        }
+
+        /* Prevent page breaks inside important sections */
+        .no-page-break {
+            page-break-inside: avoid;
+        }
+
+        /* Print Button */
         .print-button {
             position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px 20px;
-            background-color: #007bff;
+            top: 15px;
+            right: 15px;
+            padding: 12px 24px;
+            background-color: #1e40af;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 600;
             z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
         }
 
         .print-button:hover {
-            background-color: #0056b3;
+            background-color: #1e3a8a;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+
+        /* Asset subsection styling */
+        .asset-subsection {
+            margin-top: 8px;
+            margin-bottom: 6px;
+        }
+
+        .subsection-title {
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .subsection-description {
+            font-size: 8pt;
+            font-style: italic;
         }
     </style>
-    <script>
-        function printPage() {
-            window.print();
-        }
-    </script>
 </head>
 <body>
     <!-- Print Button -->
-    <button class="print-button no-print" onclick="printPage()">Print SALN</button>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print SALN</button>
 
+    <!-- PAGE 1 START -->
     <!-- Header -->
     <div class="header-date">
         Revised as of January 2015<br>
@@ -325,73 +365,86 @@
     </div>
 
     <div class="form-title">SWORN STATEMENT OF ASSETS, LIABILITIES AND NET WORTH</div>
-    <div class="as-of-date">As of {{ $saln->as_of_date ? \Carbon\Carbon::parse($saln->as_of_date)->format('F d, Y') : '____________________' }}</div>
+
+    <div class="as-of-date">
+        As of {{ $saln->as_of_date ? \Carbon\Carbon::parse($saln->as_of_date)->format('F d, Y') : '____________________' }}
+    </div>
+
     <div class="required-by">(Required by R.A. 6713)</div>
 
     <!-- Filing Type -->
     <div class="checkbox-section">
-        <strong>Note:</strong> Husband and wife who are both public officials and employees may file the required statements jointly or separately.<br><br>
-        <span class="checkbox {{ $saln->filing_type === 'joint' ? 'checked' : '' }}">{{ $saln->filing_type === 'joint' ? '✓' : '' }}</span> Joint Filing &nbsp;&nbsp;&nbsp;&nbsp;
-        <span class="checkbox {{ $saln->filing_type === 'separate' ? 'checked' : '' }}">{{ $saln->filing_type === 'separate' ? '✓' : '' }}</span> Separate Filing &nbsp;&nbsp;&nbsp;&nbsp;
-        <span class="checkbox {{ $saln->filing_type === 'not_applicable' ? 'checked' : '' }}">{{ $saln->filing_type === 'not_applicable' ? '✓' : '' }}</span> Not Applicable
+        <div class="checkbox-note">
+            Note: Husband and wife who are both public officials and employees may file the required statements jointly or separately.
+        </div>
+        <div>
+            <span class="checkbox {{ $saln->joint_filing ? 'checked' : '' }}">{{ $saln->joint_filing ? '✓' : '' }}</span> Joint Filing &nbsp;&nbsp;&nbsp;
+            <span class="checkbox {{ $saln->separate_filing ? 'checked' : '' }}">{{ $saln->separate_filing ? '✓' : '' }}</span> Separate Filing &nbsp;&nbsp;&nbsp;
+            <span class="checkbox {{ $saln->not_applicable ? 'checked' : '' }}">{{ $saln->not_applicable ? '✓' : '' }}</span> Not Applicable
+        </div>
     </div>
 
     <!-- Personal Information -->
-    <div class="personal-info">
+    <div class="personal-info no-page-break">
+        <!-- Declarant Name and Position -->
         <div class="info-row">
             <div class="info-label">DECLARANT:</div>
-            <div class="info-value filled-value" style="position: relative;">
-                {{ $saln->user->name ?? '' }}
-                <div style="position: absolute; bottom: -15px; left: 0; right: 0; display: flex; gap: 5px; font-size: 9px;">
-                    <span style="flex: 2; text-align: center;">(Family Name)</span>
-                    <span style="flex: 2; text-align: center;">(First Name)</span>
-                    <span style="flex: 1; text-align: center;">(M.I.)</span>
+            <div class="info-value filled-value">
+                {{ $saln->declarant_family_name }}, {{ $saln->declarant_first_name }} {{ $saln->declarant_middle_initial }}
+                <div class="name-labels">
+                    <span>(Family Name)</span>
+                    <span>(First Name)</span>
+                    <span>(M.I.)</span>
                 </div>
             </div>
             <div class="info-label">POSITION:</div>
-            <div class="info-value filled-value">{{ $saln->position ?? '' }}</div>
+            <div class="info-value filled-value">{{ $saln->declarant_position ?? '' }}</div>
         </div>
 
-        <div class="info-row" style="margin-top: 20px;">
+        <!-- Address and Agency -->
+        <div class="info-row" style="margin-top: 18px;">
             <div class="info-label">ADDRESS:</div>
-            <div class="info-value filled-value">{{ $saln->address ?? '' }}</div>
+            <div class="info-value filled-value">{{ $saln->user->full_address ?? '' }}</div>
             <div class="info-label">AGENCY/OFFICE:</div>
-            <div class="info-value filled-value">{{ $saln->agency_office ?? '' }}</div>
+            <div class="info-value filled-value">{{ $saln->declarant_agency_office ?? '' }}</div>
         </div>
 
+        <!-- Office Address -->
         <div class="info-row">
-            <div style="width: 120px;"></div>
-            <div style="flex-grow: 1; margin-right: 20px;"></div>
+            <div style="width: 110px;"></div>
+            <div style="flex-grow: 1; margin-right: 15px;"></div>
             <div class="info-label">OFFICE ADDRESS:</div>
-            <div class="info-value filled-value">{{ $saln->office_address ?? '' }}</div>
+            <div class="info-value filled-value">{{ $saln->declarant_office_address ?? '' }}</div>
         </div>
 
         <br>
 
+        <!-- Spouse Name and Position -->
         <div class="info-row">
             <div class="info-label">SPOUSE:</div>
-            <div class="info-value filled-value" style="position: relative;">
-                {{ $saln->spouse_name ?? '' }}
-                <div style="position: absolute; bottom: -15px; left: 0; right: 0; display: flex; gap: 5px; font-size: 9px;">
-                    <span style="flex: 2; text-align: center;">(Family Name)</span>
-                    <span style="flex: 2; text-align: center;">(First Name)</span>
-                    <span style="flex: 1; text-align: center;">(M.I.)</span>
+            <div class="info-value filled-value">
+                {{ $saln->spouse_family_name ? $saln->spouse_family_name . ', ' . $saln->spouse_first_name . ' ' . $saln->spouse_middle_initial : 'N/A' }}
+                <div class="name-labels">
+                    <span>(Family Name)</span>
+                    <span>(First Name)</span>
+                    <span>(M.I.)</span>
                 </div>
             </div>
             <div class="info-label">POSITION:</div>
             <div class="info-value filled-value">{{ $saln->spouse_position ?? '' }}</div>
         </div>
 
-        <div class="info-row" style="margin-top: 20px;">
-            <div style="width: 120px;"></div>
-            <div style="flex-grow: 1; margin-right: 20px;"></div>
+        <!-- Spouse Agency and Office Address -->
+        <div class="info-row" style="margin-top: 18px;">
+            <div style="width: 110px;"></div>
+            <div style="flex-grow: 1; margin-right: 15px;"></div>
             <div class="info-label">AGENCY/OFFICE:</div>
             <div class="info-value filled-value">{{ $saln->spouse_agency_office ?? '' }}</div>
         </div>
 
         <div class="info-row">
-            <div style="width: 120px;"></div>
-            <div style="flex-grow: 1; margin-right: 20px;"></div>
+            <div style="width: 110px;"></div>
+            <div style="flex-grow: 1; margin-right: 15px;"></div>
             <div class="info-label">OFFICE ADDRESS:</div>
             <div class="info-value filled-value">{{ $saln->spouse_office_address ?? '' }}</div>
         </div>
@@ -399,15 +452,21 @@
 
     <!-- Children Section -->
     <div class="section-header">UNMARRIED CHILDREN BELOW EIGHTEEN (18) YEARS OF AGE LIVING IN DECLARANT'S HOUSEHOLD</div>
-    <table class="children-table">
+
+    <table class="no-page-break">
         <thead>
             <tr>
                 <th style="width: 60%;">NAME</th>
-                <th style="width: 20%;">DATE OF BIRTH</th>
-                <th style="width: 20%;">AGE</th>
+                <th style="width: 25%;">DATE OF BIRTH</th>
+                <th style="width: 15%;">AGE</th>
             </tr>
         </thead>
         <tbody>
+            @php
+                $childrenCount = $saln->children->count();
+                $minRows = 3;
+            @endphp
+
             @forelse($saln->children as $child)
                 <tr class="compact-row">
                     <td class="left-align filled-value">{{ $child->name }}</td>
@@ -415,7 +474,7 @@
                     <td class="filled-value">{{ $child->age }}</td>
                 </tr>
             @empty
-                @for($i = 0; $i < 3; $i++)
+                @for($i = 0; $i < $minRows; $i++)
                     <tr class="compact-row">
                         <td></td>
                         <td></td>
@@ -424,8 +483,8 @@
                 @endfor
             @endforelse
 
-            @if($saln->children->count() > 0 && $saln->children->count() < 3)
-                @for($i = $saln->children->count(); $i < 3; $i++)
+            @if($childrenCount > 0 && $childrenCount < $minRows)
+                @for($i = $childrenCount; $i < $minRows; $i++)
                     <tr class="compact-row">
                         <td></td>
                         <td></td>
@@ -436,35 +495,45 @@
         </tbody>
     </table>
 
-    <!-- Assets Section -->
+    <!-- Assets Section Header -->
     <div class="section-header">ASSETS, LIABILITIES AND NETWORTH</div>
     <div class="section-subtitle">
         (Including those of the spouse and unmarried children below eighteen (18) years of age living in declarant's household)
     </div>
 
-    <div class="assets-section">
-        <div class="subsection-title">1. ASSETS</div>
+    <div style="margin-top: 8px;">
+        <strong style="font-size: 9.5pt;">1. ASSETS</strong>
 
         <!-- Real Properties -->
-        <div class="subsection">
-            <strong>a. Real Properties*</strong>
-            <table class="assets-table">
+        <div class="asset-subsection">
+            <div>
+                <span class="subsection-title">a. Real Properties</span>
+                <span class="subsection-description">(Land, Buildings, and other Real Estate)</span>
+            </div>
+
+            <table>
                 <thead>
                     <tr>
-                        <th rowspan="2" style="width: 12%;">DESCRIPTION</th>
-                        <th rowspan="2" style="width: 8%;">KIND</th>
-                        <th rowspan="2" style="width: 15%;">EXACT LOCATION</th>
-                        <th rowspan="2" style="width: 10%;">ASSESSED VALUE</th>
-                        <th rowspan="2" style="width: 12%;">CURRENT FAIR MARKET VALUE</th>
-                        <th colspan="3" style="width: 25%;">ACQUISITION</th>
+                        <th rowspan="2" style="width: 14%;">DESCRIPTION</th>
+                        <th rowspan="2" style="width: 9%;">KIND</th>
+                        <th rowspan="2" style="width: 16%;">EXACT LOCATION</th>
+                        <th rowspan="2" style="width: 11%;">ASSESSED VALUE</th>
+                        <th rowspan="2" style="width: 13%;">CURRENT FAIR MARKET VALUE</th>
+                        <th colspan="3" style="width: 37%;">ACQUISITION</th>
                     </tr>
                     <tr>
-                        <th style="width: 8%;">YEAR</th>
-                        <th style="width: 8%;">MODE</th>
-                        <th style="width: 9%;">COST</th>
+                        <th style="width: 9%;">YEAR</th>
+                        <th style="width: 14%;">MODE</th>
+                        <th style="width: 14%;">COST</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $realPropertiesCount = $saln->realProperties->count();
+                        $minRealRows = 2; // Reduced to fit on page 1
+                        $realSubtotal = $saln->realProperties->sum('current_fair_market_value');
+                    @endphp
+
                     @forelse($saln->realProperties as $property)
                         <tr class="compact-row">
                             <td class="left-align filled-value">{{ $property->description }}</td>
@@ -473,42 +542,28 @@
                             <td class="filled-value">₱{{ number_format($property->assessed_value, 2) }}</td>
                             <td class="filled-value">₱{{ number_format($property->current_fair_market_value, 2) }}</td>
                             <td class="filled-value">{{ $property->acquisition_year }}</td>
-                            <td class="filled-value">{{ $property->acquisition_mode }}</td>
+                            <td class="filled-value">{{ $property->mode_of_acquisition }}</td>
                             <td class="filled-value">₱{{ number_format($property->acquisition_cost, 2) }}</td>
                         </tr>
                     @empty
-                        @for($i = 0; $i < 3; $i++)
+                        @for($i = 0; $i < $minRealRows; $i++)
                             <tr class="compact-row">
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                             </tr>
                         @endfor
                     @endforelse
 
-                    @if($saln->realProperties->count() > 0 && $saln->realProperties->count() < 3)
-                        @for($i = $saln->realProperties->count(); $i < 3; $i++)
+                    @if($realPropertiesCount > 0 && $realPropertiesCount < $minRealRows)
+                        @for($i = $realPropertiesCount; $i < $minRealRows; $i++)
                             <tr class="compact-row">
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                             </tr>
                         @endfor
                     @endif
 
                     <tr class="subtotal-row">
-                        <td colspan="4" style="text-align: right; font-weight: bold;">Subtotal:</td>
-                        <td style="font-weight: bold;">₱{{ number_format($saln->realProperties->sum('current_fair_market_value'), 2) }}</td>
+                        <td colspan="4" style="text-align: right;">Subtotal:</td>
+                        <td>₱{{ number_format($realSubtotal, 2) }}</td>
                         <td colspan="3"></td>
                     </tr>
                 </tbody>
@@ -516,9 +571,13 @@
         </div>
 
         <!-- Personal Properties -->
-        <div class="subsection">
-            <strong>b. Personal Properties*</strong>
-            <table class="assets-table">
+        <div class="asset-subsection">
+            <div>
+                <span class="subsection-title">b. Personal Properties</span>
+                <span class="subsection-description">(Vehicles, Jewelry, Cash, Bank Deposits, etc.)</span>
+            </div>
+
+            <table>
                 <thead>
                     <tr>
                         <th style="width: 60%;">DESCRIPTION</th>
@@ -527,6 +586,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $personalPropertiesCount = $saln->personalProperties->count();
+                        $minPersonalRows = 3; // Reduced to fit on page 1
+                        $personalSubtotal = $saln->personalProperties->sum('acquisition_cost');
+                    @endphp
+
                     @forelse($saln->personalProperties as $property)
                         <tr class="compact-row">
                             <td class="left-align filled-value">{{ $property->description }}</td>
@@ -534,90 +599,92 @@
                             <td class="filled-value">₱{{ number_format($property->acquisition_cost, 2) }}</td>
                         </tr>
                     @empty
-                        @for($i = 0; $i < 4; $i++)
+                        @for($i = 0; $i < $minPersonalRows; $i++)
                             <tr class="compact-row">
-                                <td></td>
-                                <td></td>
-                                <td></td>
+                                <td></td><td></td><td></td>
                             </tr>
                         @endfor
                     @endforelse
 
-                    @if($saln->personalProperties->count() > 0 && $saln->personalProperties->count() < 4)
-                        @for($i = $saln->personalProperties->count(); $i < 4; $i++)
+                    @if($personalPropertiesCount > 0 && $personalPropertiesCount < $minPersonalRows)
+                        @for($i = $personalPropertiesCount; $i < $minPersonalRows; $i++)
                             <tr class="compact-row">
-                                <td></td>
-                                <td></td>
-                                <td></td>
+                                <td></td><td></td><td></td>
                             </tr>
                         @endfor
                     @endif
 
                     <tr class="subtotal-row">
-                        <td colspan="2" style="text-align: right; font-weight: bold;">Subtotal:</td>
-                        <td style="font-weight: bold;">₱{{ number_format($saln->personalProperties->sum('acquisition_cost'), 2) }}</td>
+                        <td colspan="2" style="text-align: right;">Subtotal:</td>
+                        <td>₱{{ number_format($personalSubtotal, 2) }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
         <div class="total-row">
-            TOTAL ASSETS (a+b): ₱{{ number_format($saln->total_assets, 2) }}
+            <strong>TOTAL ASSETS (a+b):</strong> ₱{{ number_format($saln->total_assets, 2) }}
         </div>
 
         <div class="page-number">Page 1 of 2</div>
     </div>
 
-    <!-- Page Break -->
+    <!-- PAGE BREAK -->
     <div class="page-break"></div>
 
+    <!-- PAGE 2 START -->
     <!-- Liabilities Section -->
-    <div class="subsection-title">2. LIABILITIES*</div>
-    <table class="liabilities-table">
-        <thead>
-            <tr>
-                <th style="width: 40%;">NATURE</th>
-                <th style="width: 40%;">NAME OF CREDITORS</th>
-                <th style="width: 20%;">OUTSTANDING BALANCE</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($saln->liabilities as $liability)
-                <tr class="compact-row">
-                    <td class="left-align filled-value">{{ $liability->nature }}</td>
-                    <td class="left-align filled-value">{{ $liability->name_of_creditors }}</td>
-                    <td class="filled-value">₱{{ number_format($liability->outstanding_balance, 2) }}</td>
+    <div style="margin-top: 0;">
+        <strong style="font-size: 9.5pt;">2. LIABILITIES</strong> <span style="font-size: 8pt; font-style: italic;">(Loans, Mortgages, and other Obligations)</span>
+
+        <table style="margin-top: 8px;">
+            <thead>
+                <tr>
+                    <th style="width: 35%;">NATURE</th>
+                    <th style="width: 40%;">NAME OF CREDITORS</th>
+                    <th style="width: 25%;">OUTSTANDING BALANCE</th>
                 </tr>
-            @empty
-                @for($i = 0; $i < 4; $i++)
-                    <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                @endfor
-            @endforelse
+            </thead>
+            <tbody>
+                @php
+                    $liabilitiesCount = $saln->liabilities->count();
+                    $minLiabilityRows = 4;
+                    $totalLiabilities = $saln->liabilities->sum('outstanding_balance');
+                @endphp
 
-            @if($saln->liabilities->count() > 0 && $saln->liabilities->count() < 4)
-                @for($i = $saln->liabilities->count(); $i < 4; $i++)
+                @forelse($saln->liabilities as $liability)
                     <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td class="left-align filled-value">{{ $liability->nature }}</td>
+                        <td class="left-align filled-value">{{ $liability->name_of_creditors }}</td>
+                        <td class="filled-value">₱{{ number_format($liability->outstanding_balance, 2) }}</td>
                     </tr>
-                @endfor
-            @endif
+                @empty
+                    @for($i = 0; $i < $minLiabilityRows; $i++)
+                        <tr class="compact-row">
+                            <td></td><td></td><td></td>
+                        </tr>
+                    @endfor
+                @endforelse
 
-            <tr class="subtotal-row">
-                <td colspan="2" style="text-align: right; font-weight: bold;">TOTAL LIABILITIES:</td>
-                <td style="font-weight: bold;">₱{{ number_format($saln->total_liabilities, 2) }}</td>
-            </tr>
-        </tbody>
-    </table>
+                @if($liabilitiesCount > 0 && $liabilitiesCount < $minLiabilityRows)
+                    @for($i = $liabilitiesCount; $i < $minLiabilityRows; $i++)
+                        <tr class="compact-row">
+                            <td></td><td></td><td></td>
+                        </tr>
+                    @endfor
+                @endif
+
+                <tr class="subtotal-row">
+                    <td colspan="2" style="text-align: right;">TOTAL LIABILITIES:</td>
+                    <td>₱{{ number_format($totalLiabilities, 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
     <!-- Net Worth Section -->
-    <div class="net-worth-section">
-        <strong>NET WORTH = Total Assets less Total Liabilities = ₱{{ number_format($saln->net_worth, 2) }}</strong>
+    <div class="net-worth-section no-page-break">
+        NET WORTH = Total Assets less Total Liabilities = ₱{{ number_format($saln->net_worth, 2) }}
     </div>
 
     <!-- Business Interests -->
@@ -626,12 +693,12 @@
         (of Declarant/Declarant's spouse; Ownership/Owning Shareholder (10 percent of total))
     </div>
 
-    <div class="checkbox-group">
+    <div style="margin: 8px 0; font-size: 9pt;">
         <span class="checkbox {{ $saln->has_business_interests ? 'checked' : '' }}">{{ $saln->has_business_interests ? '✓' : '' }}</span> I/We have business interest or financial connection.<br>
-        <span class="checkbox {{ !$saln->has_business_interests ? 'checked' : '' }}">{{ !$saln->has_business_interests ? '✓' : '' }}</span> I/We do not have any business interest or financial connection.
+        <span class="checkbox {{ $saln->no_business_interests ? 'checked' : '' }}">{{ $saln->no_business_interests ? '✓' : '' }}</span> I/We do not have any business interest or financial connection.
     </div>
 
-    <table class="business-table">
+    <table>
         <thead>
             <tr>
                 <th style="width: 25%;">NAME OF ENTITY/BUSINESS ENTERPRISE</th>
@@ -641,6 +708,11 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $businessCount = $saln->businessInterests->count();
+                $minBusinessRows = 2;
+            @endphp
+
             @forelse($saln->businessInterests as $business)
                 <tr class="compact-row">
                     <td class="left-align filled-value">{{ $business->name_of_entity }}</td>
@@ -649,23 +721,17 @@
                     <td class="filled-value">{{ \Carbon\Carbon::parse($business->date_of_acquisition)->format('m/d/Y') }}</td>
                 </tr>
             @empty
-                @for($i = 0; $i < 2; $i++)
+                @for($i = 0; $i < $minBusinessRows; $i++)
                     <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                     </tr>
                 @endfor
             @endforelse
 
-            @if($saln->businessInterests->count() > 0 && $saln->businessInterests->count() < 2)
-                @for($i = $saln->businessInterests->count(); $i < 2; $i++)
+            @if($businessCount > 0 && $businessCount < $minBusinessRows)
+                @for($i = $businessCount; $i < $minBusinessRows; $i++)
                     <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                     </tr>
                 @endfor
             @endif
@@ -675,14 +741,14 @@
     <!-- Relatives in Government -->
     <div class="section-header">RELATIVES IN THE GOVERNMENT SERVICE</div>
     <div class="section-subtitle">
-        (Within the Fourth Degree of Consanguinity or Affinity, include also Batas Batas and Pare)
+        (Within the Fourth Degree of Consanguinity or Affinity)
     </div>
 
-    <div class="checkbox-group">
-        <span class="checkbox {{ !$saln->has_relatives_in_government ? 'checked' : '' }}">{{ !$saln->has_relatives_in_government ? '✓' : '' }}</span> I/We do not know of any relative in the government service.
+    <div style="margin: 8px 0; font-size: 9pt;">
+        <span class="checkbox {{ $saln->no_relatives_in_government ? 'checked' : '' }}">{{ $saln->no_relatives_in_government ? '✓' : '' }}</span> I/We do not know of any relative in the government service.
     </div>
 
-    <table class="relatives-table">
+    <table>
         <thead>
             <tr>
                 <th style="width: 25%;">NAME OF RELATIVE</th>
@@ -692,31 +758,30 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $relativesCount = $saln->relativesInGovernment->count();
+                $minRelativesRows = 2;
+            @endphp
+
             @forelse($saln->relativesInGovernment as $relative)
                 <tr class="compact-row">
                     <td class="left-align filled-value">{{ $relative->name_of_relative }}</td>
                     <td class="filled-value">{{ $relative->relationship }}</td>
                     <td class="left-align filled-value">{{ $relative->position }}</td>
-                    <td class="left-align filled-value">{{ $relative->name_of_agency_office_and_address }}</td>
+                    <td class="left-align filled-value">{{ $relative->name_of_agency_office_address }}</td>
                 </tr>
             @empty
-                @for($i = 0; $i < 2; $i++)
+                @for($i = 0; $i < $minRelativesRows; $i++)
                     <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                     </tr>
                 @endfor
             @endforelse
 
-            @if($saln->relativesInGovernment->count() > 0 && $saln->relativesInGovernment->count() < 2)
-                @for($i = $saln->relativesInGovernment->count(); $i < 2; $i++)
+            @if($relativesCount > 0 && $relativesCount < $minRelativesRows)
+                @for($i = $relativesCount; $i < $minRelativesRows; $i++)
                     <tr class="compact-row">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td></td><td></td><td></td><td></td>
                     </tr>
                 @endfor
             @endif
@@ -732,41 +797,55 @@
         I hereby authorize the Ombudsman or his/her duly authorized representative to obtain and secure from all appropriate government agencies, including the Bureau of Internal Revenue such documents that may show my assets, liabilities, net worth, business interests and financial connections, to include those of my spouse and unmarried children below 18 years of age living with me in my household covering previous years to include the year I first assumed office in government.
     </div>
 
-    <div style="margin: 15px 0; font-size: 9px;">
-        Date: <span style="border-bottom: 1px solid #000; padding: 2px 50px;">{{ $saln->created_at ? $saln->created_at->format('F d, Y') : '' }}</span>
+    <div style="margin: 10px 0; font-size: 9pt;">
+        Date: <span style="border-bottom: 1px solid #000; padding: 2px 80px; display: inline-block;">{{ $saln->date_signed ? \Carbon\Carbon::parse($saln->date_signed)->format('F d, Y') : '' }}</span>
     </div>
 
     <!-- Signature Section -->
-    <div class="signature-section">
-        <div class="signature-left">
+    <div class="signature-section no-page-break">
+        <div class="signature-box">
             <div class="signature-line"></div>
             <div class="signature-label">(Signature of Declarant)</div>
             <div class="id-info">
-                Government Issued ID: <div class="id-line">{{ $saln->government_issued_id ?? '' }}</div>
-                ID No.: <div class="id-line">{{ $saln->id_number ?? '' }}</div>
-                Date Issued: <div class="id-line">{{ $saln->date_issued ? \Carbon\Carbon::parse($saln->date_issued)->format('F d, Y') : '' }}</div>
+                <strong>Government Issued ID:</strong>
+                <div class="id-line">{{ $saln->declarant_id_type ?? '' }}</div>
+                <strong>ID/License/Passport No.:</strong>
+                <div class="id-line">{{ $saln->declarant_id_number ?? '' }}</div>
+                <strong>Date/Place Issued:</strong>
+                <div class="id-line">{{ $saln->declarant_id_issued ?? '' }}</div>
             </div>
         </div>
-        <div class="signature-right">
+
+        <div class="signature-box">
             <div class="signature-line"></div>
             <div class="signature-label">(Signature of Co-Declarant/Spouse)</div>
             <div class="id-info">
-                Government Issued ID: <div class="id-line">{{ $saln->spouse_government_issued_id ?? '' }}</div>
-                ID No.: <div class="id-line">{{ $saln->spouse_id_number ?? '' }}</div>
-                Date Issued: <div class="id-line">{{ $saln->spouse_date_issued ? \Carbon\Carbon::parse($saln->spouse_date_issued)->format('F d, Y') : '' }}</div>
+                <strong>Government Issued ID:</strong>
+                <div class="id-line">{{ $saln->spouse_id_type ?? '' }}</div>
+                <strong>ID/License/Passport No.:</strong>
+                <div class="id-line">{{ $saln->spouse_id_number ?? '' }}</div>
+                <strong>Date/Place Issued:</strong>
+                <div class="id-line">{{ $saln->spouse_id_issued ?? '' }}</div>
             </div>
         </div>
     </div>
 
     <!-- Oath Section -->
-    <div class="oath-section">
-        <div style="text-decoration: underline; font-weight: bold; margin-bottom: 15px; font-size: 10px;">
-            SUBSCRIBED AND SWORN TO before me this _____ day of ________, affiant exhibiting to me the above-stated government issued identification card.
+    <div class="oath-section no-page-break">
+        <div class="oath-text">
+            SUBSCRIBED AND SWORN TO before me this
+            <span style="border-bottom: 1px solid #000; padding: 0 30px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('jS') : '_____' }}</span>
+            day of
+            <span style="border-bottom: 1px solid #000; padding: 0 60px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('F Y') : '_____________' }}</span>,
+            <br>affiant exhibiting to me the above-stated government issued identification card.
         </div>
+
         <div class="oath-signature">
             <div style="height: 25px;"></div>
-            <div style="border-top: 1px solid #000; width: 250px; margin: 0 auto;"></div>
-            <div style="margin-top: 5px; font-size: 10px;"><strong>(Person Administering Oath)</strong></div>
+            <div style="border-top: 1.5px solid #000; width: 280px; margin: 0 auto;"></div>
+            <div style="margin-top: 5px; font-weight: bold; font-size: 8.5pt;">
+                {{ $saln->person_administering_oath ?? '(Person Administering Oath)' }}
+            </div>
         </div>
     </div>
 
@@ -774,8 +853,8 @@
 
     <!-- Notes Section -->
     <div class="note-section">
-        <p><strong>NOTE:</strong> Violation of this law is punishable by a fine not exceeding five thousand pesos (₱5,000) or imprisonment not exceeding one (1) year, or both, at the discretion of the court (Section 11, R.A. 6713).</p>
-        <p><strong>REMINDER:</strong> Any misrepresentation or non-disclosure of any material fact required to be stated herein shall constitute perjury under Article 183 of the Revised Penal Code and shall be punished accordingly.</p>
+        <p style="margin: 4px 0;"><strong>NOTE:</strong> Violation of this law is punishable by a fine not exceeding five thousand pesos (₱5,000) or imprisonment not exceeding one (1) year, or both, at the discretion of the court (Section 11, R.A. 6713).</p>
+        <p style="margin: 4px 0;"><strong>REMINDER:</strong> Any misrepresentation or non-disclosure of any material fact required to be stated herein shall constitute perjury under Article 183 of the Revised Penal Code and shall be punished accordingly.</p>
     </div>
 </body>
 </html>

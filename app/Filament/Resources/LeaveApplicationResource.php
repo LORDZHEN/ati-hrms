@@ -22,7 +22,7 @@ class LeaveApplicationResource extends Resource
     protected static ?string $title = 'Leave Applications';
     protected static ?string $modelLabel = 'Leave Application';
     protected static ?string $pluralModelLabel = 'Leave Application';
-    protected static ?string $navigationGroup = 'Manage';
+    protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form

@@ -94,21 +94,28 @@ class Saln extends Model
         return $this->hasMany(SalnRelativeGovernment::class);
     }
 
-    protected static function boot()
+    /**
+     * Calculate and update totals
+     * Call this method after all relationships have been saved
+     */
+    public function calculateTotals(): void
     {
-        parent::boot();
+        // Refresh relationships to get latest data
+        $this->load(['realProperties', 'personalProperties', 'liabilities']);
 
-        static::saving(function ($saln) {
-            $saln->calculateTotals();
-        });
-    }
+        // Calculate total assets
+        $realPropertiesTotal = $this->realProperties->sum('current_fair_market_value');
+        $personalPropertiesTotal = $this->personalProperties->sum('acquisition_cost');
+        $this->total_assets = $realPropertiesTotal + $personalPropertiesTotal;
 
-    public function calculateTotals()
-    {
-        $this->total_assets = $this->realProperties()->sum('current_fair_market_value') +
-                              $this->personalProperties()->sum('acquisition_cost');
-        $this->total_liabilities = $this->liabilities()->sum('outstanding_balance');
+        // Calculate total liabilities
+        $this->total_liabilities = $this->liabilities->sum('outstanding_balance');
+
+        // Calculate net worth
         $this->net_worth = $this->total_assets - $this->total_liabilities;
+
+        // Save without triggering events to avoid infinite loop
+        $this->saveQuietly();
     }
 }
 
@@ -155,6 +162,20 @@ class SalnRealProperty extends Model
     {
         return $this->belongsTo(Saln::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Recalculate totals when real property is created, updated, or deleted
+        static::saved(function ($realProperty) {
+            $realProperty->saln->calculateTotals();
+        });
+
+        static::deleted(function ($realProperty) {
+            $realProperty->saln->calculateTotals();
+        });
+    }
 }
 
 class SalnPersonalProperty extends Model
@@ -174,6 +195,20 @@ class SalnPersonalProperty extends Model
     {
         return $this->belongsTo(Saln::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Recalculate totals when personal property is created, updated, or deleted
+        static::saved(function ($personalProperty) {
+            $personalProperty->saln->calculateTotals();
+        });
+
+        static::deleted(function ($personalProperty) {
+            $personalProperty->saln->calculateTotals();
+        });
+    }
 }
 
 class SalnLiability extends Model
@@ -192,6 +227,20 @@ class SalnLiability extends Model
     public function saln(): BelongsTo
     {
         return $this->belongsTo(Saln::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Recalculate totals when liability is created, updated, or deleted
+        static::saved(function ($liability) {
+            $liability->saln->calculateTotals();
+        });
+
+        static::deleted(function ($liability) {
+            $liability->saln->calculateTotals();
+        });
     }
 }
 
@@ -218,6 +267,7 @@ class SalnBusinessInterest extends Model
 class SalnRelativeGovernment extends Model
 {
     protected $table = 'saln_relatives_government';
+
     protected $fillable = [
         'saln_id',
         'name_of_relative',

@@ -16,11 +16,12 @@ class CreatePersonalDataSheet extends CreateRecord
     protected static string $resource = PersonalDataSheetResource::class;
 
     /**
-     * 🔑 REQUIRED: Attach PDS to logged-in user
+     * 🔑 Attach PDS to logged-in user and set initial status
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = Auth::id();
+        $data['status'] = 'submitted'; // Set initial status
 
         return $data;
     }
@@ -29,7 +30,7 @@ class CreatePersonalDataSheet extends CreateRecord
     {
         return [
             Actions\Action::make('create')
-                ->label('Send')
+                ->label('Submit PDS')
                 ->submit('create')
                 ->color('primary'),
 

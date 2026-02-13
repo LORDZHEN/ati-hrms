@@ -15,7 +15,6 @@ class LocatorSlip extends Model
         'transaction_type',
         'employee_name',
         'position',
-        'department',
         'office_department',
         'destination',
         'purpose',
@@ -24,30 +23,41 @@ class LocatorSlip extends Model
         'in_time',
         'requested_by',
         'approved_by',
+        'admin_remarks',
         'status',
-        'rejection_reason',
         'approved_at',
         'user_id',
     ];
 
     protected $casts = [
         'inclusive_date' => 'date',
-        'out_time' => 'datetime:H:i',
-        'in_time' => 'datetime:H:i',
+        'out_time' => 'datetime:H:i',  // Nullable - filled manually by HR
+        'in_time' => 'datetime:H:i',   // Nullable - filled manually by HR
         'approved_at' => 'datetime',
     ];
 
+    /* ============================================================
+       RELATIONSHIPS
+       ============================================================ */
+
+    /**
+     * Get the user who created this locator slip
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
+
+    /* ============================================================
+       ACCESSORS
+       ============================================================ */
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
             'pending' => 'warning',
             'approved' => 'success',
-            'rejected' => 'danger',
+            'disapproved' => 'danger',
             default => 'gray',
         };
     }
@@ -57,19 +67,44 @@ class LocatorSlip extends Model
         return match ($this->status) {
             'pending' => 'Pending Approval',
             'approved' => 'Approved',
-            'rejected' => 'Rejected',
+            'disapproved' => 'Disapproved',
             default => 'Unknown',
         };
     }
-    protected static function booted()
+
+    /* ============================================================
+       MODEL EVENTS
+       ============================================================ */
+
+    protected static function booted(): void
     {
+        // Automatically set user_id and populate employee data when creating
         static::creating(function ($locatorSlip) {
-            $locatorSlip->user_id = Auth::id();
+            $user = Auth::user();
+
+            // Set the user_id
+            $locatorSlip->user_id = $user->id;
+
+            // Auto-populate employee information from authenticated user
+            if (empty($locatorSlip->employee_name)) {
+                $locatorSlip->employee_name = $user->name;
+            }
+
+            if (empty($locatorSlip->position)) {
+                $locatorSlip->position = $user->position;
+            }
+
+            if (empty($locatorSlip->office_department)) {
+                $locatorSlip->office_department = $user->department;
+            }
+
+            if (empty($locatorSlip->requested_by)) {
+                $locatorSlip->requested_by = $user->name;
+            }
+
+            // Note: out_time and in_time are NOT auto-populated
+            // These will be filled manually by HR on the printed slip
         });
     }
-
-    public function employee()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    
 }

@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class ListPersonalDataSheets extends ListRecords
 {
@@ -17,17 +18,12 @@ class ListPersonalDataSheets extends ListRecords
     {
         $actions = [];
 
-        // ✅ Create PDS (Livewire modal)
-        $actions[] = Actions\Action::make('createPDS')
-            ->label('New Personal Data Sheet')
-            ->color('primary')
-            ->modalHeading('New Personal Data Sheet')
-            ->modalWidth('7xl')
-            ->form([
-                \Filament\Forms\Components\Livewire::make(
-                    \App\Livewire\Employee\Pds\EditPds::class
-                ),
-            ]);
+        // ✅ Create PDS (Standard Filament Create Action)
+        if (Auth::user()->role === 'employee') {
+            $actions[] = Actions\CreateAction::make()
+                ->label('New Personal Data Sheet')
+                ->color('primary');
+        }
 
         // ✅ Admin-only report generation
         if (auth()->check() && auth()->user()->role === 'admin') {

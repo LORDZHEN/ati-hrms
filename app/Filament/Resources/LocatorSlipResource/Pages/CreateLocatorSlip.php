@@ -27,13 +27,13 @@ class CreateLocatorSlip extends CreateRecord
         ];
     }
 
-    protected function afterCreate(): void
-    {
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new LocatorSlipSubmitted($this->record));
-        }
-    }
+    // protected function afterCreate(): void
+    // {
+    //     $admins = User::where('role', 'admin')->get();
+    //     foreach ($admins as $admin) {
+    //         $admin->notify(new LocatorSlipSubmitted($this->record));
+    //     }
+    // }
 
     protected function getRedirectUrl(): string
     {

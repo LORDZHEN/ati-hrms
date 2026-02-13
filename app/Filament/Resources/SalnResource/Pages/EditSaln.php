@@ -5,8 +5,6 @@ namespace App\Filament\Resources\SalnResource\Pages;
 use App\Filament\Resources\SalnResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Textarea;
 
 class EditSaln extends EditRecord
 {
@@ -15,41 +13,54 @@ class EditSaln extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('print')
+                ->label('Print SALN')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->url(fn() => route('saln.print', $this->record))
+                ->openUrlInNewTab(),
+
             Actions\DeleteAction::make()
-                ->visible(fn() => auth()->user()?->is_admin),
+                ->visible(fn() => auth()->user()?->role === 'admin'),
         ];
-    }
-
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        if (!auth()->user()?->is_admin) {
-            unset($data['remarks']);
-        }
-
-        return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (!auth()->user()?->is_admin) {
-            unset($data['remarks']);
+        // Prevent non-admins from changing person_administering_oath
+        if (auth()->user()?->role !== 'admin') {
+            unset($data['person_administering_oath']);
+            unset($data['subscribed_sworn_date']);
         }
+
+        // Recalculate totals from form data
+        $realProperties = $data['realProperties'] ?? [];
+        $personalProperties = $data['personalProperties'] ?? [];
+        $liabilities = $data['liabilities'] ?? [];
+
+        $realPropertiesTotal = collect($realProperties)->sum('current_fair_market_value');
+        $personalPropertiesTotal = collect($personalProperties)->sum('acquisition_cost');
+        $data['total_assets'] = $realPropertiesTotal + $personalPropertiesTotal;
+
+        $data['total_liabilities'] = collect($liabilities)->sum('outstanding_balance');
+        $data['net_worth'] = $data['total_assets'] - $data['total_liabilities'];
 
         return $data;
     }
 
-    protected function getFormSchema(): array
+    protected function afterSave(): void
     {
-        $schema = parent::getFormSchema();
+        // Final recalculation to ensure accuracy
+        $this->record->calculateTotals();
 
-        $schema[] = Section::make('Admin Remarks')
-            ->schema([
-                Textarea::make('remarks')
-                    ->label('Remarks')
-                    ->rows(3)
-                    ->visible(fn() => auth()->user()?->is_admin),
-            ]);
+        \Filament\Notifications\Notification::make()
+            ->title('SALN Updated Successfully')
+            ->success()
+            ->send();
+    }
 
-        return $schema;
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

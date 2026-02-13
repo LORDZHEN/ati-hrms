@@ -26,7 +26,7 @@ class TravelOrderResource extends Resource
     protected static ?string $title = 'Travel Orders';
     protected static ?string $modelLabel = 'Travel Order';
     protected static ?string $pluralModelLabel = 'Travel Order';
-    protected static ?string $navigationGroup = 'Manage';
+    protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 6;
 
     protected static function generateTravelOrderNumber(): string

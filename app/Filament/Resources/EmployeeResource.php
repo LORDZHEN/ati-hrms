@@ -13,10 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\AccountVerifiedMail;
+use Illuminate\Database\Eloquent\Builder;
 
 class EmployeeResource extends Resource
 {
@@ -32,166 +29,23 @@ class EmployeeResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->role === 'admin';
+        return auth()->user()?->role === 'admin';
     }
 
     public static function form(Form $form): Form
     {
-        $isAdmin = auth()->user()?->role === 'admin';
-
         return $form->schema([
-
-            TextInput::make('first_name')
-                ->label('First Name')
-                ->required(),
-
-            TextInput::make('middle_name')
-                ->label('Middle Name')
-                ->nullable(),
-
-            TextInput::make('last_name')
-                ->label('Last Name')
-                ->required(),
-
-            // Auto-generate "name" using the three fields
-            TextInput::make('name')
-                ->hidden()
-                ->dehydrated()
-                ->default(fn($get) =>
-                    trim(
-                        ($get('first_name') ?? '') . ' ' .
-                        ($get('middle_name') ?? '') . ' ' .
-                        ($get('last_name') ?? '')
-                    )
-                ),
-
-            TextInput::make('email')
-                ->email()
-                ->required(),
-
-            TextInput::make('employee_id')
-                ->label('Employee ID')
-                ->required(),
-
-            DatePicker::make('birthday')
-                ->required(),
-
-            Select::make('role')
-                ->label('Role')
-                ->options([
-                    'admin' => 'Admin',
-                    'employee' => 'Employee',
-                ])
-                ->default('admin')
-                ->required()
-                ->hidden(!$isAdmin),
-
-            Select::make('status')
-                ->options([
-                    'pending' => 'Pending',
-                    'active' => 'Active',
-                    'inactive' => 'Inactive',
-                ])
-                ->default('active'),
+            self::getPersonalInformationSection(),
+            self::getAccountInformationSection(),
         ])->columns(2);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->columns([
-                TextColumn::make('employee_id')
-                    ->label('Employee ID')
-                    ->sortable()
-                    ->searchable()
-                    ->getStateUsing(fn($record) => $record->employee_id ?? 'N/A'),
-
-                TextColumn::make('name')
-                    ->label('Name')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('status')
-                    ->badge()
-                    ->color(fn($state) => match ($state) {
-                        'active' => 'success',
-                        'pending' => 'warning',
-                        'inactive' => 'danger',
-                        default => 'gray',
-                    }),
-
-                TextColumn::make('verification_status')
-                    ->label('Verification Status')
-                    ->badge()
-                    ->color(fn($record) => $record->email_verified_at ? 'success' : 'danger')
-                    ->getStateUsing(fn($record) => $record->email_verified_at ? 'Verified' : 'Not Verified'),
-            ])
-            ->filters([
-                SelectFilter::make('status')->options([
-                    'pending' => 'Pending',
-                    'active' => 'Active',
-                    'inactive' => 'Inactive',
-                ]),
-                SelectFilter::make('verified')
-                    ->label('Email Verified')
-                    ->options([
-                        'yes' => 'Verified',
-                        'no' => 'Not Verified',
-                    ])
-                    ->query(fn($query, array $data) => $data['value'] === 'yes'
-                        ? $query->whereNotNull('email_verified_at')
-                        : $query->whereNull('email_verified_at')),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->label('View')
-                    ->icon('heroicon-o-eye')
-                    ->visible(fn () => auth()->user()?->role === 'admin'),
-
-                // Tables\Actions\Action::make('verify')
-                //     ->label('Verify')
-                //     ->icon('heroicon-o-check-badge')
-                //     ->color('success')
-                //     ->hidden(fn($record) => !is_null($record->email_verified_at))
-                //     ->requiresConfirmation()
-                //     ->action(function ($record, $livewire) {
-                //         $birthday = $record->birthday?->format('mdY');
-
-                //         if (!$birthday || strlen($birthday) !== 8) {
-                //             Notification::make()
-                //                 ->title('Invalid birthday format')
-                //                 ->danger()
-                //                 ->body('Failed to format the birthday into MMDDYYYY.')
-                //                 ->send();
-                //             return;
-                //         }
-
-                //         $record->update([
-                //             'email_verified_at' => now(),
-                //             'password' => bcrypt($birthday),
-                //             'must_change_password' => true,
-                //             'status' => 'active',
-                //             'verification_status' => 'verified',
-                //         ]);
-
-                //         Mail::to($record->email)->send(new AccountVerifiedMail($record, $birthday));
-
-                //         Notification::make()
-                //             ->title('Account Verified')
-                //             ->body("Temporary password: **{$birthday}**. Email sent.")
-                //             ->success()
-                //             ->persistent()
-                //             ->send();
-
-                //         $livewire->dispatch('refresh');
-                //     })
-                //     ->after(fn($record, $livewire) => $livewire->dispatch('refresh')),
-            ])
+            ->columns(self::getTableColumns())
+            ->filters(self::getTableFilters())
+            ->actions(self::getTableActions())
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
@@ -199,11 +53,11 @@ class EmployeeResource extends Resource
             ]);
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
             ->whereIn('role', ['employee', 'admin'])
-            ->orderBy('created_at', 'desc');
+            ->latest('created_at');
     }
 
     public static function canCreate(): bool
@@ -211,27 +65,15 @@ class EmployeeResource extends Resource
         return auth()->user()?->role === 'admin';
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
     public static function getNavigationBadge(): ?string
     {
-        $count = User::where('role', 'employee')
-            ->where('status', 'pending')
-            ->count();
-
+        $count = self::getPendingEmployeesCount();
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        $count = User::where('role', 'employee')
-            ->where('status', 'pending')
-            ->count();
-
-        return $count > 0 ? 'warning' : 'success';
+        return self::getPendingEmployeesCount() > 0 ? 'warning' : 'success';
     }
 
     public static function getPages(): array
@@ -242,5 +84,171 @@ class EmployeeResource extends Resource
             'edit' => Pages\EditEmployee::route('/{record}/edit'),
             'create' => Pages\CreateEmployee::route('/create'),
         ];
+    }
+
+    // Private helper methods
+
+    private static function getPersonalInformationSection(): array
+    {
+        return [
+            TextInput::make('first_name')
+                ->label('First Name')
+                ->required()
+                ->maxLength(255),
+
+            TextInput::make('middle_name')
+                ->label('Middle Name')
+                ->maxLength(255),
+
+            TextInput::make('last_name')
+                ->label('Last Name')
+                ->required()
+                ->maxLength(255),
+
+            TextInput::make('name')
+                ->hidden()
+                ->dehydrated()
+                ->default(fn($get) => self::generateFullName($get)),
+
+            TextInput::make('email')
+                ->email()
+                ->required()
+                ->maxLength(255)
+                ->unique(ignoreRecord: true),
+
+            TextInput::make('employee_id')
+                ->label('Employee ID')
+                ->required()
+                ->maxLength(50)
+                ->unique(ignoreRecord: true),
+
+            DatePicker::make('birthday')
+                ->label('Date of Birth')
+                ->required()
+                ->maxDate(now()->subYears(18))
+                ->native(false),
+        ];
+    }
+
+    private static function getAccountInformationSection(): array
+    {
+        $isAdmin = auth()->user()?->role === 'admin';
+
+        return [
+            Select::make('role')
+                ->label('Role')
+                ->options([
+                    'admin' => 'Admin',
+                    'employee' => 'Employee',
+                ])
+                ->default('employee')
+                ->required()
+                ->visible($isAdmin),
+
+            Select::make('status')
+                ->label('Account Status')
+                ->options([
+                    'pending' => 'Pending',
+                    'active' => 'Active',
+                    'inactive' => 'Inactive',
+                ])
+                ->default('pending')
+                ->required(),
+        ];
+    }
+
+    private static function getTableColumns(): array
+    {
+        return [
+            TextColumn::make('employee_id')
+                ->label('Employee ID')
+                ->sortable()
+                ->searchable()
+                ->default('N/A'),
+
+            TextColumn::make('name')
+                ->label('Name')
+                ->searchable(['first_name', 'middle_name', 'last_name'])
+                ->sortable(),
+
+            TextColumn::make('email')
+                ->label('Email')
+                ->searchable()
+                ->sortable()
+                ->copyable(),
+
+            TextColumn::make('status')
+                ->badge()
+                ->color(fn(string $state): string => match ($state) {
+                    'active' => 'success',
+                    'pending' => 'warning',
+                    'inactive' => 'danger',
+                    default => 'gray',
+                })
+                ->sortable(),
+
+            TextColumn::make('email_verified_at')
+                ->label('Verification')
+                ->badge()
+                ->color(fn($state): string => $state ? 'success' : 'danger')
+                ->formatStateUsing(fn($state): string => $state ? 'Verified' : 'Not Verified')
+                ->sortable(),
+        ];
+    }
+
+    private static function getTableFilters(): array
+    {
+        return [
+            SelectFilter::make('status')
+                ->options([
+                    'pending' => 'Pending',
+                    'active' => 'Active',
+                    'inactive' => 'Inactive',
+                ]),
+
+            SelectFilter::make('verified')
+                ->label('Email Verified')
+                ->options([
+                    'yes' => 'Verified',
+                    'no' => 'Not Verified',
+                ])
+                ->query(fn(Builder $query, array $data): Builder =>
+                    $data['value'] === 'yes'
+                        ? $query->whereNotNull('email_verified_at')
+                        : $query->whereNull('email_verified_at')
+                ),
+        ];
+    }
+
+    private static function getTableActions(): array
+    {
+        return [
+            Tables\Actions\ViewAction::make()
+                ->label('View')
+                ->icon('heroicon-o-eye')
+                ->visible(fn(): bool => auth()->user()?->role === 'admin'),
+        ];
+    }
+
+    private static function generateFullName(callable $get): string
+    {
+        return trim(implode(' ', array_filter([
+            $get('first_name'),
+            $get('middle_name'),
+            $get('last_name'),
+        ])));
+    }
+
+    private static function getPendingEmployeesCount(): int
+    {
+        return User::query()
+            ->where('role', 'employee')
+            ->where('status', 'pending')
+            ->count();
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
     }
 }

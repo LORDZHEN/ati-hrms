@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -126,9 +127,9 @@ class User extends Authenticatable implements FilamentUser
        RELATIONSHIPS
        ============================================================ */
 
-    public function locatorSlips()
+    public function locatorSlips(): HasMany
     {
-        return $this->hasMany(LocatorSlip::class);
+        return $this->hasMany(LocatorSlip::class, 'user_id');
     }
 
     /* ============================================================
@@ -157,4 +158,5 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->role === self::ROLE_ADMIN;
     }
+
 }

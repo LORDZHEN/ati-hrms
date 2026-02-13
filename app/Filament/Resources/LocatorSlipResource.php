@@ -17,212 +17,62 @@ class LocatorSlipResource extends Resource
 {
     protected static ?string $model = LocatorSlip::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $slug = 'locator-slip';
-    protected static ?string $navigationLabel = 'Locator Slip';
-    protected static ?string $title = 'Locator Slips';
+    protected static ?string $navigationIcon = 'heroicon-o-map-pin';
+    protected static ?string $slug = 'locator-slips';
+    protected static ?string $navigationLabel = 'Locator Slips';
     protected static ?string $modelLabel = 'Locator Slip';
-    protected static ?string $pluralModelLabel = 'Locator Slip';
-    protected static ?string $navigationGroup = 'Manage';
+    protected static ?string $pluralModelLabel = 'Locator Slips';
+    protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 3;
+
+    /* ============================================================
+       FORM DEFINITION
+       ============================================================ */
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Agricultural Training Institute - XI')
-                    ->description('Office of the Human Resource Management - LOCATOR SLIP')
-                    ->schema([
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\Checkbox::make('personal_transaction')
-                                    ->label('Personal Transaction')
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->transaction_type === 'personal');
-                                    })
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $set('transaction_type', 'personal');
-                                            $set('official_business', false);
-                                        }
-                                    }),
-                                Forms\Components\Checkbox::make('official_business')
-                                    ->label('Official Business')
-                                    ->default(true)
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->transaction_type === 'official');
-                                    })
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $set('transaction_type', 'official');
-                                            $set('personal_transaction', false);
-                                        }
-                                    }),
-                            ]),
-                        Forms\Components\Hidden::make('transaction_type')->default('official'),
-
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('employee_name')
-                                    ->label('Name')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        if ($record) {
-                                            $component->state($record->employee?->name);
-                                        }
-                                    })
-                                    ->required(),
-
-                                Forms\Components\TextInput::make('position')
-                                    ->label('Position')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->afterStateHydrated(function ($component, $state, $record) {
-                                        $component->state($record->employee?->position ?? auth()->user()->position);
-                                    })
-                                    ->required(),
-                            ]),
-
-                        Forms\Components\TextInput::make('department')
-                            ->label('Department')
-                            ->disabled()
-                            ->dehydrated()
-                            ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->department ?? auth()->user()->department);
-                            })
-                            ->required(),
-
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('destination')
-                                    ->label('Destination')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Textarea::make('purpose')
-                                    ->label('Purpose')
-                                    ->rows(3),
-                            ]),
-
-                        Forms\Components\Grid::make(3)
-                            ->schema([
-                                Forms\Components\DatePicker::make('inclusive_date')
-                                    ->label('Inclusive Date')
-                                    ->required()
-                                    ->default(now()),
-                                Forms\Components\TimePicker::make('out_time')
-                                    ->label('Out')
-                                    ->required()
-                                    ->default(now())
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        if ($state) {
-                                            $time = \Carbon\Carbon::parse($state)->addHours(2);
-                                            $set('in_time', $time->format('H:i'));
-                                        }
-                                    }),
-                                Forms\Components\TimePicker::make('in_time')
-                                    ->label('In')
-                                    ->required()
-                                    ->default(fn(callable $get) => \Carbon\Carbon::parse($get('out_time'))->addHours(2)->format('H:i')),
-                            ]),
-
-                        Forms\Components\TextInput::make('requested_by')
-                            ->label('Requested By')
-                            ->disabled()
-                            ->dehydrated()
-                            ->afterStateHydrated(function ($component, $state, $record) {
-                                $component->state($record->employee?->name ?? auth()->user()->name);
-                            })
-                            ->required(),
-                    ])
-                    ->collapsible()
-                    ->collapsed(false),
-
-                // Admin Approval Section
-                Forms\Components\Section::make('Approval Section')
-                    ->schema([
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'pending' => 'Pending',
-                                'approved' => 'Approved',
-                                'disapproved' => 'Disapproved',
-                            ])
-                            ->required()
-                            ->reactive(),
-
-                        Forms\Components\TextInput::make('approved_by')
-                            ->label('Approved By')
-                            ->disabled()
-                            ->afterStateHydrated(fn($component) => $component->state(auth()->user()->name))
-                            ->dehydrated(),
-
-                        Forms\Components\Textarea::make('admin_remarks')
-                            ->label('Remarks / Reason for Disapproval')
-                            ->rows(3)
-                            ->visible(fn(callable $get) => $get('status') === 'disapproved'),
-                    ])
-                    ->visible(fn() => auth()->user()->role === 'admin')
-                    ->collapsible()
-                    ->collapsed(true),
-
-                Forms\Components\Hidden::make('user_id')->default(fn() => auth()->id()),
+                self::buildMainSection(),
+                self::buildApprovalSection(),
+                Forms\Components\Hidden::make('user_id')
+                    ->default(fn() => auth()->id()),
             ]);
     }
+
+    /* ============================================================
+       TABLE DEFINITION
+       ============================================================ */
 
     public static function table(Table $table): Table
     {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('employee_name')->label('Name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('destination')->label('Destination')->searchable()->limit(30),
-                Tables\Columns\TextColumn::make('inclusive_date')->label('Date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('out_time')->label('Out Time')->time('H:i'),
-                Tables\Columns\TextColumn::make('in_time')->label('In Time')->time('H:i')->placeholder('Not set'),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('Status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'approved',
-                        'danger' => 'disapproved',
-                    ])
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state)),
-                Tables\Columns\TextColumn::make('created_at')->label('Submitted')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')->options([
-                    'pending' => 'Pending',
-                    'approved' => 'Approved',
-                    'disapproved' => 'Disapproved',
+            ->columns(self::getModernTableColumns())
+            ->filters(self::getEnhancedFilters())
+            ->actions(self::getContextualActions())
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => Auth::user()->role === 'admin'),
                 ]),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-
-                Tables\Actions\EditAction::make()
-                    ->visible(
-                        fn(LocatorSlip $record) =>
-                        $record->status === 'pending' &&
-                        (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)
-                    ),
-
-                Action::make('print')
-                    ->label('Print')
-                    ->icon('heroicon-o-printer')
-                    ->url(fn($record) => route('locator_slip.print', $record->id))
-                    ->openUrlInNewTab()
-                    ->visible(fn($record) => $record->status === 'approved'),
-            ])
-
-            ->bulkActions([])
-            ->modifyQueryUsing(fn(Builder $query) => auth()->user()->role === 'admin' ? $query : $query->where('user_id', auth()->id()))
-            ->defaultSort('created_at', 'desc');
+            ->modifyQueryUsing(fn(Builder $query) => self::applyUserScope($query))
+            ->defaultSort('created_at', 'desc')
+            ->poll('30s') // Auto-refresh every 30 seconds
+            ->striped()
+            ->emptyStateHeading('No locator slips found')
+            ->emptyStateDescription('Create your first locator slip to get started.')
+            ->emptyStateIcon('heroicon-o-map-pin')
+            ->emptyStateActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Create Locator Slip')
+                    ->icon('heroicon-o-plus'),
+            ]);
     }
+
+    /* ============================================================
+       PAGES
+       ============================================================ */
 
     public static function getPages(): array
     {
@@ -234,15 +84,25 @@ class LocatorSlipResource extends Resource
         ];
     }
 
+    /* ============================================================
+       AUTHORIZATION
+       ============================================================ */
+
     public static function canEdit($record): bool
     {
-        return $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
+        return $record->status === 'pending' &&
+            (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
     }
 
     public static function canDelete($record): bool
     {
-        return $record->status === 'pending' && (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
+        return $record->status === 'pending' &&
+            (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id);
     }
+
+    /* ============================================================
+       NAVIGATION BADGE
+       ============================================================ */
 
     public static function getNavigationBadge(): ?string
     {
@@ -251,10 +111,8 @@ class LocatorSlipResource extends Resource
         }
 
         $count = LocatorSlip::where('status', 'pending')->count();
-
         return $count > 0 ? (string) $count : null;
     }
-
 
     public static function getNavigationBadgeColor(): ?string
     {
@@ -263,8 +121,345 @@ class LocatorSlipResource extends Resource
         }
 
         $count = LocatorSlip::where('status', 'pending')->count();
-
         return $count > 0 ? 'warning' : 'success';
     }
 
+    /* ============================================================
+       FORM SECTIONS
+       ============================================================ */
+
+    protected static function buildMainSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Trip Information')
+            ->description('Fill out your locator slip details')
+            ->icon('heroicon-o-document-text')
+            ->schema([
+                self::buildTransactionTypeField(),
+                self::buildHiddenEmployeeFields(),
+                self::buildTripDetailsFields(),
+                self::buildDateField(),
+                self::buildHiddenRequestedByField(),
+            ])
+            ->collapsible()
+            ->collapsed(false)
+            ->columns(2);
+    }
+
+    protected static function buildTransactionTypeField(): Forms\Components\Radio
+    {
+        return Forms\Components\Radio::make('transaction_type')
+            ->label('Transaction Type')
+            ->options([
+                'official' => 'Official Business',
+                'personal' => 'Personal Transaction',
+            ])
+            ->default('official')
+            ->inline()
+            ->inlineLabel(false)
+            ->required()
+            ->columnSpan(2);
+    }
+
+    protected static function buildHiddenEmployeeFields(): Forms\Components\Group
+    {
+        return Forms\Components\Group::make([
+            Forms\Components\Hidden::make('employee_name')
+                ->default(fn() => auth()->user()->name),
+
+            Forms\Components\Hidden::make('position')
+                ->default(fn() => auth()->user()->position),
+
+            Forms\Components\Hidden::make('office_department')
+                ->default(fn() => auth()->user()->department),
+        ]);
+    }
+
+    protected static function buildTripDetailsFields(): Forms\Components\Group
+    {
+        return Forms\Components\Group::make()
+            ->schema([
+                Forms\Components\TextInput::make('destination')
+                    ->label('Destination')
+                    ->placeholder('e.g., Manila City Hall')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpan(1),
+
+                Forms\Components\Textarea::make('purpose')
+                    ->label('Purpose')
+                    ->placeholder('Brief description of your trip purpose')
+                    ->rows(3)
+                    ->columnSpan(1),
+            ])
+            ->columns(2)
+            ->columnSpan(2);
+    }
+
+    protected static function buildDateField(): Forms\Components\DatePicker
+    {
+        return Forms\Components\DatePicker::make('inclusive_date')
+            ->label('Date')
+            ->required()
+            ->default(now())
+            ->native(false)
+            ->displayFormat('F d, Y')
+            ->columnSpan(2);
+    }
+
+    protected static function buildHiddenRequestedByField(): Forms\Components\Hidden
+    {
+        return Forms\Components\Hidden::make('requested_by')
+            ->default(fn() => auth()->user()->name);
+    }
+
+    protected static function buildApprovalSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Administrative Approval')
+            ->description('Review and approve/disapprove this request')
+            ->icon('heroicon-o-shield-check')
+            ->schema([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'disapproved' => 'Disapproved',
+                    ])
+                    ->required()
+                    ->native(false)
+                    ->reactive(),
+
+                Forms\Components\TextInput::make('approved_by')
+                    ->label('Approved By')
+                    ->disabled()
+                    ->afterStateHydrated(fn($component) => $component->state(auth()->user()->name))
+                    ->dehydrated(),
+
+                Forms\Components\Textarea::make('admin_remarks')
+                    ->label('Remarks / Reason for Disapproval')
+                    ->placeholder('Provide detailed reason for disapproval')
+                    ->rows(3)
+                    ->visible(fn(callable $get) => $get('status') === 'disapproved'),
+            ])
+            ->visible(fn() => auth()->user()->role === 'admin')
+            ->collapsible()
+            ->collapsed(true);
+    }
+
+    /* ============================================================
+       MODERN TABLE COLUMNS
+       ============================================================ */
+
+    protected static function getModernTableColumns(): array
+    {
+        return [
+            // Employee Info with Avatar-like Design
+            Tables\Columns\Layout\Split::make([
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('employee_name')
+                        ->label('Employee')
+                        ->searchable()
+                        ->sortable()
+                        ->weight('bold')
+                        ->icon('heroicon-o-user')
+                        ->iconColor('primary'),
+
+                    Tables\Columns\TextColumn::make('position')
+                        ->label('Position')
+                        ->size('sm')
+                        ->color('gray')
+                        ->searchable(),
+                ])->space(1),
+
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('destination')
+                        ->label('Destination')
+                        ->searchable()
+                        ->weight('medium')
+                        ->icon('heroicon-o-map-pin')
+                        ->iconColor('success')
+                        ->limit(40)
+                        ->tooltip(fn ($record) => $record->destination),
+
+                    Tables\Columns\TextColumn::make('purpose')
+                        ->label('Purpose')
+                        ->size('sm')
+                        ->color('gray')
+                        ->limit(50)
+                        ->default('—')
+                        ->tooltip(fn ($record) => $record->purpose),
+                ])->space(1),
+
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('inclusive_date')
+                        ->label('Trip Date')
+                        ->date('M d, Y')
+                        ->sortable()
+                        ->icon('heroicon-o-calendar')
+                        ->iconColor('warning'),
+
+                    Tables\Columns\TextColumn::make('transaction_type')
+                        ->label('Type')
+                        ->size('sm')
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'official' => 'info',
+                            'personal' => 'gray',
+                            default => 'secondary',
+                        })
+                        ->formatStateUsing(fn (string $state): string => match ($state) {
+                            'official' => 'Official',
+                            'personal' => 'Personal',
+                            default => $state,
+                        }),
+                ])->space(1)->alignment('end'),
+            ])->from('md'),
+
+            // Status Badge - Prominent
+            Tables\Columns\BadgeColumn::make('status')
+                ->label('Status')
+                ->colors([
+                    'warning' => 'pending',
+                    'success' => 'approved',
+                    'danger' => 'disapproved',
+                ])
+                ->icons([
+                    'heroicon-o-clock' => 'pending',
+                    'heroicon-o-check-circle' => 'approved',
+                    'heroicon-o-x-circle' => 'disapproved',
+                ])
+                ->formatStateUsing(fn(string $state): string => ucfirst($state))
+                ->sortable(),
+
+            // Timeline Info
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Submitted')
+                ->dateTime('M d, Y h:i A')
+                ->sortable()
+                ->size('sm')
+                ->color('gray')
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            Tables\Columns\TextColumn::make('approved_at')
+                ->label('Processed')
+                ->dateTime('M d, Y h:i A')
+                ->sortable()
+                ->size('sm')
+                ->color('gray')
+                ->placeholder('—')
+                ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
+
+    /* ============================================================
+       ENHANCED FILTERS
+       ============================================================ */
+
+    protected static function getEnhancedFilters(): array
+    {
+        return [
+            Tables\Filters\SelectFilter::make('status')
+                ->label('Status')
+                ->options([
+                    'pending' => 'Pending',
+                    'approved' => 'Approved',
+                    'disapproved' => 'Disapproved',
+                ])
+                ->indicator('Status'),
+
+            Tables\Filters\SelectFilter::make('transaction_type')
+                ->label('Type')
+                ->options([
+                    'official' => 'Official Business',
+                    'personal' => 'Personal Transaction',
+                ])
+                ->indicator('Type'),
+
+            Tables\Filters\Filter::make('inclusive_date')
+                ->form([
+                    Forms\Components\DatePicker::make('from')
+                        ->label('From Date'),
+                    Forms\Components\DatePicker::make('until')
+                        ->label('Until Date'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            $data['from'],
+                            fn (Builder $query, $date): Builder => $query->whereDate('inclusive_date', '>=', $date),
+                        )
+                        ->when(
+                            $data['until'],
+                            fn (Builder $query, $date): Builder => $query->whereDate('inclusive_date', '<=', $date),
+                        );
+                })
+                ->indicateUsing(function (array $data): array {
+                    $indicators = [];
+
+                    if ($data['from'] ?? null) {
+                        $indicators['from'] = 'From ' . \Carbon\Carbon::parse($data['from'])->toFormattedDateString();
+                    }
+
+                    if ($data['until'] ?? null) {
+                        $indicators['until'] = 'Until ' . \Carbon\Carbon::parse($data['until'])->toFormattedDateString();
+                    }
+
+                    return $indicators;
+                }),
+        ];
+    }
+
+    /* ============================================================
+       CONTEXTUAL ACTIONS
+       ============================================================ */
+
+    protected static function getContextualActions(): array
+    {
+        return [
+            Tables\Actions\ActionGroup::make([
+                Tables\Actions\ViewAction::make()
+                    ->icon('heroicon-o-eye')
+                    ->color('info'),
+
+                Tables\Actions\EditAction::make()
+                    ->icon('heroicon-o-pencil')
+                    ->color('warning')
+                    ->visible(fn(LocatorSlip $record) =>
+                        $record->status === 'pending' &&
+                        (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)
+                    ),
+
+                Action::make('print')
+                    ->label('Print')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn($record) => route('locator_slip.print', $record->id))
+                    ->openUrlInNewTab()
+                    ->visible(fn($record) => $record->status === 'approved'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->icon('heroicon-o-trash')
+                    ->visible(fn(LocatorSlip $record) =>
+                        $record->status === 'pending' &&
+                        (Auth::user()->role === 'admin' || Auth::user()->id === $record->user_id)
+                    ),
+            ])
+            ->label('Actions')
+            ->icon('heroicon-o-ellipsis-vertical')
+            ->size('sm')
+            ->color('gray')
+            ->button(),
+        ];
+    }
+
+    /* ============================================================
+       QUERY SCOPING
+       ============================================================ */
+
+    protected static function applyUserScope(Builder $query): Builder
+    {
+        return Auth::user()->role === 'admin'
+            ? $query
+            : $query->where('user_id', Auth::id());
+    }
 }

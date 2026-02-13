@@ -22,7 +22,7 @@ class DailyTimeRecordResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-down';
     protected static ?string $navigationLabel = 'Daily Time Record';
-    protected static ?string $navigationGroup = 'Manage';
+    protected static ?string $navigationGroup = 'Documents';
     protected static ?string $modelLabel = 'Daily Time Record';
     protected static ?string $pluralModelLabel = 'Daily Time Records';
     protected static ?int $navigationSort = 1;
