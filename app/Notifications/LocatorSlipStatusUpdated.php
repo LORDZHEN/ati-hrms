@@ -25,7 +25,7 @@ class LocatorSlipStatusUpdated extends Notification
         return [
             'title' => 'Locator Slip Status Update',
             'body' => "Your locator slip has been " . strtoupper($this->slip->status) . ".",
-            'url' => route('filament.hrms.resources.locator-slip.index'),
+            'url' => route('filament.hrms.resources.locator-slips.index'),
         ];
     }
 
@@ -35,7 +35,7 @@ class LocatorSlipStatusUpdated extends Notification
             ->title('Locator Slip Status Updated')
             ->body("Your locator slip has been " . strtoupper($this->slip->status) . ".")
             ->success()
-            ->url(route('filament.hrms.resources.locator-slip.index'));
+            ->url(route('filament.hrms.resources.locator-slips.index'));
     }
 
     public function notifyUser($user)

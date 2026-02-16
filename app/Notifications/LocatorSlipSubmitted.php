@@ -25,7 +25,7 @@ class LocatorSlipSubmitted extends Notification
         return [
             'title' => 'New Locator Slip Submitted',
             'body' => $this->slip->employee_name . ' filed a locator slip.',
-            'url' => route('filament.hrms.resources.locator-slip.index'),
+            'url' => route('filament.hrms.resources.locator-slips.index'),
         ];
     }
 
@@ -35,7 +35,7 @@ class LocatorSlipSubmitted extends Notification
             ->title('New Locator Slip')
             ->body($this->slip->employee_name . ' filed a locator slip.')
             ->success()
-            ->action('View', route('filament.hrms.resources.locator-slip.index'));
+            ->action('View', route('filament.hrms.resources.locator-slips.index'));
     }
 
     public function notifyUser($user)

@@ -6,78 +6,79 @@
     <title>SALN - {{ $saln->declarant_family_name }}, {{ $saln->declarant_first_name }}</title>
     <style>
         @page {
-            size: A4;
+            size: 8.5in 13in; /* Legal size */
             margin: 0.5in 0.75in;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 9pt;
-            line-height: 1.3;
-            margin: 0;
-            padding: 0;
+            font-size: 10pt;
+            line-height: 1.2;
             color: #000;
         }
 
         /* Header Styles */
         .header-date {
             text-align: right;
-            font-size: 8pt;
-            margin-bottom: 8px;
-            line-height: 1.2;
+            font-size: 7pt;
+            margin-bottom: 5px;
+            line-height: 1.1;
         }
 
         .form-title {
             font-weight: bold;
-            font-size: 14pt;
+            font-size: 13pt;
             text-align: center;
-            margin: 8px 0;
+            margin: 5px 0;
             text-decoration: underline;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .as-of-date {
             text-align: center;
-            margin: 6px auto;
+            margin: 4px auto;
             font-size: 11pt;
-            border-bottom: 1px solid #000;
-            width: 320px;
+            border-bottom: 1.5px solid #000;
+            width: 300px;
             padding-bottom: 2px;
             font-weight: bold;
         }
 
         .required-by {
             text-align: center;
-            font-size: 9pt;
-            margin-bottom: 10px;
+            font-size: 8pt;
+            margin-bottom: 8px;
         }
 
         /* Checkbox Section */
         .checkbox-section {
-            margin: 10px 0;
-            font-size: 9pt;
-            line-height: 1.5;
+            margin: 8px 0;
+            font-size: 8.5pt;
+            line-height: 1.4;
         }
 
         .checkbox-note {
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
+            font-size: 8pt;
         }
 
         .checkbox {
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border: 1.5px solid #000;
             text-align: center;
-            margin-right: 5px;
+            margin-right: 4px;
             vertical-align: middle;
-            font-size: 10pt;
-            line-height: 12px;
+            font-size: 9pt;
+            line-height: 10px;
             font-weight: bold;
         }
 
@@ -88,40 +89,40 @@
 
         /* Personal Information */
         .personal-info {
-            margin: 12px 0;
-            font-size: 9pt;
+            margin: 10px 0;
+            font-size: 8.5pt;
         }
 
         .info-row {
             display: flex;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             align-items: baseline;
         }
 
         .info-label {
             font-weight: bold;
-            width: 110px;
+            width: 105px;
             flex-shrink: 0;
-            font-size: 8.5pt;
+            font-size: 8pt;
         }
 
         .info-value {
             border-bottom: 1px solid #000;
             flex-grow: 1;
-            min-height: 20px;
-            padding: 2px 6px;
-            margin-right: 15px;
+            min-height: 18px;
+            padding: 1px 4px;
+            margin-right: 12px;
             position: relative;
         }
 
         .name-labels {
             position: absolute;
-            bottom: -14px;
+            bottom: -12px;
             left: 0;
             right: 0;
             display: flex;
-            gap: 8px;
-            font-size: 7.5pt;
+            gap: 6px;
+            font-size: 6.5pt;
             font-style: italic;
         }
 
@@ -135,37 +136,37 @@
             font-weight: bold;
             text-align: center;
             text-decoration: underline;
-            margin: 15px 0 8px 0;
-            font-size: 10pt;
+            margin: 10px 0 6px 0;
+            font-size: 9.5pt;
         }
 
         .section-subtitle {
             text-align: center;
             font-style: italic;
-            margin-bottom: 8px;
-            font-size: 8.5pt;
+            margin-bottom: 6px;
+            font-size: 8pt;
         }
 
         /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 8px 0;
+            margin: 6px 0;
         }
 
         th, td {
             border: 1px solid #000;
-            padding: 3px 4px;
+            padding: 2px 3px;
             text-align: center;
             vertical-align: middle;
-            font-size: 8pt;
+            font-size: 7.5pt;
         }
 
         th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 7.5pt;
-            line-height: 1.2;
+            font-size: 7pt;
+            line-height: 1.1;
         }
 
         .left-align {
@@ -173,7 +174,7 @@
         }
 
         .compact-row {
-            height: 22px;
+            height: 20px;
         }
 
         .filled-value {
@@ -188,10 +189,10 @@
 
         .total-row {
             font-weight: bold;
-            font-size: 9.5pt;
+            font-size: 9pt;
             text-align: right;
-            margin: 6px 0;
-            padding: 4px 0;
+            margin: 5px 0;
+            padding: 3px 0;
             border-top: 2px solid #000;
             border-bottom: 1px solid #000;
         }
@@ -199,28 +200,28 @@
         /* Net Worth Box */
         .net-worth-section {
             border: 2px solid #000;
-            padding: 8px;
-            margin: 10px 0;
+            padding: 6px;
+            margin: 8px 0;
             text-align: center;
             font-weight: bold;
-            font-size: 10pt;
+            font-size: 9.5pt;
             background-color: #f5f5f5;
         }
 
         /* Certification */
         .certification {
             text-align: justify;
-            font-size: 8.5pt;
-            margin: 8px 0;
-            line-height: 1.4;
+            font-size: 8pt;
+            margin: 6px 0;
+            line-height: 1.3;
         }
 
         /* Signature Section */
         .signature-section {
             display: flex;
             justify-content: space-between;
-            margin-top: 15px;
-            gap: 30px;
+            margin-top: 10px;
+            gap: 25px;
         }
 
         .signature-box {
@@ -229,64 +230,64 @@
 
         .signature-line {
             border-bottom: 1.5px solid #000;
-            margin: 20px 0 5px 0;
+            margin: 15px 0 4px 0;
             text-align: center;
-            height: 25px;
+            height: 20px;
         }
 
         .signature-label {
             text-align: center;
-            font-size: 8.5pt;
+            font-size: 8pt;
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
 
         .id-info {
-            margin-top: 6px;
-            font-size: 8pt;
+            margin-top: 5px;
+            font-size: 7.5pt;
         }
 
         .id-line {
             border-bottom: 1px solid #000;
-            margin: 2px 0;
-            min-height: 14px;
-            padding: 1px 3px;
+            margin: 1px 0;
+            min-height: 12px;
+            padding: 1px 2px;
         }
 
         /* Oath Section */
         .oath-section {
-            margin-top: 15px;
+            margin-top: 10px;
             text-align: center;
         }
 
         .oath-text {
             text-decoration: underline;
             font-weight: bold;
-            margin-bottom: 10px;
-            font-size: 8.5pt;
-            line-height: 1.4;
+            margin-bottom: 8px;
+            font-size: 8pt;
+            line-height: 1.3;
         }
 
         .oath-signature {
-            margin-top: 15px;
+            margin-top: 10px;
             text-align: center;
         }
 
         /* Page Number */
         .page-number {
             text-align: right;
-            margin-top: 10px;
-            font-size: 8.5pt;
+            margin-top: 8px;
+            font-size: 8pt;
             font-weight: bold;
         }
 
         /* Notes Section */
         .note-section {
-            margin-top: 12px;
+            margin-top: 10px;
             border-top: 2px solid #000;
-            padding-top: 6px;
-            font-size: 7.5pt;
-            line-height: 1.3;
+            padding-top: 5px;
+            font-size: 7pt;
+            line-height: 1.2;
         }
 
         /* Page Break */
@@ -305,13 +306,13 @@
             position: fixed;
             top: 15px;
             right: 15px;
-            padding: 12px 24px;
+            padding: 10px 20px;
             background-color: #1e40af;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             z-index: 1000;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -337,26 +338,33 @@
 
         /* Asset subsection styling */
         .asset-subsection {
-            margin-top: 8px;
-            margin-bottom: 6px;
+            margin-top: 6px;
+            margin-bottom: 5px;
         }
 
         .subsection-title {
-            font-size: 9pt;
+            font-size: 8.5pt;
             font-weight: bold;
         }
 
         .subsection-description {
-            font-size: 8pt;
+            font-size: 7.5pt;
             font-style: italic;
         }
+
+        /* Spacing utilities */
+        .mb-2 { margin-bottom: 2px; }
+        .mb-4 { margin-bottom: 4px; }
+        .mt-2 { margin-top: 2px; }
+        .mt-4 { margin-top: 4px; }
     </style>
 </head>
 <body>
     <!-- Print Button -->
     <button class="print-button no-print" onclick="window.print()">🖨️ Print SALN</button>
 
-    <!-- PAGE 1 START -->
+    <!-- ===== PAGE 1 START ===== -->
+
     <!-- Header -->
     <div class="header-date">
         Revised as of January 2015<br>
@@ -378,8 +386,8 @@
             Note: Husband and wife who are both public officials and employees may file the required statements jointly or separately.
         </div>
         <div>
-            <span class="checkbox {{ $saln->joint_filing ? 'checked' : '' }}">{{ $saln->joint_filing ? '✓' : '' }}</span> Joint Filing &nbsp;&nbsp;&nbsp;
-            <span class="checkbox {{ $saln->separate_filing ? 'checked' : '' }}">{{ $saln->separate_filing ? '✓' : '' }}</span> Separate Filing &nbsp;&nbsp;&nbsp;
+            <span class="checkbox {{ $saln->joint_filing ? 'checked' : '' }}">{{ $saln->joint_filing ? '✓' : '' }}</span> Joint Filing &nbsp;&nbsp;
+            <span class="checkbox {{ $saln->separate_filing ? 'checked' : '' }}">{{ $saln->separate_filing ? '✓' : '' }}</span> Separate Filing &nbsp;&nbsp;
             <span class="checkbox {{ $saln->not_applicable ? 'checked' : '' }}">{{ $saln->not_applicable ? '✓' : '' }}</span> Not Applicable
         </div>
     </div>
@@ -402,7 +410,7 @@
         </div>
 
         <!-- Address and Agency -->
-        <div class="info-row" style="margin-top: 18px;">
+        <div class="info-row" style="margin-top: 15px;">
             <div class="info-label">ADDRESS:</div>
             <div class="info-value filled-value">{{ $saln->user->full_address ?? '' }}</div>
             <div class="info-label">AGENCY/OFFICE:</div>
@@ -411,13 +419,13 @@
 
         <!-- Office Address -->
         <div class="info-row">
-            <div style="width: 110px;"></div>
-            <div style="flex-grow: 1; margin-right: 15px;"></div>
+            <div style="width: 105px;"></div>
+            <div style="flex-grow: 1; margin-right: 12px;"></div>
             <div class="info-label">OFFICE ADDRESS:</div>
             <div class="info-value filled-value">{{ $saln->declarant_office_address ?? '' }}</div>
         </div>
 
-        <br>
+        <div style="margin-top: 8px;"></div>
 
         <!-- Spouse Name and Position -->
         <div class="info-row">
@@ -435,16 +443,16 @@
         </div>
 
         <!-- Spouse Agency and Office Address -->
-        <div class="info-row" style="margin-top: 18px;">
-            <div style="width: 110px;"></div>
-            <div style="flex-grow: 1; margin-right: 15px;"></div>
+        <div class="info-row" style="margin-top: 15px;">
+            <div style="width: 105px;"></div>
+            <div style="flex-grow: 1; margin-right: 12px;"></div>
             <div class="info-label">AGENCY/OFFICE:</div>
             <div class="info-value filled-value">{{ $saln->spouse_agency_office ?? '' }}</div>
         </div>
 
         <div class="info-row">
-            <div style="width: 110px;"></div>
-            <div style="flex-grow: 1; margin-right: 15px;"></div>
+            <div style="width: 105px;"></div>
+            <div style="flex-grow: 1; margin-right: 12px;"></div>
             <div class="info-label">OFFICE ADDRESS:</div>
             <div class="info-value filled-value">{{ $saln->spouse_office_address ?? '' }}</div>
         </div>
@@ -501,8 +509,8 @@
         (Including those of the spouse and unmarried children below eighteen (18) years of age living in declarant's household)
     </div>
 
-    <div style="margin-top: 8px;">
-        <strong style="font-size: 9.5pt;">1. ASSETS</strong>
+    <div class="mt-2">
+        <strong style="font-size: 9pt;">1. ASSETS</strong>
 
         <!-- Real Properties -->
         <div class="asset-subsection">
@@ -530,7 +538,7 @@
                 <tbody>
                     @php
                         $realPropertiesCount = $saln->realProperties->count();
-                        $minRealRows = 2; // Reduced to fit on page 1
+                        $minRealRows = 2;
                         $realSubtotal = $saln->realProperties->sum('current_fair_market_value');
                     @endphp
 
@@ -588,7 +596,7 @@
                 <tbody>
                     @php
                         $personalPropertiesCount = $saln->personalProperties->count();
-                        $minPersonalRows = 3; // Reduced to fit on page 1
+                        $minPersonalRows = 3;
                         $personalSubtotal = $saln->personalProperties->sum('acquisition_cost');
                     @endphp
 
@@ -625,19 +633,18 @@
         <div class="total-row">
             <strong>TOTAL ASSETS (a+b):</strong> ₱{{ number_format($saln->total_assets, 2) }}
         </div>
-
-        <div class="page-number">Page 1 of 2</div>
     </div>
 
-    <!-- PAGE BREAK -->
+    <!-- ===== PAGE BREAK ===== -->
     <div class="page-break"></div>
 
-    <!-- PAGE 2 START -->
-    <!-- Liabilities Section -->
-    <div style="margin-top: 0;">
-        <strong style="font-size: 9.5pt;">2. LIABILITIES</strong> <span style="font-size: 8pt; font-style: italic;">(Loans, Mortgages, and other Obligations)</span>
+    <!-- ===== PAGE 2 START ===== -->
 
-        <table style="margin-top: 8px;">
+    <!-- Liabilities Section -->
+    <div class="mt-2">
+        <strong style="font-size: 9pt;">2. LIABILITIES</strong> <span style="font-size: 7.5pt; font-style: italic;">(Loans, Mortgages, and other Obligations)</span>
+
+        <table style="margin-top: 6px;">
             <thead>
                 <tr>
                     <th style="width: 35%;">NATURE</th>
@@ -693,7 +700,7 @@
         (of Declarant/Declarant's spouse; Ownership/Owning Shareholder (10 percent of total))
     </div>
 
-    <div style="margin: 8px 0; font-size: 9pt;">
+    <div style="margin: 6px 0; font-size: 8.5pt;">
         <span class="checkbox {{ $saln->has_business_interests ? 'checked' : '' }}">{{ $saln->has_business_interests ? '✓' : '' }}</span> I/We have business interest or financial connection.<br>
         <span class="checkbox {{ $saln->no_business_interests ? 'checked' : '' }}">{{ $saln->no_business_interests ? '✓' : '' }}</span> I/We do not have any business interest or financial connection.
     </div>
@@ -744,7 +751,7 @@
         (Within the Fourth Degree of Consanguinity or Affinity)
     </div>
 
-    <div style="margin: 8px 0; font-size: 9pt;">
+    <div style="margin: 6px 0; font-size: 8.5pt;">
         <span class="checkbox {{ $saln->no_relatives_in_government ? 'checked' : '' }}">{{ $saln->no_relatives_in_government ? '✓' : '' }}</span> I/We do not know of any relative in the government service.
     </div>
 
@@ -797,8 +804,9 @@
         I hereby authorize the Ombudsman or his/her duly authorized representative to obtain and secure from all appropriate government agencies, including the Bureau of Internal Revenue such documents that may show my assets, liabilities, net worth, business interests and financial connections, to include those of my spouse and unmarried children below 18 years of age living with me in my household covering previous years to include the year I first assumed office in government.
     </div>
 
-    <div style="margin: 10px 0; font-size: 9pt;">
-        Date: <span style="border-bottom: 1px solid #000; padding: 2px 80px; display: inline-block;">{{ $saln->date_signed ? \Carbon\Carbon::parse($saln->date_signed)->format('F d, Y') : '' }}</span>
+    <!-- Date Signed -->
+    <div style="margin: 8px 0 10px 0; font-size: 8.5pt;">
+        Date: <span style="border-bottom: 1px solid #000; padding: 2px 70px; display: inline-block;">{{ $saln->date_signed ? \Carbon\Carbon::parse($saln->date_signed)->format('F d, Y') : '' }}</span>
     </div>
 
     <!-- Signature Section -->
@@ -834,27 +842,27 @@
     <div class="oath-section no-page-break">
         <div class="oath-text">
             SUBSCRIBED AND SWORN TO before me this
-            <span style="border-bottom: 1px solid #000; padding: 0 30px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('jS') : '_____' }}</span>
+            <span style="border-bottom: 1px solid #000; padding: 0 25px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('jS') : '_____' }}</span>
             day of
-            <span style="border-bottom: 1px solid #000; padding: 0 60px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('F Y') : '_____________' }}</span>,
-            <br>affiant exhibiting to me the above-stated government issued identification card.
+            <span style="border-bottom: 1px solid #000; padding: 0 50px;">{{ $saln->subscribed_sworn_date ? \Carbon\Carbon::parse($saln->subscribed_sworn_date)->format('F Y') : '_____________' }}</span>,
+            affiant exhibiting to me the above-stated government issued identification card.
         </div>
 
         <div class="oath-signature">
-            <div style="height: 25px;"></div>
-            <div style="border-top: 1.5px solid #000; width: 280px; margin: 0 auto;"></div>
-            <div style="margin-top: 5px; font-weight: bold; font-size: 8.5pt;">
+            <div style="height: 20px;"></div>
+            <div style="border-top: 1.5px solid #000; width: 250px; margin: 0 auto;"></div>
+            <div style="margin-top: 4px; font-weight: bold; font-size: 8pt;">
                 {{ $saln->person_administering_oath ?? '(Person Administering Oath)' }}
             </div>
         </div>
     </div>
 
-    <div class="page-number">Page 2 of 2</div>
-
     <!-- Notes Section -->
-    <div class="note-section">
-        <p style="margin: 4px 0;"><strong>NOTE:</strong> Violation of this law is punishable by a fine not exceeding five thousand pesos (₱5,000) or imprisonment not exceeding one (1) year, or both, at the discretion of the court (Section 11, R.A. 6713).</p>
-        <p style="margin: 4px 0;"><strong>REMINDER:</strong> Any misrepresentation or non-disclosure of any material fact required to be stated herein shall constitute perjury under Article 183 of the Revised Penal Code and shall be punished accordingly.</p>
+    <div class="note-section no-page-break">
+        <p style="margin: 3px 0;"><strong>NOTE:</strong> Violation of this law is punishable by a fine not exceeding five thousand pesos (₱5,000) or imprisonment not exceeding one (1) year, or both, at the discretion of the court (Section 11, R.A. 6713).</p>
+        <p style="margin: 3px 0;"><strong>REMINDER:</strong> Any misrepresentation or non-disclosure of any material fact required to be stated herein shall constitute perjury under Article 183 of the Revised Penal Code and shall be punished accordingly.</p>
     </div>
+
+    <div class="page-number">Page 2 of 2</div>
 </body>
 </html>

@@ -7,6 +7,9 @@ use Filament\Actions;
 use App\Models\TravelOrder;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
+use Filament\Resources\Components\Tab;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\DatePicker;
 use Carbon\Carbon;
 
@@ -78,4 +81,75 @@ class ListTravelOrders extends ListRecords
         return $actions;
     }
 
+    public function getTabs(): array
+    {
+        // Admin sees all MAIN orders (excluding tagged copies)
+        if (Auth::user()->role === 'admin') {
+            return [
+                'all' => Tab::make('All Travel Orders')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->badge(fn() => TravelOrder::where(function($query) {
+                        // Show main batch orders (created_by matches batch creator)
+                        // Or solo orders
+                        $query->where('travel_type', 'solo')
+                              ->orWhere(function($q) {
+                                  $q->where('travel_type', 'batch')
+                                    ->whereRaw('JSON_LENGTH(employee_ids) > 1');
+                              });
+                    })->count())
+                    ->modifyQueryUsing(fn(Builder $query) =>
+                        $query->where(function($q) {
+                            // Show main batch orders or solo orders
+                            $q->where('travel_type', 'solo')
+                              ->orWhere(function($subQ) {
+                                  $subQ->where('travel_type', 'batch')
+                                      ->whereRaw('JSON_LENGTH(employee_ids) > 1');
+                              });
+                        })
+                    ),
+            ];
+        }
+
+        // Employees see two tabs
+        return [
+            'my_orders' => Tab::make('My Travel Orders')
+                ->icon('heroicon-o-user')
+                ->badge(fn() => TravelOrder::where('created_by', Auth::id())
+                    ->where(function($query) {
+                        // Show main batch orders or solo orders
+                        $query->where('travel_type', 'solo')
+                              ->orWhere(function($q) {
+                                  $q->where('travel_type', 'batch')
+                                    ->whereRaw('JSON_LENGTH(employee_ids) > 1');
+                              });
+                    })
+                    ->count()
+                )
+                ->modifyQueryUsing(fn(Builder $query) =>
+                    $query->where('created_by', Auth::id())
+                        ->where(function($q) {
+                            // Show main batch orders or solo orders
+                            $q->where('travel_type', 'solo')
+                              ->orWhere(function($subQ) {
+                                  $subQ->where('travel_type', 'batch')
+                                      ->whereRaw('JSON_LENGTH(employee_ids) > 1');
+                              });
+                        })
+                ),
+
+            'tagged' => Tab::make('Tagged Travel Orders')
+                ->icon('heroicon-o-tag')
+                ->badge(fn() => TravelOrder::where('travel_type', 'batch')
+                    ->whereJsonContains('employee_ids', Auth::id())
+                    ->whereRaw('JSON_LENGTH(employee_ids) = 1') // Only tagged copies
+                    ->count()
+                )
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn(Builder $query) =>
+                    $query->where('travel_type', 'batch')
+                        ->whereJsonContains('employee_ids', Auth::id())
+                        ->whereRaw('JSON_LENGTH(employee_ids) = 1') // Only tagged copies
+                ),
+        ];
+    }
 }

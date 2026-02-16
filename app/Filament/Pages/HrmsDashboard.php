@@ -62,7 +62,7 @@ class HrmsDashboard extends Page
             ],
             [
                 'title' => 'Locator Slip',
-                'route' => 'filament.hrms.resources.locator-slip.index',
+                'route' => 'filament.hrms.resources.locator-slips.index',
                 'icon' => 'heroicon-o-map-pin',
                 'bg_light' => 'bg-purple-50',
                 'bg_dark' => 'dark:bg-purple-900',
@@ -73,7 +73,7 @@ class HrmsDashboard extends Page
             ],
             [
                 'title' => 'Travel Order',
-                'route' => 'filament.hrms.resources.travel-order.index',
+                'route' => 'filament.hrms.resources.travel-orders.index',
                 'icon' => 'heroicon-o-briefcase',
                 'bg_light' => 'bg-yellow-50',
                 'bg_dark' => 'dark:bg-yellow-900',
@@ -84,7 +84,7 @@ class HrmsDashboard extends Page
             ],
             [
                 'title' => 'SALN',
-                'route' => 'filament.hrms.resources.saln.index',
+                'route' => 'filament.hrms.resources.salns.index',
                 'icon' => 'heroicon-o-document-text',
                 'bg_light' => 'bg-pink-50',
                 'bg_dark' => 'dark:bg-pink-900',
@@ -185,7 +185,7 @@ class HrmsDashboard extends Page
 
         foreach ($salns as $saln) {
             $employeeName = $saln->user?->full_name
-                ?? trim("{$saln->declarant_first_name} {$saln->declarant_middle_initial} {$saln->declarant_family_name}") 
+                ?? trim("{$saln->declarant_first_name} {$saln->declarant_middle_initial} {$saln->declarant_family_name}")
                 ?: 'Unknown';
 
             $addActivity(
