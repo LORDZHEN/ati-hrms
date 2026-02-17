@@ -107,4 +107,5 @@ class EditEmployee extends EditRecord
             ->performedOn($this->record)
             ->log('Employee information updated');
     }
+    
 }

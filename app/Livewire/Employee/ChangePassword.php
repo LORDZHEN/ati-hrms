@@ -5,42 +5,97 @@ namespace App\Livewire\Employee;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
+use Filament\Notifications\Notification;
 
 class ChangePassword extends Component
 {
-    public $changingPassword = false;
+    public bool $changingPassword = false;
+    public ?string $current_password = null;
+    public ?string $password = null;
+    public ?string $password_confirmation = null;
 
-    public $current_password;
-    public $password;
-    public $password_confirmation;
-
-    // Password strength state
-    public $passwordStrength = 'weak';
-    public $hasUppercase = false;
-    public $hasLowercase = false;
-    public $hasNumber = false;
-    public $hasSpecial = false;
-    public $hasMinLength = false;
+    // Password strength indicators
+    public string $passwordStrength = 'weak';
+    public bool $hasUppercase = false;
+    public bool $hasLowercase = false;
+    public bool $hasNumber = false;
+    public bool $hasSpecial = false;
+    public bool $hasMinLength = false;
 
     // Password match state
-    public $passwordsMatch = null; // null | true | false
+    public ?bool $passwordsMatch = null;
 
-    public function mount()
+    protected $listeners = ['openPasswordModal' => 'openModal'];
+
+    public function mount(): void
     {
-        $this->changingPassword = Auth::user()->must_change_password;
+        // Auto-open modal if user must change password
+        if (Auth::user()->must_change_password ?? false) {
+            $this->changingPassword = true;
+        }
     }
 
     /**
-     * Runs whenever NEW PASSWORD changes
+     * Open the password change modal
      */
-    public function updatedPassword($value)
+    public function openModal(): void
     {
-        // Strength detection
-        $this->hasUppercase = preg_match('/[A-Z]/', $value);
-        $this->hasLowercase = preg_match('/[a-z]/', $value);
-        $this->hasNumber    = preg_match('/[0-9]/', $value);
-        $this->hasSpecial   = preg_match('/[\W_]/', $value);
-        $this->hasMinLength = strlen($value) >= 8;
+        $this->changingPassword = true;
+    }
+
+    /**
+     * Close modal and reset all fields
+     */
+    public function closeModal(): void
+    {
+        $this->reset([
+            'changingPassword',
+            'current_password',
+            'password',
+            'password_confirmation',
+            'passwordStrength',
+            'hasUppercase',
+            'hasLowercase',
+            'hasNumber',
+            'hasSpecial',
+            'hasMinLength',
+            'passwordsMatch',
+        ]);
+        $this->resetValidation();
+    }
+
+    /**
+     * Monitor new password for strength calculation
+     */
+    public function updatedPassword(?string $value): void
+    {
+        if (!$value) {
+            $this->resetPasswordStrength();
+            return;
+        }
+
+        $this->calculatePasswordStrength($value);
+        $this->checkPasswordMatch();
+    }
+
+    /**
+     * Monitor password confirmation for match checking
+     */
+    public function updatedPasswordConfirmation(): void
+    {
+        $this->checkPasswordMatch();
+    }
+
+    /**
+     * Calculate password strength based on criteria
+     */
+    protected function calculatePasswordStrength(string $password): void
+    {
+        $this->hasUppercase = preg_match('/[A-Z]/', $password) === 1;
+        $this->hasLowercase = preg_match('/[a-z]/', $password) === 1;
+        $this->hasNumber = preg_match('/[0-9]/', $password) === 1;
+        $this->hasSpecial = preg_match('/[\W_]/', $password) === 1;
+        $this->hasMinLength = strlen($password) >= 8;
 
         $score = collect([
             $this->hasUppercase,
@@ -53,21 +108,27 @@ class ChangePassword extends Component
         $this->passwordStrength = match (true) {
             $score <= 2 => 'weak',
             $score <= 4 => 'medium',
-            default     => 'strong',
+            default => 'strong',
         };
-
-        $this->checkPasswordMatch();
     }
 
     /**
-     * Runs whenever CONFIRM PASSWORD changes
+     * Reset password strength indicators
      */
-    public function updatedPasswordConfirmation()
+    protected function resetPasswordStrength(): void
     {
-        $this->checkPasswordMatch();
+        $this->passwordStrength = 'weak';
+        $this->hasUppercase = false;
+        $this->hasLowercase = false;
+        $this->hasNumber = false;
+        $this->hasSpecial = false;
+        $this->hasMinLength = false;
     }
 
-    protected function checkPasswordMatch()
+    /**
+     * Check if password and confirmation match
+     */
+    protected function checkPasswordMatch(): void
     {
         if (!$this->password || !$this->password_confirmation) {
             $this->passwordsMatch = null;
@@ -77,54 +138,112 @@ class ChangePassword extends Component
         $this->passwordsMatch = $this->password === $this->password_confirmation;
     }
 
-    public function updatePassword()
+    /**
+     * Validation rules
+     */
+    protected function rules(): array
     {
-        $this->validate([
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
-        ]);
+        return [
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ];
+    }
 
+    /**
+     * Custom validation messages
+     */
+    protected function messages(): array
+    {
+        return [
+            'current_password.required' => 'Please enter your current password.',
+            'password.required' => 'Please enter a new password.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'password_confirmation.required' => 'Please confirm your new password.',
+        ];
+    }
+
+    /**
+     * Update user password
+     */
+    public function updatePassword(): void
+    {
+        $this->validate();
+
+        // Additional strength validation
         if ($this->passwordStrength !== 'strong') {
             $this->addError(
                 'password',
-                'Password must be STRONG (uppercase, lowercase, number, and special character).'
+                'Password must be strong (include uppercase, lowercase, number, and special character).'
             );
             return;
         }
 
+        // Additional match validation
         if ($this->passwordsMatch !== true) {
-            $this->addError(
-                'password_confirmation',
-                'Passwords do not match.'
-            );
+            $this->addError('password_confirmation', 'Passwords do not match.');
             return;
         }
 
         $user = Auth::user();
 
+        // Verify current password
         if (!Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', 'The current password is incorrect.');
             return;
         }
 
+        // Prevent reusing the same password
+        if (Hash::check($this->password, $user->password)) {
+            $this->addError('password', 'New password cannot be the same as your current password.');
+            return;
+        }
+
+        // Update password
         $user->update([
-            'password' => bcrypt($this->password),
+            'password' => Hash::make($this->password),
             'must_change_password' => false,
         ]);
 
-        $this->reset([
-            'current_password',
-            'password',
-            'password_confirmation',
-            'passwordStrength',
-            'passwordsMatch',
-        ]);
+        $this->closeModal();
 
-        $this->changingPassword = false;
+        // Success notification
+        Notification::make()
+            ->title('Password Changed')
+            ->body('Your password has been successfully updated.')
+            ->success()
+            ->duration(5000)
+            ->send();
 
-        $this->dispatch('password-updated', ['message' => 'Your password has been changed successfully.']);
+        // Optional: Dispatch event for other components
+        $this->dispatch('passwordUpdated');
+    }
 
+    /**
+     * Get strength indicator color
+     */
+    public function getStrengthColorProperty(): string
+    {
+        return match ($this->passwordStrength) {
+            'weak' => 'red',
+            'medium' => 'amber',
+            'strong' => 'emerald',
+            default => 'gray',
+        };
+    }
 
+    /**
+     * Get strength indicator width percentage
+     */
+    public function getStrengthWidthProperty(): string
+    {
+        return match ($this->passwordStrength) {
+            'weak' => '33%',
+            'medium' => '66%',
+            'strong' => '100%',
+            default => '0%',
+        };
     }
 
     public function render()

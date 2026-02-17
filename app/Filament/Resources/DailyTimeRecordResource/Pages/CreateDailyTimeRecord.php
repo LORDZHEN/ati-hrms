@@ -187,4 +187,5 @@ class CreateDailyTimeRecord extends CreateRecord
 
         return $data;
     }
+    
 }

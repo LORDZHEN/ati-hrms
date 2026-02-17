@@ -16,4 +16,8 @@ class EditDailyTimeRecord extends EditRecord
 
         parent::mount($record);
     }
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }
