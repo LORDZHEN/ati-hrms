@@ -7,13 +7,11 @@ use Filament\Notifications\Actions\Action;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification as BaseNotification;
 
-class PDSSubmittedNotification extends BaseNotification
+class PDSRemarksAdded extends BaseNotification
 {
     use Queueable;
 
-    public function __construct(public $user, public $pds)
-    {
-    }
+    public function __construct(public $pds) {}
 
     public function via($notifiable): array
     {
@@ -23,12 +21,9 @@ class PDSSubmittedNotification extends BaseNotification
     public function toDatabase($notifiable): array
     {
         return FilamentNotification::make()
-            ->title('New PDS Submitted')
-            ->body(
-                $this->user->first_name . ' ' . $this->user->last_name .
-                ' submitted a Personal Data Sheet.'
-            )
-            ->icon('heroicon-o-document-text')
+            ->title('Admin Remarks on Your PDS')
+            ->body('Your Personal Data Sheet has received remarks: ' . $this->pds->remarks)
+            ->icon('heroicon-o-chat-bubble-left-right')
             ->iconColor('warning')
             ->actions([
                 Action::make('view')

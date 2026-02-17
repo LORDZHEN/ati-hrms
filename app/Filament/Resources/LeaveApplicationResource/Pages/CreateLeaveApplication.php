@@ -30,7 +30,10 @@ class CreateLeaveApplication extends CreateRecord
     protected function afterCreate(): void
     {
         $admins = User::where('role', 'admin')->get();
+
         foreach ($admins as $admin) {
+            // notify() calls via() → toDatabase() → saves to notifications table
+            // Filament's bell picks it up automatically. No extra step needed.
             $admin->notify(new LeaveApplicationSubmitted($this->record));
         }
     }

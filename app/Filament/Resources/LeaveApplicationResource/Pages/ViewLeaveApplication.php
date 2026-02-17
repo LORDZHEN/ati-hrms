@@ -21,23 +21,25 @@ class ViewLeaveApplication extends ViewRecord
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->visible(fn () =>
+                ->visible(
+                    fn() =>
                     auth()->user()->role === 'admin'
                     && $this->record->status === 'pending'
                 )
                 ->requiresConfirmation()
                 ->action(function () {
-
                     $this->record->update([
                         'status' => 'approved',
-                        'authorized_officer' =>
-                            auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                        'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                         'date_approved_disapproved' => now(),
                     ]);
 
-                    $notification = new \App\Notifications\LeaveApplicationStatusUpdated($this->record);
-                    $notification->notifyUser($this->record->employee);
+                    // Notify the employee who filed the leave
+                    $this->record->employee->notify(
+                        new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
+                    );
 
+                    // Flash notification only for the currently logged-in admin
                     Notification::make()
                         ->title('Leave Approved')
                         ->success()
@@ -49,7 +51,8 @@ class ViewLeaveApplication extends ViewRecord
                 ->label('Disapprove')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->visible(fn () =>
+                ->visible(
+                    fn() =>
                     auth()->user()->role === 'admin'
                     && $this->record->status === 'pending'
                 )
@@ -60,17 +63,16 @@ class ViewLeaveApplication extends ViewRecord
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data) {
-
                     $this->record->update([
                         'status' => 'disapproved',
-                        'authorized_officer' =>
-                            auth()->user()->first_name . ' ' . auth()->user()->last_name,
+                        'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
                         'disapproval_reason' => $data['disapproval_reason'],
                         'date_approved_disapproved' => now(),
                     ]);
 
-                    $notification = new \App\Notifications\LeaveApplicationStatusUpdated($this->record);
-                    $notification->notifyUser($this->record->employee);
+                    $this->record->employee->notify(
+                        new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
+                    );
 
                     Notification::make()
                         ->title('Leave Disapproved')

@@ -17,6 +17,8 @@ use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Notifications\DtrPdfGenerated;
+use App\Notifications\DtrDeleted;
 
 class DailyTimeRecordResource extends Resource
 {
@@ -417,16 +419,22 @@ class DailyTimeRecordResource extends Resource
                                     'employee' => $record->employee,
                                 ]);
 
+                                $pdfFileName = 'DTR_' . str_replace(' ', '_', $record->employee->name) . '_' . now()->format('Ymd') . '.pdf';
+
+                                // Send notification to employee
+                                $record->employee->notify(new DtrPdfGenerated($record, $pdfFileName));
+
                                 \Filament\Notifications\Notification::make()
                                     ->success()
                                     ->title('PDF Generated')
+                                    ->body('Employee has been notified.')
                                     ->send();
 
                                 return response()->streamDownload(
                                     function () use ($pdf) {
                                         echo $pdf->output();
                                     },
-                                    'DTR_' . str_replace(' ', '_', $record->employee->name) . '_' . now()->format('Ymd') . '.pdf'
+                                    $pdfFileName
                                 );
                             } catch (\Exception $e) {
                                 \Filament\Notifications\Notification::make()
@@ -447,7 +455,21 @@ class DailyTimeRecordResource extends Resource
                         ->slideOver(),
 
                     Tables\Actions\DeleteAction::make()
-                        ->visible(fn() => $isAdmin),
+                        ->visible(fn() => $isAdmin)
+                        ->before(function ($record) {
+                            // Send notification before deletion
+                            $filePath = $record->file_path;
+                            if (is_array($filePath)) {
+                                $filePath = $filePath[0] ?? '';
+                            }
+
+                            $record->employee->notify(new DtrDeleted(
+                                $record->employee->name,
+                                basename($filePath),
+                                'Record removed by administrator'
+                            ));
+                        })
+                        ->successNotificationTitle('DTR record deleted'),
                 ])
                     ->label('Actions')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -457,7 +479,23 @@ class DailyTimeRecordResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => $isAdmin),
+                        ->visible(fn() => $isAdmin)
+                        ->before(function ($records) {
+                            // Send notification to each employee before bulk deletion
+                            foreach ($records as $record) {
+                                $filePath = $record->file_path;
+                                if (is_array($filePath)) {
+                                    $filePath = $filePath[0] ?? '';
+                                }
+
+                                $record->employee->notify(new DtrDeleted(
+                                    $record->employee->name,
+                                    basename($filePath),
+                                    'Record removed by administrator (bulk action)'
+                                ));
+                            }
+                        })
+                        ->successNotificationTitle(fn($records) => count($records) . ' DTR record(s) deleted'),
                 ]),
             ])
             ->emptyStateHeading('No DTR Records')

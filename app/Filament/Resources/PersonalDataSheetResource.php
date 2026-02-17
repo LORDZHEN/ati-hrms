@@ -14,6 +14,8 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Database\Eloquent\Collection;
+use App\Notifications\PDSStatusUpdated;
+use App\Notifications\PDSRemarksAdded;
 
 use Filament\Forms\Components\{
     View as ViewComponent,
@@ -352,8 +354,15 @@ class PersonalDataSheetResource extends Resource
                         ->modalHeading('Approve Multiple PDS')
                         ->modalDescription('Are you sure you want to approve all selected Personal Data Sheets?')
                         ->action(function (Collection $records) {
-                            $count = $records->where('status', '!=', 'approved')->count();
-                            $records->each(fn($record) => $record->update(['status' => 'approved']));
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->status !== 'approved') {
+                                    $record->update(['status' => 'approved']);
+                                    $record->user->notify(new PDSStatusUpdated($record));
+                                    $count++;
+                                }
+                            }
 
                             Notification::make()
                                 ->success()
@@ -377,11 +386,18 @@ class PersonalDataSheetResource extends Resource
                                 ->placeholder('This reason will be applied to all selected records...'),
                         ])
                         ->action(function (Collection $records, array $data) {
-                            $count = $records->where('status', '!=', 'disapproved')->count();
-                            $records->each(fn($record) => $record->update([
-                                'status' => 'disapproved',
-                                'remarks' => $data['remarks'],
-                            ]));
+                            $count = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->status !== 'disapproved') {
+                                    $record->update([
+                                        'status' => 'disapproved',
+                                        'remarks' => $data['remarks'],
+                                    ]);
+                                    $record->user->notify(new PDSStatusUpdated($record));
+                                    $count++;
+                                }
+                            }
 
                             Notification::make()
                                 ->danger()
@@ -681,15 +697,16 @@ class PersonalDataSheetResource extends Resource
                             ->placeholder('Please provide a clear reason for disapproval...'),
                     ])
                     ->action(function ($record, array $data) {
-                        $record->update([
-                            'status' => 'disapproved',
-                            'remarks' => $data['remarks'],
-                        ]);
+                        $record->update(['remarks' => $data['remarks']]);
 
+                        // Notify the employee
+                        $record->user->notify(new PDSRemarksAdded($record));
+
+                        // Flash for admin
                         Notification::make()
-                            ->danger()
-                            ->title('PDS Disapproved')
-                            ->body('The PDS has been disapproved with remarks.')
+                            ->success()
+                            ->title('Remarks Updated')
+                            ->body('Admin remarks have been saved and the employee has been notified.')
                             ->send();
                     }),
 
@@ -732,6 +749,10 @@ class PersonalDataSheetResource extends Resource
                             'remarks' => null,
                         ]);
 
+                        // Notify the employee
+                        $record->user->notify(new PDSStatusUpdated($record));
+
+                        // Flash for admin
                         Notification::make()
                             ->info()
                             ->title('Status Reset')

@@ -8,7 +8,6 @@ use Illuminate\Notifications\Notification;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Notifications\Actions\Action;
 
-
 class LeaveApplicationStatusUpdated extends Notification
 {
     use Queueable;
@@ -22,31 +21,26 @@ class LeaveApplicationStatusUpdated extends Notification
 
     public function toDatabase($notifiable): array
     {
-        return [
-            'title' => 'Leave Application Update',
-            'body' => "Your leave application has been " . strtoupper($this->leave->status) . ".",
-            'url' => route('filament.hrms.resources.leave-applications.index'),
-        ];
-    }
+        $isApproved = $this->leave->status === 'approved';
 
-    public function notifyUser($user)
-{
-    $user->notify($this);
-
-    if (class_exists(FilamentNotification::class)) {
-        $data = $this->toDatabase($user);
-
-        FilamentNotification::make()
-            ->title($data['title'])
-            ->body($data['body'])
-            ->success()
+        return FilamentNotification::make()
+            ->title('Leave Application ' . ucfirst($this->leave->status))
+            ->body(
+                'Your ' .
+                str_replace('_', ' ', ucwords($this->leave->type_of_leave, '_')) .
+                ' has been ' . strtoupper($this->leave->status) . '.' .
+                ($this->leave->disapproval_reason
+                    ? ' Reason: ' . $this->leave->disapproval_reason
+                    : '')
+            )
+            ->icon($isApproved ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+            ->iconColor($isApproved ? 'success' : 'danger')
             ->actions([
                 Action::make('view')
-                    ->label('View')
-                    ->url($data['url'])
-                    ->openUrlInNewTab(),
+                    ->label('View Application')
+                    ->url(route('filament.hrms.resources.leave-applications.view', $this->leave->id))
+                    ->markAsRead(),
             ])
-            ->send();
+            ->getDatabaseMessage();
     }
-}
 }

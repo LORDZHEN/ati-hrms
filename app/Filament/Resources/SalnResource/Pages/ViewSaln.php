@@ -1,4 +1,7 @@
 <?php
+// ============================================================
+// FILE: app/Filament/Resources/SalnResource/Pages/ViewSaln.php
+// ============================================================
 
 namespace App\Filament\Resources\SalnResource\Pages;
 

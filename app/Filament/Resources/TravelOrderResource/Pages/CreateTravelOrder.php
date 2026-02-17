@@ -9,7 +9,7 @@ use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
-use App\Notifications\TravelOrderStatusUpdated;
+use App\Notifications\TravelOrderSubmitted;
 use Filament\Actions;
 use Illuminate\Support\Str;
 
@@ -191,12 +191,12 @@ class CreateTravelOrder extends CreateRecord
     }
 
     /**
-     * Notify admin users about new travel order
+     * Notify admin users about new travel order submission
      */
     protected function notifyAdmins($adminUsers, TravelOrder $travelOrder): void
     {
         foreach ($adminUsers as $admin) {
-            $admin->notify(new TravelOrderStatusUpdated($travelOrder));
+            $admin->notify(new \App\Notifications\TravelOrderSubmitted($travelOrder));
         }
     }
 

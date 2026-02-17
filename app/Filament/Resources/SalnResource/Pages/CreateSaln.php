@@ -6,8 +6,8 @@ use App\Filament\Resources\SalnResource;
 use Filament\Resources\Pages\CreateRecord;
 use App\Notifications\NewSalnFiled;
 use App\Models\User;
-use Illuminate\Support\Facades\Notification;
 use Filament\Actions;
+use Illuminate\Support\Facades\Notification;
 
 class CreateSaln extends CreateRecord
 {
@@ -32,16 +32,11 @@ class CreateSaln extends CreateRecord
     {
         $data['user_id'] = auth()->id();
 
-        // Calculate totals from form data before creating
-        $realProperties = $data['realProperties'] ?? [];
-        $personalProperties = $data['personalProperties'] ?? [];
-        $liabilities = $data['liabilities'] ?? [];
+        $realPropertiesTotal = collect($data['realProperties'] ?? [])->sum('current_fair_market_value');
+        $personalPropertiesTotal = collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
 
-        $realPropertiesTotal = collect($realProperties)->sum('current_fair_market_value');
-        $personalPropertiesTotal = collect($personalProperties)->sum('acquisition_cost');
         $data['total_assets'] = $realPropertiesTotal + $personalPropertiesTotal;
-
-        $data['total_liabilities'] = collect($liabilities)->sum('outstanding_balance');
+        $data['total_liabilities'] = collect($data['liabilities'] ?? [])->sum('outstanding_balance');
         $data['net_worth'] = $data['total_assets'] - $data['total_liabilities'];
 
         return $data;
@@ -49,16 +44,15 @@ class CreateSaln extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Recalculate to ensure accuracy after all relationships are saved
         $this->record->calculateTotals();
 
-        // Notify all admins
+        // Notify all admins — stored in their bell via toDatabase()
         $admins = User::where('role', 'admin')->get();
-
-        if ($admins->count() > 0) {
-            Notification::send($admins, new NewSalnFiled($this->record));
+        foreach ($admins as $admin) {
+            $admin->notify(new NewSalnFiled($this->record));
         }
 
+        // Flash confirmation only for the employee submitting
         \Filament\Notifications\Notification::make()
             ->title('SALN Submitted Successfully')
             ->body('Your Statement of Assets, Liabilities and Net Worth has been filed.')
@@ -69,5 +63,140 @@ class CreateSaln extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR CHILDREN
+    // ============================================================
+
+    public function addChild(): void
+    {
+        $children = $this->data['children'] ?? [];
+        $children[] = ['name' => '', 'date_of_birth' => '', 'age' => ''];
+        $this->data['children'] = $children;
+    }
+
+    public function removeChild(int $index): void
+    {
+        $children = $this->data['children'] ?? [];
+        unset($children[$index]);
+        $this->data['children'] = array_values($children);
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR REAL PROPERTIES
+    // ============================================================
+
+    public function addRealProperty(): void
+    {
+        $items = $this->data['realProperties'] ?? [];
+        $items[] = [
+            'description' => '',
+            'kind' => '',
+            'exact_location' => '',
+            'assessed_value' => '',
+            'current_fair_market_value' => '',
+            'acquisition_year' => '',
+            'mode_of_acquisition' => '',
+            'acquisition_cost' => '',
+        ];
+        $this->data['realProperties'] = $items;
+    }
+
+    public function removeRealProperty(int $index): void
+    {
+        $items = $this->data['realProperties'] ?? [];
+        unset($items[$index]);
+        $this->data['realProperties'] = array_values($items);
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR PERSONAL PROPERTIES
+    // ============================================================
+
+    public function addPersonalProperty(): void
+    {
+        $items = $this->data['personalProperties'] ?? [];
+        $items[] = [
+            'description' => '',
+            'year_acquired' => '',
+            'acquisition_cost' => '',
+        ];
+        $this->data['personalProperties'] = $items;
+    }
+
+    public function removePersonalProperty(int $index): void
+    {
+        $items = $this->data['personalProperties'] ?? [];
+        unset($items[$index]);
+        $this->data['personalProperties'] = array_values($items);
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR LIABILITIES
+    // ============================================================
+
+    public function addLiability(): void
+    {
+        $items = $this->data['liabilities'] ?? [];
+        $items[] = [
+            'nature' => '',
+            'name_of_creditors' => '',
+            'outstanding_balance' => '',
+        ];
+        $this->data['liabilities'] = $items;
+    }
+
+    public function removeLiability(int $index): void
+    {
+        $items = $this->data['liabilities'] ?? [];
+        unset($items[$index]);
+        $this->data['liabilities'] = array_values($items);
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR BUSINESS INTERESTS
+    // ============================================================
+
+    public function addBusinessInterest(): void
+    {
+        $items = $this->data['businessInterests'] ?? [];
+        $items[] = [
+            'name_of_entity' => '',
+            'business_address' => '',
+            'nature_of_business_interest' => '',
+            'date_of_acquisition' => '',
+        ];
+        $this->data['businessInterests'] = $items;
+    }
+
+    public function removeBusinessInterest(int $index): void
+    {
+        $items = $this->data['businessInterests'] ?? [];
+        unset($items[$index]);
+        $this->data['businessInterests'] = array_values($items);
+    }
+
+    // ============================================================
+    // LIVEWIRE METHODS FOR RELATIVES IN GOVERNMENT
+    // ============================================================
+
+    public function addRelativeInGovernment(): void
+    {
+        $items = $this->data['relativesInGovernment'] ?? [];
+        $items[] = [
+            'name_of_relative' => '',
+            'relationship' => '',
+            'position' => '',
+            'name_of_agency_office_address' => '',
+        ];
+        $this->data['relativesInGovernment'] = $items;
+    }
+
+    public function removeRelativeInGovernment(int $index): void
+    {
+        $items = $this->data['relativesInGovernment'] ?? [];
+        unset($items[$index]);
+        $this->data['relativesInGovernment'] = array_values($items);
     }
 }

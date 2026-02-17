@@ -6,14 +6,13 @@ use App\Models\LocatorSlip;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Filament\Notifications\Notification as FilamentNotification;
+use Filament\Notifications\Actions\Action;
 
 class LocatorSlipStatusUpdated extends Notification
 {
     use Queueable;
 
-    public function __construct(public LocatorSlip $slip)
-    {
-    }
+    public function __construct(public LocatorSlip $slip) {}
 
     public function via($notifiable): array
     {
@@ -22,33 +21,25 @@ class LocatorSlipStatusUpdated extends Notification
 
     public function toDatabase($notifiable): array
     {
-        return [
-            'title' => 'Locator Slip Status Update',
-            'body' => "Your locator slip has been " . strtoupper($this->slip->status) . ".",
-            'url' => route('filament.hrms.resources.locator-slips.index'),
-        ];
-    }
+        $isApproved = $this->slip->status === 'approved';
 
-    public function toFilament($notifiable)
-    {
         return FilamentNotification::make()
-            ->title('Locator Slip Status Updated')
-            ->body("Your locator slip has been " . strtoupper($this->slip->status) . ".")
-            ->success()
-            ->url(route('filament.hrms.resources.locator-slips.index'));
-    }
-
-    public function notifyUser($user)
-    {
-        $user->notify($this);
-        if (class_exists(FilamentNotification::class)) {
-            $data = $this->toDatabase($user);
-            FilamentNotification::make()
-                ->title($data['title'])
-                ->body($data['body'])
-                ->success()
-                ->url($data['url'])
-                ->send();
-        }
+            ->title('Locator Slip ' . ucfirst($this->slip->status))
+            ->body(
+                'Your locator slip to ' . $this->slip->destination .
+                ' has been ' . strtoupper($this->slip->status) . '.' .
+                ($this->slip->admin_remarks
+                    ? ' Remarks: ' . $this->slip->admin_remarks
+                    : '')
+            )
+            ->icon($isApproved ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+            ->iconColor($isApproved ? 'success' : 'danger')
+            ->actions([
+                Action::make('view')
+                    ->label('View Slip')
+                    ->url(route('filament.hrms.resources.locator-slips.view', $this->slip->id))
+                    ->markAsRead(),
+            ])
+            ->getDatabaseMessage();
     }
 }

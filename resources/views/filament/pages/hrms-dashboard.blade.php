@@ -96,119 +96,6 @@
         to { opacity: 1; transform: translateX(0); }
     }
 
-    /* Compact Grid Layouts */
-    .quick-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 14px;
-        padding: 1.25rem;
-        border: 2px solid transparent;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        animation: fadeInUp 0.5s ease-out backwards;
-    }
-
-    .dark .stat-card {
-        background: #1f2937;
-        border-color: #374151;
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--ati-green), var(--ati-amber));
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-    }
-
-    .stat-card:hover::before { transform: scaleX(1); }
-
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.12);
-        border-color: var(--ati-green);
-    }
-
-    .stat-card.orange:hover { border-color: var(--ati-amber); }
-    .stat-card.blue:hover { border-color: #3b82f6; }
-    .stat-card.purple:hover { border-color: #8b5cf6; }
-
-    .stat-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-
-    .stat-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-    }
-
-    .stat-card:hover .stat-icon {
-        transform: scale(1.1) rotate(5deg);
-    }
-
-    .stat-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
-    .stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
-    .stat-icon.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-    .stat-icon.purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-
-    .stat-value {
-        font-size: 1.875rem;
-        font-weight: 900;
-        color: #1f2937;
-        line-height: 1;
-        margin-bottom: 0.375rem;
-    }
-
-    .dark .stat-value { color: #f3f4f6; }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-    }
-
-    .dark .stat-label { color: #9ca3af; }
-
-    .stat-trend {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.75rem;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .stat-trend.up { background: #dcfce7; color: #059669; }
-    .stat-trend.down { background: #fee2e2; color: #dc2626; }
-    .dark .stat-trend.up { background: #064e3b; color: #34d399; }
-    .dark .stat-trend.down { background: #7f1d1d; color: #f87171; }
-
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
     /* Compact Section Headers */
     .section-header {
         display: flex;
@@ -399,6 +286,8 @@
         animation: fadeInUp 0.5s ease-out backwards;
     }
 
+    .activity-item:last-child { margin-bottom: 0; }
+
     .activity-item:hover {
         background: #f9fafb;
         border-color: var(--ati-green);
@@ -480,6 +369,8 @@
         transition: all 0.25s ease;
     }
 
+    .announcement-item:last-child { margin-bottom: 0; }
+
     .dark .announcement-item {
         background: #111827;
         border-left-color: #374151;
@@ -552,6 +443,8 @@
         transition: all 0.25s ease;
     }
 
+    .event-item:last-child { margin-bottom: 0; }
+
     .dark .event-item { background: #111827; }
 
     .event-item:hover {
@@ -622,6 +515,8 @@
         transition: all 0.25s ease;
     }
 
+    .birthday-item:last-child { margin-bottom: 0; }
+
     .dark .birthday-item { background: #111827; }
 
     .birthday-item:hover {
@@ -655,9 +550,7 @@
         font-size: 1rem;
     }
 
-    .birthday-info {
-        flex: 1;
-    }
+    .birthday-info { flex: 1; }
 
     .birthday-name {
         font-weight: 700;
@@ -680,61 +573,6 @@
         color: var(--ati-amber);
     }
 
-    /* Chart Widget */
-    .chart-bar {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .chart-label {
-        width: 80px;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #4b5563;
-    }
-
-    .dark .chart-label { color: #d1d5db; }
-
-    .chart-bar-wrapper {
-        flex: 1;
-        height: 32px;
-        background: #f3f4f6;
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-    }
-
-    .dark .chart-bar-wrapper { background: #374151; }
-
-    .chart-bar-fill {
-        height: 100%;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        padding-right: 0.75rem;
-        color: white;
-        font-size: 0.75rem;
-        font-weight: 700;
-        transition: width 1s ease-out;
-    }
-
-    .chart-bar-fill.green { background: linear-gradient(90deg, var(--ati-green), var(--ati-green-dark)); }
-    .chart-bar-fill.amber { background: linear-gradient(90deg, var(--ati-amber), var(--ati-amber-dark)); }
-    .chart-bar-fill.red { background: linear-gradient(90deg, #ef4444, #dc2626); }
-
-    .chart-count {
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: #1f2937;
-        min-width: 40px;
-        text-align: right;
-    }
-
-    .dark .chart-count { color: #f3f4f6; }
-
     /* Pending Actions */
     .pending-action-item {
         display: flex;
@@ -747,6 +585,8 @@
         transition: all 0.25s ease;
         cursor: pointer;
     }
+
+    .pending-action-item:last-child { margin-bottom: 0; }
 
     .dark .pending-action-item { background: #111827; }
 
@@ -771,9 +611,7 @@
     .pending-icon.amber { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
     .pending-icon.purple { background: linear-gradient(135deg, #e9d5ff, #c084fc); }
 
-    .pending-info {
-        flex: 1;
-    }
+    .pending-info { flex: 1; }
 
     .pending-title {
         font-weight: 700;
@@ -880,14 +718,8 @@
     }
 
     @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
-        }
-        50% {
-            transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
-        }
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+        50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
     }
 
     .modal-title {
@@ -934,16 +766,19 @@
         background: linear-gradient(135deg, #991b1b, #7f1d1d);
     }
 
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .dashboard-container { padding: 0.875rem; }
         .hero-section { padding: 1.25rem 1rem; }
         .hero-title { font-size: 1.5rem; }
         .hero-subtitle { font-size: 0.875rem; }
-        .quick-stats-grid { grid-template-columns: 1fr; }
         .modules-grid { grid-template-columns: 1fr; }
         .widgets-grid { grid-template-columns: 1fr; }
-        .stat-value { font-size: 1.625rem; }
     }
 
     /* Stagger Animations */
@@ -985,7 +820,9 @@
 {{-- Dashboard Container --}}
 <div class="dashboard-container">
 
-    {{-- Compact Hero Section --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- HERO / GREETING SECTION (shared) --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
     <div class="hero-section">
         <div class="hero-content">
             <h1 class="hero-title">{{ $this->getGreeting() }}</h1>
@@ -1014,61 +851,114 @@
         </div>
     </div>
 
-    {{-- Quick Stats --}}
-    <div class="quick-stats-grid">
-        @foreach($quickStats as $index => $stat)
-            <div class="stat-card {{ $stat['color'] }} stagger-{{ $index + 1 }}">
-                <div class="stat-header">
-                    <div class="stat-icon {{ $stat['color'] }}">
-                        <x-dynamic-component :component="$stat['icon']" class="w-6 h-6 text-white" />
-                    </div>
-                </div>
-                <div class="stat-value">{{ $stat['value'] }}</div>
-                <div class="stat-label">{{ $stat['label'] }}</div>
-                @if($stat['trend_up'] !== null)
-                    <div class="stat-trend {{ $stat['trend_up'] ? 'up' : 'down' }}">
-                        @if($stat['trend_up'])
-                            <x-heroicon-o-arrow-trending-up class="w-3.5 h-3.5" />
-                        @else
-                            <x-heroicon-o-arrow-trending-down class="w-3.5 h-3.5" />
-                        @endif
-                        <span>{{ $stat['trend'] }}</span>
-                    </div>
-                @else
-                    <div class="stat-trend" style="background: #e0e7ff; color: #4338ca;">
-                        <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                        <span>{{ $stat['trend'] }}</span>
-                    </div>
-                @endif
-            </div>
-        @endforeach
-    </div>
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- EMPLOYEE VIEW: Announcements & Events directly below hero --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    @if(!$user->isAdmin())
+        <div class="widgets-grid" style="margin-bottom: 1.25rem;">
 
-    {{-- Admin-Only Widgets --}}
-    @if($user->isAdmin())
-        <div class="widgets-grid">
-            {{-- Leave Status Chart --}}
+            {{-- Announcements --}}
             <div class="widget-card stagger-1">
                 <div class="section-header">
-                    <x-heroicon-o-chart-pie class="w-6 h-6 text-green-600 dark:text-green-400" />
-                    <h3 class="section-title">Leave Status Overview</h3>
+                    <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <h3 class="section-title">Announcements</h3>
                 </div>
-                <div>
-                    @foreach($leaveStatusChart as $item)
-                        <div class="chart-bar">
-                            <div class="chart-label">{{ $item['label'] }}</div>
-                            <div class="chart-bar-wrapper">
-                                <div class="chart-bar-fill {{ $item['color'] }}" style="width: {{ $item['percentage'] }}%">
-                                    {{ $item['percentage'] }}%
-                                </div>
-                            </div>
-                            <div class="chart-count">{{ $item['count'] }}</div>
+                @forelse($announcements as $announcement)
+                    <div class="announcement-item {{ $announcement['priority'] }}">
+                        <div class="announcement-header">
+                            <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
+                            <div class="announcement-title">{{ $announcement['title'] }}</div>
+                            <div class="announcement-date">{{ $announcement['date'] }}</div>
                         </div>
-                    @endforeach
-                </div>
+                        <div class="announcement-message">{{ $announcement['message'] }}</div>
+                    </div>
+                @empty
+                    <div class="empty-state">
+                        <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
+                        <h4 class="empty-title">No Announcements</h4>
+                        <p class="empty-text">Check back later for updates.</p>
+                    </div>
+                @endforelse
             </div>
 
-            {{-- Pending Actions --}}
+            {{-- Upcoming Events --}}
+            <div class="widget-card stagger-2">
+                <div class="section-header">
+                    <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <h3 class="section-title">Upcoming Events</h3>
+                </div>
+                @forelse($upcomingEvents as $event)
+                    <div class="event-item">
+                        <div class="event-date-box">
+                            <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
+                            <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
+                        </div>
+                        <div class="event-details">
+                            <div class="event-title">{{ $event['title'] }}</div>
+                            <div class="event-meta">
+                                <span class="flex items-center gap-1">
+                                    <x-heroicon-o-clock class="w-3.5 h-3.5" />
+                                    {{ $event['time'] }}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
+                                    {{ $event['location'] }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state">
+                        <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
+                        <h4 class="empty-title">No Upcoming Events</h4>
+                        <p class="empty-text">Stay tuned for future events.</p>
+                    </div>
+                @endforelse
+            </div>
+
+        </div>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- ADMIN VIEW: All widgets directly below hero --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    @if($user->isAdmin())
+        <div class="widgets-grid" style="margin-bottom: 1.25rem;">
+
+            {{-- Recent Activities (admin only) --}}
+            <div class="widget-card stagger-1">
+                <div class="section-header">
+                    <x-heroicon-o-clock class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    <h3 class="section-title">Recent Activities</h3>
+                </div>
+                @forelse($recentActivities as $index => $activity)
+                    <div class="activity-item" style="animation-delay: {{ $index * 0.05 }}s">
+                        <div class="activity-icon-wrapper {{ $activity['color'] }}">
+                            <x-dynamic-component :component="$activity['icon']"
+                                class="w-5 h-5 text-{{ $activity['color'] }}-600" />
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">{{ $activity['employee'] }}</div>
+                            <div class="activity-meta">
+                                <span class="activity-badge {{ $activity['color'] }}">
+                                    {{ $activity['type'] }}
+                                </span>
+                                <span>{{ $activity['status'] }}</span>
+                                <span>•</span>
+                                <span>{{ $activity['date'] }}</span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state">
+                        <x-heroicon-o-inbox class="empty-icon text-gray-400" />
+                        <h4 class="empty-title">No Recent Activities</h4>
+                        <p class="empty-text">Activities will appear here.</p>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- Pending Actions (admin only) --}}
             <div class="widget-card stagger-2">
                 <div class="section-header">
                     <x-heroicon-o-bell-alert class="w-6 h-6 text-amber-600 dark:text-amber-400" />
@@ -1093,40 +983,72 @@
                     </div>
                 @endforelse
             </div>
+
+            {{-- Announcements (admin) --}}
+            <div class="widget-card stagger-3">
+                <div class="section-header">
+                    <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <h3 class="section-title">Announcements</h3>
+                </div>
+                @forelse($announcements as $announcement)
+                    <div class="announcement-item {{ $announcement['priority'] }}">
+                        <div class="announcement-header">
+                            <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
+                            <div class="announcement-title">{{ $announcement['title'] }}</div>
+                            <div class="announcement-date">{{ $announcement['date'] }}</div>
+                        </div>
+                        <div class="announcement-message">{{ $announcement['message'] }}</div>
+                    </div>
+                @empty
+                    <div class="empty-state">
+                        <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
+                        <h4 class="empty-title">No Announcements</h4>
+                        <p class="empty-text">Check back later for updates.</p>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- Upcoming Events (admin) --}}
+            <div class="widget-card stagger-4">
+                <div class="section-header">
+                    <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <h3 class="section-title">Upcoming Events</h3>
+                </div>
+                @forelse($upcomingEvents as $event)
+                    <div class="event-item">
+                        <div class="event-date-box">
+                            <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
+                            <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
+                        </div>
+                        <div class="event-details">
+                            <div class="event-title">{{ $event['title'] }}</div>
+                            <div class="event-meta">
+                                <span class="flex items-center gap-1">
+                                    <x-heroicon-o-clock class="w-3.5 h-3.5" />
+                                    {{ $event['time'] }}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
+                                    {{ $event['location'] }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="empty-state">
+                        <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
+                        <h4 class="empty-title">No Upcoming Events</h4>
+                        <p class="empty-text">Stay tuned for future events.</p>
+                    </div>
+                @endforelse
+            </div>
+
         </div>
-    @else
-        {{-- Employee Attendance Summary --}}
-        {{-- <div class="widget-card stagger-1" style="margin-bottom: 1.25rem;">
-            <div class="section-header">
-                <x-heroicon-o-calendar-days class="w-6 h-6 text-green-600 dark:text-green-400" />
-                <h3 class="section-title">My Attendance Summary</h3>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div class="text-2xl font-900 text-green-600 dark:text-green-400">{{ $attendanceSummary['present'] }}</div>
-                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">Present</div>
-                </div>
-                <div class="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                    <div class="text-2xl font-900 text-amber-600 dark:text-amber-400">{{ $attendanceSummary['late'] }}</div>
-                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">Late</div>
-                </div>
-                <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <div class="text-2xl font-900 text-red-600 dark:text-red-400">{{ $attendanceSummary['absent'] }}</div>
-                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">Absent</div>
-                </div>
-                <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div class="text-2xl font-900 text-blue-600 dark:text-blue-400">{{ $attendanceSummary['on_leave'] }}</div>
-                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">On Leave</div>
-                </div>
-                <div class="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <div class="text-2xl font-900 text-purple-600 dark:text-purple-400">{{ $attendanceSummary['total_days'] }}</div>
-                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">Total Days</div>
-                </div>
-            </div>
-        </div> --}}
     @endif
 
-    {{-- Quick Access Modules --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- QUICK ACCESS MODULES (shared) --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
     <div>
         <div class="section-header">
             <x-heroicon-o-squares-2x2 class="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -1162,130 +1084,37 @@
         </div>
     </div>
 
-    {{-- Shared Widgets Grid --}}
-    <div class="widgets-grid">
-        {{-- Recent Activities --}}
-        <div class="widget-card stagger-1">
-            <div class="section-header">
-                <x-heroicon-o-clock class="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                <h3 class="section-title">Recent Activities</h3>
-            </div>
-            @forelse($recentActivities as $index => $activity)
-                <div class="activity-item" style="animation-delay: {{ $index * 0.05 }}s">
-                    <div class="activity-icon-wrapper {{ $activity['color'] }}">
-                        <x-dynamic-component :component="$activity['icon']"
-                            class="w-5 h-5 text-{{ $activity['color'] }}-600" />
-                    </div>
-                    <div class="activity-content">
-                        <div class="activity-title">{{ $activity['employee'] }}</div>
-                        <div class="activity-meta">
-                            <span class="activity-badge {{ $activity['color'] }}">
-                                {{ $activity['type'] }}
-                            </span>
-                            <span>{{ $activity['status'] }}</span>
-                            <span>•</span>
-                            <span>{{ $activity['date'] }}</span>
-                        </div>
-                    </div>
-                </div>
-            @empty
-                <div class="empty-state">
-                    <x-heroicon-o-inbox class="empty-icon text-gray-400" />
-                    <h4 class="empty-title">No Recent Activities</h4>
-                    <p class="empty-text">Your activities will appear here.</p>
-                </div>
-            @endforelse
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- BIRTHDAY CELEBRANTS (shared, below modules) --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    <div class="widget-card stagger-1" style="margin-bottom: 1.25rem;">
+        <div class="section-header">
+            <x-heroicon-o-cake class="w-6 h-6 text-pink-600 dark:text-pink-400" />
+            <h3 class="section-title">Birthday Celebrants</h3>
         </div>
-
-        {{-- Announcements --}}
-        <div class="widget-card stagger-2">
-            <div class="section-header">
-                <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                <h3 class="section-title">Announcements</h3>
+        @forelse($birthdayCelebrants as $celebrant)
+            <div class="birthday-item {{ $celebrant['is_today'] ? 'today' : '' }}">
+                <div class="birthday-avatar">
+                    {{ strtoupper(substr($celebrant['name'], 0, 2)) }}
+                </div>
+                <div class="birthday-info">
+                    <div class="birthday-name">
+                        {{ $celebrant['name'] }}
+                        @if($celebrant['is_today'])
+                            <span class="ml-1">🎉</span>
+                        @endif
+                    </div>
+                    <div class="birthday-dept">{{ $celebrant['department'] }}</div>
+                </div>
+                <div class="birthday-date">{{ $celebrant['date'] }}</div>
             </div>
-            @forelse($announcements as $announcement)
-                <div class="announcement-item {{ $announcement['priority'] }}">
-                    <div class="announcement-header">
-                        <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
-                        <div class="announcement-title">{{ $announcement['title'] }}</div>
-                        <div class="announcement-date">{{ $announcement['date'] }}</div>
-                    </div>
-                    <div class="announcement-message">{{ $announcement['message'] }}</div>
-                </div>
-            @empty
-                <div class="empty-state">
-                    <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
-                    <h4 class="empty-title">No Announcements</h4>
-                    <p class="empty-text">Check back later for updates.</p>
-                </div>
-            @endforelse
-        </div>
-
-        {{-- Upcoming Events --}}
-        <div class="widget-card stagger-3">
-            <div class="section-header">
-                <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                <h3 class="section-title">Upcoming Events</h3>
+        @empty
+            <div class="empty-state">
+                <x-heroicon-o-face-smile class="empty-icon text-gray-400" />
+                <h4 class="empty-title">No Birthdays This Month</h4>
+                <p class="empty-text">We'll celebrate next month!</p>
             </div>
-            @forelse($upcomingEvents as $event)
-                <div class="event-item">
-                    <div class="event-date-box">
-                        <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
-                        <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
-                    </div>
-                    <div class="event-details">
-                        <div class="event-title">{{ $event['title'] }}</div>
-                        <div class="event-meta">
-                            <span class="flex items-center gap-1">
-                                <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                                {{ $event['time'] }}
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
-                                {{ $event['location'] }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            @empty
-                <div class="empty-state">
-                    <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
-                    <h4 class="empty-title">No Upcoming Events</h4>
-                    <p class="empty-text">Stay tuned for future events.</p>
-                </div>
-            @endforelse
-        </div>
-
-        {{-- Birthday Celebrants --}}
-        <div class="widget-card stagger-4">
-            <div class="section-header">
-                <x-heroicon-o-cake class="w-6 h-6 text-pink-600 dark:text-pink-400" />
-                <h3 class="section-title">Birthday Celebrants</h3>
-            </div>
-            @forelse($birthdayCelebrants as $celebrant)
-                <div class="birthday-item {{ $celebrant['is_today'] ? 'today' : '' }}">
-                    <div class="birthday-avatar">
-                        {{ strtoupper(substr($celebrant['name'], 0, 2)) }}
-                    </div>
-                    <div class="birthday-info">
-                        <div class="birthday-name">
-                            {{ $celebrant['name'] }}
-                            @if($celebrant['is_today'])
-                                <span class="ml-1">🎉</span>
-                            @endif
-                        </div>
-                        <div class="birthday-dept">{{ $celebrant['department'] }}</div>
-                    </div>
-                    <div class="birthday-date">{{ $celebrant['date'] }}</div>
-                </div>
-            @empty
-                <div class="empty-state">
-                    <x-heroicon-o-face-smile class="empty-icon text-gray-400" />
-                    <h4 class="empty-title">No Birthdays This Month</h4>
-                    <p class="empty-text">We'll celebrate next month!</p>
-                </div>
-            @endforelse
-        </div>
+        @endforelse
     </div>
 
 </div>

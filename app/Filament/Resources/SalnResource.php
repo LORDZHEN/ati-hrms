@@ -11,12 +11,13 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\SalnResource\Pages;
-use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\View as ViewComponent;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
+use App\Notifications\SalnRemarksAdded;
 use Carbon\Carbon;
 
 class SalnResource extends Resource
@@ -31,7 +32,7 @@ class SalnResource extends Resource
     protected static ?int $navigationSort = 5;
 
     /* ============================================================
-       FORM DEFINITION - WIZARD-BASED MULTI-STEP FORM
+       FORM DEFINITION
        ============================================================ */
 
     public static function form(Form $form): Form
@@ -39,26 +40,396 @@ class SalnResource extends Resource
         $isAdmin = fn() => Auth::user()?->role === 'admin';
 
         return $form->schema([
-            // Admin Remarks Section (Top priority for admins)
+
+            // Admin Remarks (visible at top when present)
             self::buildAdminRemarksSection($isAdmin),
 
-            // Main SALN Wizard
-            Wizard::make([
-                self::buildDeclarantInfoStep(),
-                self::buildFamilyCompositionStep(),
-                self::buildAssetsStep(),
-                self::buildLiabilitiesStep(),
-                self::buildBusinessRelativesStep(),
-                self::buildDeclarationStep($isAdmin),
-            ])
-                ->columnSpanFull()
-                ->persistStepInQueryString()
-                ->skippable($isAdmin()),
-        ]);
+            // ============================================================
+            // CUSTOM SALN LAYOUT VIEW - THE ONLY VISIBLE FORM
+            // ============================================================
+            ViewComponent::make('filament.resources.saln-resource.saln-form')
+                ->columnSpanFull(),
+
+            // ============================================================
+            // ALL FORM FIELDS - COLLAPSED (for data binding & validation)
+            // Fields must NOT be hidden - just collapsed so the blade
+            // view can render them via $this->form->getComponent()
+            // ============================================================
+            Section::make('Form Fields (For Validation Only)')
+                ->description('⚠️ Please fill out the official SALN form above. These fields are for data binding.')
+                ->schema([
+
+                    // ---- FILING TYPE ----
+                    Forms\Components\DatePicker::make('as_of_date')
+                        ->label('As of Date')
+                        ->required()
+                        ->default(now())
+                        ->native(false),
+
+                    Grid::make(3)->schema([
+                        Forms\Components\Checkbox::make('joint_filing')
+                            ->label('Joint Filing')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? ($set('separate_filing', false) && $set('not_applicable', false)) : null),
+                        Forms\Components\Checkbox::make('separate_filing')
+                            ->label('Separate Filing')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? ($set('joint_filing', false) && $set('not_applicable', false)) : null),
+                        Forms\Components\Checkbox::make('not_applicable')
+                            ->label('Not Applicable')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? ($set('joint_filing', false) && $set('separate_filing', false)) : null),
+                    ]),
+
+                    // ---- DECLARANT INFORMATION ----
+                    Grid::make(4)->schema([
+                        Forms\Components\TextInput::make('declarant_family_name')
+                            ->label('Family Name')
+                            ->required()
+                            ->default(fn() => Auth::user()?->last_name),
+                        Forms\Components\TextInput::make('declarant_first_name')
+                            ->label('First Name')
+                            ->required()
+                            ->default(fn() => Auth::user()?->first_name)
+                            ->columnSpan(2),
+                        Forms\Components\TextInput::make('declarant_middle_initial')
+                            ->label('M.I.')
+                            ->maxLength(5)
+                            ->default(fn() => substr(Auth::user()?->middle_name ?? '', 0, 1)),
+                    ]),
+
+                    Grid::make(2)->schema([
+                        Forms\Components\TextInput::make('declarant_position')
+                            ->label('Position')
+                            ->required()
+                            ->default(fn() => Auth::user()?->position),
+                        Forms\Components\TextInput::make('declarant_agency_office')
+                            ->label('Agency/Office')
+                            ->required()
+                            ->default(fn() => Auth::user()?->department),
+                    ]),
+
+                    Forms\Components\Textarea::make('declarant_office_address')
+                        ->label('Office Address')
+                        ->required()
+                        ->rows(2)
+                        ->default(fn() => implode(', ', array_filter([
+                            Auth::user()?->purok_street,
+                            Auth::user()?->city_municipality,
+                            Auth::user()?->province,
+                        ]))),
+
+                    // ---- SPOUSE INFORMATION ----
+                    Grid::make(4)->schema([
+                        Forms\Components\TextInput::make('spouse_family_name')->label('Spouse Family Name'),
+                        Forms\Components\TextInput::make('spouse_first_name')->label('Spouse First Name')->columnSpan(2),
+                        Forms\Components\TextInput::make('spouse_middle_initial')->label('M.I.')->maxLength(5),
+                    ]),
+
+                    Grid::make(2)->schema([
+                        Forms\Components\TextInput::make('spouse_position')->label('Spouse Position'),
+                        Forms\Components\TextInput::make('spouse_agency_office')->label('Spouse Agency/Office'),
+                    ]),
+
+                    Forms\Components\Textarea::make('spouse_office_address')
+                        ->label('Spouse Office Address')
+                        ->rows(2),
+
+                    // ---- CHILDREN ----
+                    Repeater::make('children')
+                        ->relationship('children')
+                        ->label('Children')
+                        ->schema([
+                            Grid::make(3)->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Full Name')
+                                    ->required()
+                                    ->columnSpan(2),
+                                Forms\Components\DatePicker::make('date_of_birth')
+                                    ->label('Date of Birth')
+                                    ->required()
+                                    ->native(false)
+                                    ->maxDate(now())
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set) {
+                                        if ($state) {
+                                            $set('age', (int) Carbon::parse($state)->age);
+                                        } else {
+                                            $set('age', null);
+                                        }
+                                    }),
+                            ]),
+                            Forms\Components\TextInput::make('age')
+                                ->label('Age')
+                                ->integer()
+                                ->disabled()
+                                ->dehydrated()
+                                ->suffix('years old'),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Child')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->itemLabel(fn(array $state): ?string => $state['name'] ?? 'Child')
+                        ->defaultItems(0),
+
+                    // ---- REAL PROPERTIES ----
+                    Repeater::make('realProperties')
+                        ->relationship('realProperties')
+                        ->label('Real Properties')
+                        ->schema([
+                            Grid::make(4)->schema([
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Description')
+                                    ->required()
+                                    ->rows(2)
+                                    ->columnSpan(2),
+                                Forms\Components\TextInput::make('kind')
+                                    ->label('Kind')
+                                    ->required(),
+                                Forms\Components\TextInput::make('exact_location')
+                                    ->label('Location')
+                                    ->required(),
+                            ]),
+                            Grid::make(4)->schema([
+                                Forms\Components\TextInput::make('assessed_value')
+                                    ->label('Assessed Value')
+                                    ->numeric()
+                                    ->prefix('₱')
+                                    ->required(),
+                                Forms\Components\TextInput::make('current_fair_market_value')
+                                    ->label('Fair Market Value')
+                                    ->numeric()
+                                    ->prefix('₱')
+                                    ->required(),
+                                Forms\Components\TextInput::make('acquisition_year')
+                                    ->label('Year Acquired')
+                                    ->numeric()
+                                    ->minValue(1900)
+                                    ->maxValue(date('Y'))
+                                    ->required(),
+                                Forms\Components\TextInput::make('mode_of_acquisition')
+                                    ->label('How Acquired')
+                                    ->required(),
+                            ]),
+                            Forms\Components\TextInput::make('acquisition_cost')
+                                ->label('Acquisition Cost')
+                                ->numeric()
+                                ->prefix('₱')
+                                ->required(),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Real Property')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')
+                        ->defaultItems(0),
+
+                    // ---- PERSONAL PROPERTIES ----
+                    Repeater::make('personalProperties')
+                        ->relationship('personalProperties')
+                        ->label('Personal Properties')
+                        ->schema([
+                            Grid::make(3)->schema([
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Description')
+                                    ->required()
+                                    ->rows(2)
+                                    ->columnSpan(2),
+                                Forms\Components\TextInput::make('year_acquired')
+                                    ->label('Year Acquired')
+                                    ->numeric()
+                                    ->minValue(1900)
+                                    ->maxValue(date('Y'))
+                                    ->required(),
+                            ]),
+                            Forms\Components\TextInput::make('acquisition_cost')
+                                ->label('Acquisition Cost/Amount')
+                                ->numeric()
+                                ->prefix('₱')
+                                ->required(),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Personal Property')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')
+                        ->defaultItems(0),
+
+                    // ---- LIABILITIES ----
+                    Repeater::make('liabilities')
+                        ->relationship('liabilities')
+                        ->label('Liabilities')
+                        ->schema([
+                            Grid::make(3)->schema([
+                                Forms\Components\TextInput::make('nature')
+                                    ->label('Nature')
+                                    ->required(),
+                                Forms\Components\TextInput::make('name_of_creditors')
+                                    ->label('Creditor')
+                                    ->required(),
+                                Forms\Components\TextInput::make('outstanding_balance')
+                                    ->label('Outstanding Balance')
+                                    ->numeric()
+                                    ->prefix('₱')
+                                    ->required(),
+                            ]),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Liability')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')
+                        ->defaultItems(0),
+
+                    // ---- BUSINESS INTERESTS ----
+                    Grid::make(2)->schema([
+                        Forms\Components\Checkbox::make('has_business_interests')
+                            ->label('I/We have business interest or financial connection')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? $set('no_business_interests', false) : null),
+                        Forms\Components\Checkbox::make('no_business_interests')
+                            ->label('I/We do not have any business interest or financial connection')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? $set('has_business_interests', false) : null),
+                    ]),
+
+                    Repeater::make('businessInterests')
+                        ->relationship('businessInterests')
+                        ->label('Business Interests')
+                        ->schema([
+                            Grid::make(2)->schema([
+                                Forms\Components\TextInput::make('name_of_entity')
+                                    ->label('Business Name')
+                                    ->required(),
+                                Forms\Components\Textarea::make('business_address')
+                                    ->label('Business Address')
+                                    ->required()
+                                    ->rows(2),
+                            ]),
+                            Grid::make(2)->schema([
+                                Forms\Components\TextInput::make('nature_of_business_interest')
+                                    ->label('Nature of Interest')
+                                    ->required(),
+                                Forms\Components\DatePicker::make('date_of_acquisition')
+                                    ->label('Date of Acquisition')
+                                    ->required()
+                                    ->native(false),
+                            ]),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Business Interest')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->visible(fn($get) => $get('has_business_interests'))
+                        ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')
+                        ->defaultItems(0),
+
+                    // ---- RELATIVES IN GOVERNMENT ----
+                    Grid::make(2)->schema([
+                        Forms\Components\Checkbox::make('has_relatives_in_government')
+                            ->label('I have relatives in the government service')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? $set('no_relatives_in_government', false) : null),
+                        Forms\Components\Checkbox::make('no_relatives_in_government')
+                            ->label('I/We do not know of any relative in the government service')
+                            ->live()
+                            ->afterStateUpdated(fn($state, callable $set) =>
+                                $state ? $set('has_relatives_in_government', false) : null),
+                    ]),
+
+                    Repeater::make('relativesInGovernment')
+                        ->relationship('relativesInGovernment')
+                        ->label('Relatives in Government')
+                        ->schema([
+                            Grid::make(2)->schema([
+                                Forms\Components\TextInput::make('name_of_relative')
+                                    ->label('Name of Relative')
+                                    ->required(),
+                                Forms\Components\TextInput::make('relationship')
+                                    ->label('Relationship')
+                                    ->required(),
+                            ]),
+                            Grid::make(2)->schema([
+                                Forms\Components\TextInput::make('position')
+                                    ->label('Position')
+                                    ->required(),
+                                Forms\Components\Textarea::make('name_of_agency_office_address')
+                                    ->label('Agency/Office and Address')
+                                    ->required()
+                                    ->rows(2),
+                            ]),
+                        ])
+                        ->columns(1)
+                        ->addActionLabel('Add Relative')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->visible(fn($get) => $get('has_relatives_in_government'))
+                        ->itemLabel(fn(array $state): ?string => $state['name_of_relative'] ?? 'Relative')
+                        ->defaultItems(0),
+
+                    // ---- DECLARATION ----
+                    Grid::make(2)->schema([
+                        Forms\Components\DatePicker::make('date_signed')
+                            ->label('Date Signed')
+                            // ->required()
+                            ->default(now())
+                            ->native(false),
+                        Forms\Components\DatePicker::make('subscribed_sworn_date')
+                            ->label('Subscribed and Sworn Date')
+                            ->default(now())
+                            ->native(false)
+                            ->visible(fn() => $isAdmin())
+                            ->required(fn() => $isAdmin()),
+                    ]),
+
+                    Forms\Components\TextInput::make('person_administering_oath')
+                        ->label('Person Administering Oath')
+                        ->visible(fn() => $isAdmin())
+                        ->required(fn() => $isAdmin())
+                        ->disabled(fn() => !$isAdmin())
+                        ->dehydrated(fn() => $isAdmin()),
+
+                    Grid::make(2)->schema([
+                        Forms\Components\FileUpload::make('declarant_id_presented')
+                            ->label('Declarant Government Issued ID')
+                            ->image()
+                            ->directory('saln/declarant-ids')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(5120)
+                            ->imageEditor(),
+                        Forms\Components\FileUpload::make('spouse_id_presented')
+                            ->label('Spouse Government Issued ID')
+                            ->image()
+                            ->directory('saln/spouse-ids')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(5120)
+                            ->imageEditor(),
+                    ]),
+
+                    // Hidden calculated fields
+                    Forms\Components\Hidden::make('total_assets'),
+                    Forms\Components\Hidden::make('total_liabilities'),
+                    Forms\Components\Hidden::make('net_worth'),
+
+                ])
+                ->collapsed()
+                ->collapsible()
+                ->columnSpanFull(),
+
+        ])->columns(1);
     }
 
     /* ============================================================
-       FORM STEP BUILDERS
+       ADMIN REMARKS SECTION BUILDER
        ============================================================ */
 
     protected static function buildAdminRemarksSection($isAdmin): Section
@@ -81,557 +452,8 @@ class SalnResource extends Resource
             ->compact();
     }
 
-    protected static function buildDeclarantInfoStep(): Wizard\Step
-    {
-        return Wizard\Step::make('Declarant & Spouse')
-            ->description('Personal information of declarant and spouse')
-            ->icon('heroicon-o-identification')
-            ->schema([
-                // Filing Type
-                Section::make('Filing Type')
-                    ->description('Husband and wife who are both public officials may file jointly or separately')
-                    ->schema([
-                        Forms\Components\DatePicker::make('as_of_date')
-                            ->label('As of Date')
-                            ->required()
-                            ->default(now())
-                            ->native(false)
-                            ->prefixIcon('heroicon-o-calendar'),
-
-                        Grid::make(3)->schema([
-                            Forms\Components\Checkbox::make('joint_filing')
-                                ->label('Joint Filing')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? ($set('separate_filing', false) && $set('not_applicable', false)) : null),
-                            Forms\Components\Checkbox::make('separate_filing')
-                                ->label('Separate Filing')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? ($set('joint_filing', false) && $set('not_applicable', false)) : null),
-                            Forms\Components\Checkbox::make('not_applicable')
-                                ->label('Not Applicable')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? ($set('joint_filing', false) && $set('separate_filing', false)) : null),
-                        ]),
-                    ])
-                    ->compact(),
-
-                // Declarant Information
-                Section::make('Declarant Information')
-                    ->icon('heroicon-o-user')
-                    ->schema([
-                        Grid::make(4)->schema([
-                            Forms\Components\TextInput::make('declarant_family_name')
-                                ->label('Family Name')
-                                ->required()
-                                ->default(fn() => Auth::user()?->last_name)
-                                ->columnSpan(1),
-                            Forms\Components\TextInput::make('declarant_first_name')
-                                ->label('First Name')
-                                ->required()
-                                ->default(fn() => Auth::user()?->first_name)
-                                ->columnSpan(2),
-                            Forms\Components\TextInput::make('declarant_middle_initial')
-                                ->label('M.I.')
-                                ->maxLength(5)
-                                ->default(fn() => substr(Auth::user()?->middle_name ?? '', 0, 1))
-                                ->columnSpan(1),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            Forms\Components\TextInput::make('declarant_position')
-                                ->label('Position')
-                                ->required()
-                                ->default(fn() => Auth::user()?->position)
-                                ->prefixIcon('heroicon-o-briefcase'),
-                            Forms\Components\TextInput::make('declarant_agency_office')
-                                ->label('Agency/Office')
-                                ->required()
-                                ->default(fn() => Auth::user()?->department)
-                                ->prefixIcon('heroicon-o-building-office'),
-                        ]),
-
-                        Forms\Components\Textarea::make('declarant_office_address')
-                            ->label('Office Address')
-                            ->required()
-                            ->rows(2)
-                            ->default(fn() => implode(', ', array_filter([
-                                Auth::user()?->purok_street,
-                                Auth::user()?->city_municipality,
-                                Auth::user()?->province,
-                            ])))
-                            ->helperText('Enter complete office address'),
-                    ])
-                    ->compact(),
-
-                // Spouse Information
-                Section::make('Spouse Information')
-                    ->description('Optional - Fill if applicable')
-                    ->icon('heroicon-o-heart')
-                    ->schema([
-                        Grid::make(4)->schema([
-                            Forms\Components\TextInput::make('spouse_family_name')
-                                ->label('Family Name')
-                                ->columnSpan(1),
-                            Forms\Components\TextInput::make('spouse_first_name')
-                                ->label('First Name')
-                                ->columnSpan(2),
-                            Forms\Components\TextInput::make('spouse_middle_initial')
-                                ->label('M.I.')
-                                ->maxLength(5)
-                                ->columnSpan(1),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            Forms\Components\TextInput::make('spouse_position')
-                                ->label('Position')
-                                ->prefixIcon('heroicon-o-briefcase'),
-                            Forms\Components\TextInput::make('spouse_agency_office')
-                                ->label('Agency/Office')
-                                ->prefixIcon('heroicon-o-building-office'),
-                        ]),
-
-                        Forms\Components\Textarea::make('spouse_office_address')
-                            ->label('Office Address')
-                            ->rows(2)
-                            ->helperText('Enter complete office address'),
-                    ])
-                    ->compact()
-                    ->collapsible()
-                    ->collapsed(true),
-            ]);
-    }
-
-    protected static function buildFamilyCompositionStep(): Wizard\Step
-    {
-        return Wizard\Step::make('Family')
-            ->description('Unmarried children below 18 years living in household')
-            ->icon('heroicon-o-user-group')
-            ->schema([
-                Section::make('Unmarried Children Below Eighteen (18) Years of Age')
-                    ->description('Living in Declarant\'s Household')
-                    ->schema([
-                        Repeater::make('children')
-                            ->relationship('children')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Forms\Components\TextInput::make('name')
-                                        ->label('Full Name')
-                                        ->required()
-                                        ->columnSpan(2)
-                                        ->prefixIcon('heroicon-o-user'),
-                                    Forms\Components\DatePicker::make('date_of_birth')
-                                        ->label('Date of Birth')
-                                        ->required()
-                                        ->native(false)
-                                        ->maxDate(now())
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            if ($state) {
-                                                $age = Carbon::parse($state)->age;
-                                                $set('age', (int) $age);
-                                            } else {
-                                                $set('age', null);
-                                            }
-                                        })
-                                        ->prefixIcon('heroicon-o-cake'),
-                                ]),
-                                Forms\Components\TextInput::make('age')
-                                    ->label('Age')
-                                    ->integer()
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->suffix('years old'),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Child')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? 'Child Details')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-            ]);
-    }
-
-    protected static function buildAssetsStep(): Wizard\Step
-    {
-        return Wizard\Step::make('Assets')
-            ->description('Real and Personal Properties')
-            ->icon('heroicon-o-building-office')
-            ->schema([
-                // Real Properties
-                Section::make('Real Properties')
-                    ->description('Land, Buildings, and other Real Estate')
-                    ->icon('heroicon-o-home')
-                    ->schema([
-                        Repeater::make('realProperties')
-                            ->relationship('realProperties')
-                            ->schema([
-                                Grid::make(4)->schema([
-                                    Forms\Components\Textarea::make('description')
-                                        ->label('Description')
-                                        ->required()
-                                        ->rows(2)
-                                        ->columnSpan(2)
-                                        ->placeholder('Describe the property...'),
-                                    Forms\Components\TextInput::make('kind')
-                                        ->label('Kind')
-                                        ->required()
-                                        ->placeholder('e.g., House & Lot'),
-                                    Forms\Components\TextInput::make('exact_location')
-                                        ->label('Location')
-                                        ->required()
-                                        ->placeholder('Barangay, City'),
-                                ]),
-                                Grid::make(4)->schema([
-                                    Forms\Components\TextInput::make('assessed_value')
-                                        ->label('Assessed Value')
-                                        ->numeric()
-                                        ->prefix('₱')
-                                        ->required(),
-                                    Forms\Components\TextInput::make('current_fair_market_value')
-                                        ->label('Fair Market Value')
-                                        ->numeric()
-                                        ->prefix('₱')
-                                        ->required(),
-                                    Forms\Components\TextInput::make('acquisition_year')
-                                        ->label('Year Acquired')
-                                        ->numeric()
-                                        ->minValue(1900)
-                                        ->maxValue(date('Y'))
-                                        ->required()
-                                        ->placeholder('YYYY'),
-                                    Forms\Components\TextInput::make('mode_of_acquisition')
-                                        ->label('How Acquired')
-                                        ->required()
-                                        ->placeholder('e.g., Purchase'),
-                                ]),
-                                Forms\Components\TextInput::make('acquisition_cost')
-                                    ->label('Acquisition Cost')
-                                    ->numeric()
-                                    ->prefix('₱')
-                                    ->required(),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Real Property')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-
-                // Personal Properties
-                Section::make('Personal Properties')
-                    ->description('Vehicles, Jewelry, Cash, Bank Deposits, etc.')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->schema([
-                        Repeater::make('personalProperties')
-                            ->relationship('personalProperties')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Forms\Components\Textarea::make('description')
-                                        ->label('Description')
-                                        ->required()
-                                        ->rows(2)
-                                        ->columnSpan(2)
-                                        ->placeholder('e.g., Toyota Vios 2020, Cash on Hand'),
-                                    Forms\Components\TextInput::make('year_acquired')
-                                        ->label('Year Acquired')
-                                        ->numeric()
-                                        ->minValue(1900)
-                                        ->maxValue(date('Y'))
-                                        ->required()
-                                        ->placeholder('YYYY'),
-                                ]),
-                                Forms\Components\TextInput::make('acquisition_cost')
-                                    ->label('Acquisition Cost/Amount')
-                                    ->numeric()
-                                    ->prefix('₱')
-                                    ->required(),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Personal Property')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-            ]);
-    }
-
-    protected static function buildLiabilitiesStep(): Wizard\Step
-    {
-        return Wizard\Step::make('Liabilities')
-            ->description('Loans, Mortgages, and other Obligations')
-            ->icon('heroicon-o-credit-card')
-            ->schema([
-                Section::make('Liabilities')
-                    ->description('List all outstanding debts and financial obligations')
-                    ->schema([
-                        Repeater::make('liabilities')
-                            ->relationship('liabilities')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Forms\Components\TextInput::make('nature')
-                                        ->label('Nature')
-                                        ->required()
-                                        ->placeholder('e.g., Housing Loan')
-                                        ->prefixIcon('heroicon-o-document-text'),
-                                    Forms\Components\TextInput::make('name_of_creditors')
-                                        ->label('Creditor')
-                                        ->required()
-                                        ->placeholder('e.g., Bank Name')
-                                        ->prefixIcon('heroicon-o-building-library'),
-                                    Forms\Components\TextInput::make('outstanding_balance')
-                                        ->label('Outstanding Balance')
-                                        ->numeric()
-                                        ->prefix('₱')
-                                        ->required(),
-                                ]),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Liability')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-            ]);
-    }
-
-    protected static function buildBusinessRelativesStep(): Wizard\Step
-    {
-        return Wizard\Step::make('Business & Relatives')
-            ->description('Business Interests and Relatives in Government')
-            ->icon('heroicon-o-building-storefront')
-            ->schema([
-                // Business Interests
-                Section::make('Business Interests and Financial Connections')
-                    ->description('Ownership/Shareholding (10% or more of total)')
-                    ->icon('heroicon-o-briefcase')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Forms\Components\Checkbox::make('has_business_interests')
-                                ->label('I/We have business interest or financial connection')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? $set('no_business_interests', false) : null),
-                            Forms\Components\Checkbox::make('no_business_interests')
-                                ->label('I/We do not have any business interest or financial connection')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? $set('has_business_interests', false) : null),
-                        ]),
-
-                        Repeater::make('businessInterests')
-                            ->relationship('businessInterests')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    Forms\Components\TextInput::make('name_of_entity')
-                                        ->label('Business Name')
-                                        ->required()
-                                        ->prefixIcon('heroicon-o-building-office-2'),
-                                    Forms\Components\Textarea::make('business_address')
-                                        ->label('Business Address')
-                                        ->required()
-                                        ->rows(2)
-                                        ->helperText('Complete business address'),
-                                ]),
-                                Grid::make(2)->schema([
-                                    Forms\Components\TextInput::make('nature_of_business_interest')
-                                        ->label('Nature of Interest')
-                                        ->required()
-                                        ->placeholder('e.g., Owner, Shareholder'),
-                                    Forms\Components\DatePicker::make('date_of_acquisition')
-                                        ->label('Date of Acquisition')
-                                        ->required()
-                                        ->native(false)
-                                        ->prefixIcon('heroicon-o-calendar'),
-                                ]),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Business Interest')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->visible(fn($get) => $get('has_business_interests'))
-                            ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-
-                // Relatives in Government
-                Section::make('Relatives in the Government Service')
-                    ->description('Within the Fourth Degree of Consanguinity or Affinity')
-                    ->icon('heroicon-o-users')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Forms\Components\Checkbox::make('has_relatives_in_government')
-                                ->label('I have relatives in the government service')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? $set('no_relatives_in_government', false) : null),
-                            Forms\Components\Checkbox::make('no_relatives_in_government')
-                                ->label('I/We do not know of any relative in the government service')
-                                ->live()
-                                ->afterStateUpdated(fn($state, callable $set) => $state ? $set('has_relatives_in_government', false) : null),
-                        ]),
-
-                        Repeater::make('relativesInGovernment')
-                            ->relationship('relativesInGovernment')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    Forms\Components\TextInput::make('name_of_relative')
-                                        ->label('Name of Relative')
-                                        ->required()
-                                        ->prefixIcon('heroicon-o-user'),
-                                    Forms\Components\TextInput::make('relationship')
-                                        ->label('Relationship')
-                                        ->required()
-                                        ->placeholder('e.g., Father, Sibling'),
-                                ]),
-                                Grid::make(2)->schema([
-                                    Forms\Components\TextInput::make('position')
-                                        ->label('Position')
-                                        ->required()
-                                        ->prefixIcon('heroicon-o-briefcase'),
-                                    Forms\Components\Textarea::make('name_of_agency_office_address')
-                                        ->label('Agency/Office and Address')
-                                        ->required()
-                                        ->rows(2)
-                                        ->helperText('Complete agency name and address'),
-                                ]),
-                            ])
-                            ->columns(1)
-                            ->addActionLabel('Add Relative')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->visible(fn($get) => $get('has_relatives_in_government'))
-                            ->itemLabel(fn(array $state): ?string => $state['name_of_relative'] ?? 'Relative')
-                            ->defaultItems(0),
-                    ])
-                    ->compact(),
-            ]);
-    }
-
-    protected static function buildDeclarationStep($isAdmin): Wizard\Step
-    {
-        return Wizard\Step::make('Declaration')
-            ->description('Certification and Oath')
-            ->icon('heroicon-o-pencil-square')
-            ->schema([
-                // Summary
-                Section::make('Financial Summary')
-                    ->description('Automatically calculated totals')
-                    ->icon('heroicon-o-calculator')
-                    ->schema([
-                        Forms\Components\Placeholder::make('calculated_totals')
-                            ->label('')
-                            ->content(function ($get, $record) {
-                                if ($record) {
-                                    $record->load(['realProperties', 'personalProperties', 'liabilities']);
-                                    $realPropertiesTotal = $record->realProperties->sum('current_fair_market_value');
-                                    $personalPropertiesTotal = $record->personalProperties->sum('acquisition_cost');
-                                    $totalAssets = $realPropertiesTotal + $personalPropertiesTotal;
-                                    $totalLiabilities = $record->liabilities->sum('outstanding_balance');
-                                    $netWorth = $totalAssets - $totalLiabilities;
-                                } else {
-                                    $realProperties = $get('realProperties') ?? [];
-                                    $personalProperties = $get('personalProperties') ?? [];
-                                    $liabilities = $get('liabilities') ?? [];
-                                    $realPropertiesTotal = collect($realProperties)->sum('current_fair_market_value');
-                                    $personalPropertiesTotal = collect($personalProperties)->sum('acquisition_cost');
-                                    $totalAssets = $realPropertiesTotal + $personalPropertiesTotal;
-                                    $totalLiabilities = collect($liabilities)->sum('outstanding_balance');
-                                    $netWorth = $totalAssets - $totalLiabilities;
-                                }
-
-                                return view('filament.components.saln-summary', [
-                                    'totalAssets' => $totalAssets,
-                                    'totalLiabilities' => $totalLiabilities,
-                                    'netWorth' => $netWorth,
-                                    'netWorthColor' => $netWorth >= 0 ? 'success' : 'danger',
-                                ]);
-                            })
-                            ->columnSpanFull(),
-
-                        // Hidden fields
-                        Forms\Components\Hidden::make('total_assets'),
-                        Forms\Components\Hidden::make('total_liabilities'),
-                        Forms\Components\Hidden::make('net_worth'),
-                    ])
-                    ->compact(),
-
-                // Signature Information
-                Section::make('Signature Information')
-                    ->icon('heroicon-o-pencil')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            Forms\Components\DatePicker::make('date_signed')
-                                ->label('Date Signed')
-                                ->required()
-                                ->default(now())
-                                ->native(false)
-                                ->prefixIcon('heroicon-o-calendar'),
-                            Forms\Components\DatePicker::make('subscribed_sworn_date')
-                                ->label('Subscribed and Sworn Date')
-                                ->default(now())
-                                ->native(false)
-                                ->visible(fn() => $isAdmin())
-                                ->required(fn() => $isAdmin())
-                                ->prefixIcon('heroicon-o-calendar-days'),
-                        ]),
-
-                        Forms\Components\TextInput::make('person_administering_oath')
-                            ->label('Person Administering Oath')
-                            ->placeholder('Name of official administering the oath')
-                            ->visible(fn() => $isAdmin())
-                            ->required(fn() => $isAdmin())
-                            ->disabled(fn() => !$isAdmin())
-                            ->dehydrated(fn() => $isAdmin())
-                            ->helperText('This field is only fillable by administrators')
-                            ->prefixIcon('heroicon-o-shield-check'),
-
-                        Grid::make(2)->schema([
-                            Forms\Components\FileUpload::make('declarant_id_presented')
-                                ->label('Declarant Government Issued ID')
-                                ->image()
-                                ->directory('saln/declarant-ids')
-                                ->visibility('private')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                ->maxSize(5120)
-                                ->helperText('Upload ID (Passport, GSIS, SSS, PRC, etc.)')
-                                ->imageEditor(),
-                            Forms\Components\FileUpload::make('spouse_id_presented')
-                                ->label('Spouse Government Issued ID')
-                                ->image()
-                                ->directory('saln/spouse-ids')
-                                ->visibility('private')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                ->maxSize(5120)
-                                ->helperText('Upload spouse ID (if applicable)')
-                                ->imageEditor(),
-                        ]),
-                    ])
-                    ->compact(),
-
-                // Certification Text
-                Section::make('Certification')
-                    ->icon('heroicon-o-document-check')
-                    ->schema([
-                        Forms\Components\Placeholder::make('certification_text')
-                            ->content('I hereby certify that these are true and correct statements of my assets, liabilities, net worth, business interests and financial connections, including those of my spouse and unmarried children below eighteen (18) years of age living in my household, and that to the best of my knowledge, the above-enumerated are names of my relatives in the government within the fourth civil degree of consanguinity or affinity.')
-                            ->columnSpanFull(),
-
-                        Forms\Components\Placeholder::make('authorization_text')
-                            ->content('I hereby authorize the Ombudsman or his/her duly authorized representative to obtain and secure from all appropriate government agencies, including the Bureau of Internal Revenue such documents that may show my assets, liabilities, net worth, business interests and financial connections, to include those of my spouse and unmarried children below 18 years of age living with me in my household covering previous years to include the year I first assumed office in government.')
-                            ->columnSpanFull(),
-                    ])
-                    ->compact(),
-            ]);
-    }
-
     /* ============================================================
-       TABLE DEFINITION - FINANCIAL CARD LAYOUT
+       TABLE DEFINITION
        ============================================================ */
 
     public static function table(Table $table): Table
@@ -660,13 +482,12 @@ class SalnResource extends Resource
     }
 
     /* ============================================================
-       FINANCIAL CARD-STYLE TABLE COLUMNS
+       TABLE COLUMNS
        ============================================================ */
 
     protected static function getFinancialCardColumns(): array
     {
         return [
-            // Header: Employee & Date
             Tables\Columns\Layout\Stack::make([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Employee')
@@ -696,9 +517,7 @@ class SalnResource extends Resource
                 ]),
             ])->space(1),
 
-            // Financial Summary Cards
             Tables\Columns\Layout\Split::make([
-                // Left: Assets & Liabilities
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('total_assets')
                         ->label('Total Assets')
@@ -717,7 +536,6 @@ class SalnResource extends Resource
                         ->color('danger'),
                 ])->space(1),
 
-                // Right: Net Worth (Prominent)
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('net_worth')
                         ->label('Net Worth')
@@ -730,7 +548,6 @@ class SalnResource extends Resource
                 ])->space(1)->alignment('end'),
             ])->from('md'),
 
-            // Admin Remarks Panel
             Tables\Columns\Layout\Panel::make([
                 Tables\Columns\Layout\Split::make([
                     Tables\Columns\IconColumn::make('has_remarks')
@@ -758,7 +575,7 @@ class SalnResource extends Resource
     }
 
     /* ============================================================
-       ENHANCED FILTERS
+       FILTERS
        ============================================================ */
 
     protected static function getEnhancedFilters(): array
@@ -787,12 +604,8 @@ class SalnResource extends Resource
 
             Tables\Filters\Filter::make('as_of_date')
                 ->form([
-                    Forms\Components\DatePicker::make('from')
-                        ->label('From Date')
-                        ->native(false),
-                    Forms\Components\DatePicker::make('until')
-                        ->label('Until Date')
-                        ->native(false),
+                    Forms\Components\DatePicker::make('from')->label('From Date')->native(false),
+                    Forms\Components\DatePicker::make('until')->label('Until Date')->native(false),
                 ])
                 ->query(fn(Builder $query, array $data) => $query
                     ->when($data['from'], fn($q, $date) => $q->whereDate('as_of_date', '>=', $date))
@@ -819,34 +632,18 @@ class SalnResource extends Resource
 
             Tables\Filters\Filter::make('net_worth')
                 ->form([
-                    Forms\Components\TextInput::make('min_net_worth')
-                        ->label('Minimum Net Worth')
-                        ->numeric()
-                        ->prefix('₱'),
-                    Forms\Components\TextInput::make('max_net_worth')
-                        ->label('Maximum Net Worth')
-                        ->numeric()
-                        ->prefix('₱'),
+                    Forms\Components\TextInput::make('min_net_worth')->label('Minimum Net Worth')->numeric()->prefix('₱'),
+                    Forms\Components\TextInput::make('max_net_worth')->label('Maximum Net Worth')->numeric()->prefix('₱'),
                 ])
                 ->query(fn(Builder $query, array $data) => $query
                     ->when($data['min_net_worth'], fn($q, $amount) => $q->where('net_worth', '>=', $amount))
                     ->when($data['max_net_worth'], fn($q, $amount) => $q->where('net_worth', '<=', $amount)))
-                ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-                    if ($data['min_net_worth'] ?? null) {
-                        $indicators['min'] = 'Min: ₱' . number_format($data['min_net_worth'], 2);
-                    }
-                    if ($data['max_net_worth'] ?? null) {
-                        $indicators['max'] = 'Max: ₱' . number_format($data['max_net_worth'], 2);
-                    }
-                    return $indicators;
-                })
                 ->visible(fn() => Auth::user()?->role === 'admin'),
         ];
     }
 
     /* ============================================================
-       CONTEXTUAL ACTIONS
+       ACTIONS
        ============================================================ */
 
     protected static function getContextualActions(): array
@@ -883,9 +680,13 @@ class SalnResource extends Resource
                     ->action(function (Saln $record, array $data) {
                         $record->update(['remarks' => $data['remarks']]);
 
+                        // Notify the SALN owner — stored in their bell
+                        $record->user->notify(new \App\Notifications\SalnRemarksAdded($record));
+
+                        // Flash confirmation for the admin
                         Notification::make()
                             ->title('Remarks Updated')
-                            ->body('Administrative remarks have been saved successfully.')
+                            ->body('Administrative remarks have been saved and the employee has been notified.')
                             ->success()
                             ->send();
                     })
@@ -927,7 +728,7 @@ class SalnResource extends Resource
                 'personalProperties',
                 'liabilities',
                 'businessInterests',
-                'relativesInGovernment'
+                'relativesInGovernment',
             ]);
 
         if (Auth::user()?->role !== 'admin') {

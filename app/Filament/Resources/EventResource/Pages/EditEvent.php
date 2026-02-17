@@ -3,12 +3,25 @@
 namespace App\Filament\Resources\EventResource\Pages;
 
 use App\Filament\Resources\EventResource;
+use App\Models\User;
+use App\Notifications\EventUpdated;
+use App\Notifications\EventStatusChanged;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 
 class EditEvent extends EditRecord
 {
     protected static string $resource = EventResource::class;
+
+    protected function afterSave(): void
+    {
+        // Send notification to all employees when event is updated
+        $users = User::where('id', '!=', Auth::id())->get();
+
+        Notification::send($users, new EventUpdated($this->record));
+    }
 
     protected function getHeaderActions(): array
     {
@@ -18,7 +31,13 @@ class EditEvent extends EditRecord
                 ->icon(fn() => $this->record->is_active ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
                 ->color(fn() => $this->record->is_active ? 'warning' : 'success')
                 ->action(function () {
-                    $this->record->update(['is_active' => ! $this->record->is_active]);
+                    $newStatus = !$this->record->is_active;
+                    $this->record->update(['is_active' => $newStatus]);
+
+                    // Send status change notification
+                    $users = User::where('id', '!=', Auth::id())->get();
+                    Notification::send($users, new EventStatusChanged($this->record, $newStatus));
+
                     $this->refreshFormData(['is_active']);
                 })
                 ->requiresConfirmation()
@@ -29,7 +48,12 @@ class EditEvent extends EditRecord
                 ->modalSubmitActionLabel(fn() => $this->record->is_active ? 'Deactivate' : 'Activate'),
 
             Actions\DeleteAction::make()
-                ->icon('heroicon-o-trash'),
+                ->icon('heroicon-o-trash')
+                ->after(function () {
+                    // Optional: Send cancellation notification when event is deleted
+                    // $users = User::where('id', '!=', Auth::id())->get();
+                    // Notification::send($users, new EventCancelled($this->record));
+                }),
         ];
     }
 

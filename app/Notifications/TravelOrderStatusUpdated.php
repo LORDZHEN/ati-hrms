@@ -4,10 +4,9 @@ namespace App\Notifications;
 
 use App\Models\TravelOrder;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Filament\Notifications\Notification as FilamentNotification;
-use App\Filament\Resources\TravelOrderResource;
+use Filament\Notifications\Actions\Action;
 
 class TravelOrderStatusUpdated extends Notification
 {
@@ -17,42 +16,55 @@ class TravelOrderStatusUpdated extends Notification
 
     public function via($notifiable): array
     {
-        return ['mail', 'database'];
-    }
-
-    public function toMail($notifiable)
-    {
-        $status = ucfirst($this->travelOrder->status);
-
-        return (new MailMessage)
-            ->subject("Travel Order {$status}")
-            ->greeting("Hello {$notifiable->name},")
-            ->line("The travel order ({$this->travelOrder->travel_order_no}) has been {$status}.")
-            ->action('View Travel Order', TravelOrderResource::getUrl('edit', ['record' => $this->travelOrder->id]))
-            ->line('Thank you!');
+        return ['database'];
     }
 
     public function toDatabase($notifiable): array
     {
-        return [
-            'title' => "Travel Order #{$this->travelOrder->travel_order_no} {$this->travelOrder->status}",
-            'body' => "Your travel order #{$this->travelOrder->travel_order_no} has been {$this->travelOrder->status}.",
-            'url' => TravelOrderResource::getUrl('edit', ['record' => $this->travelOrder->id]),
-        ];
-    }
+        $status = $this->travelOrder->status;
 
-    public function notifyUser($user)
-    {
-        $user->notify($this); // DB + email
+        $config = match ($status) {
+            'approved' => [
+                'title'     => 'Travel Order Approved',
+                'body'      => 'Your travel order (' . $this->travelOrder->travel_order_no .
+                               ') to ' . $this->travelOrder->destination . ' has been approved.',
+                'icon'      => 'heroicon-o-check-circle',
+                'iconColor' => 'success',
+            ],
+            'rejected' => [
+                'title'     => 'Travel Order Rejected',
+                'body'      => 'Your travel order (' . $this->travelOrder->travel_order_no .
+                               ') to ' . $this->travelOrder->destination . ' has been rejected.',
+                'icon'      => 'heroicon-o-x-circle',
+                'iconColor' => 'danger',
+            ],
+            'recommended' => [
+                'title'     => 'Travel Order Recommended',
+                'body'      => 'Your travel order (' . $this->travelOrder->travel_order_no .
+                               ') has been recommended and is awaiting final approval.',
+                'icon'      => 'heroicon-o-hand-thumb-up',
+                'iconColor' => 'info',
+            ],
+            default => [
+                'title'     => 'Travel Order Updated',
+                'body'      => 'Your travel order (' . $this->travelOrder->travel_order_no .
+                               ') status has been updated to ' . ucfirst($status) . '.',
+                'icon'      => 'heroicon-o-arrow-path',
+                'iconColor' => 'warning',
+            ],
+        };
 
-        if (class_exists(FilamentNotification::class)) {
-            $data = $this->toDatabase($user);
-            FilamentNotification::make()
-                ->title($data['title'])
-                ->body($data['body'])
-                ->success()
-                ->action('View', $data['url'])
-                ->send();
-        }
+        return FilamentNotification::make()
+            ->title($config['title'])
+            ->body($config['body'])
+            ->icon($config['icon'])
+            ->iconColor($config['iconColor'])
+            ->actions([
+                Action::make('view')
+                    ->label('View Travel Order')
+                    ->url(route('filament.hrms.resources.travel-orders.view', $this->travelOrder->id))
+                    ->markAsRead(),
+            ])
+            ->getDatabaseMessage();
     }
 }

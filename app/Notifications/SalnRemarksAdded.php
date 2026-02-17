@@ -8,11 +8,13 @@ use Illuminate\Notifications\Notification;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Notifications\Actions\Action;
 
-class NewSalnFiled extends Notification
+class SalnRemarksAdded extends Notification
 {
     use Queueable;
 
-    public function __construct(public Saln $saln) {}
+    public function __construct(public Saln $saln)
+    {
+    }
 
     public function via($notifiable): array
     {
@@ -21,13 +23,13 @@ class NewSalnFiled extends Notification
 
     public function toDatabase($notifiable): array
     {
-        $userName = $this->saln->user->first_name . ' ' . $this->saln->user->last_name;
-        $asOfDate = $this->saln->as_of_date?->format('F d, Y');
-
         return FilamentNotification::make()
-            ->title('New SALN Filed')
-            ->body("{$userName} submitted a SALN as of {$asOfDate}.")
-            ->icon('heroicon-o-document-text')
+            ->title('Admin Remarks on Your SALN')
+            ->body(
+                'Your SALN (as of ' . $this->saln->as_of_date?->format('F d, Y') . ') ' .
+                'has received administrative remarks: ' . $this->saln->remarks
+            )
+            ->icon('heroicon-o-chat-bubble-left-right')
             ->iconColor('warning')
             ->actions([
                 Action::make('view')

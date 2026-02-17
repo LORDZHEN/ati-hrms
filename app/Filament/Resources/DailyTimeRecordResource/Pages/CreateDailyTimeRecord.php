@@ -5,6 +5,8 @@ namespace App\Filament\Resources\DailyTimeRecordResource\Pages;
 use App\Filament\Resources\DailyTimeRecordResource;
 use App\Models\EmployeeDtr;
 use App\Models\User;
+use App\Notifications\DtrUploaded;
+use App\Notifications\DtrBatchUploadCompleted;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
@@ -31,13 +33,13 @@ class CreateDailyTimeRecord extends CreateRecord
         $createdRecords = [];
         $successCount = 0;
         $errorCount = 0;
+        $employeeNames = [];
 
         DB::beginTransaction();
 
         try {
             foreach ($data['dtr_rows'] ?? [] as $row) {
                 try {
-
                     // ✅ Filament already stored the file.
                     $filePath = $row['file_path'] ?? null;
 
@@ -55,16 +57,14 @@ class CreateDailyTimeRecord extends CreateRecord
                     $createdRecords[] = $record;
                     $successCount++;
 
-                    // Send notification
+                    // Get employee details
                     $employee = User::find($row['employee_id']);
 
                     if ($employee) {
-                        Notification::make()
-                            ->title('New Daily Time Record Uploaded')
-                            ->body('Your DTR for the period has been uploaded and is now available for review.')
-                            ->icon('heroicon-o-document-text')
-                            ->success()
-                            ->sendToDatabase($employee);
+                        $employeeNames[] = $employee->name;
+
+                        // Send individual DTR upload notification to employee
+                        $employee->notify(new DtrUploaded($record));
                     }
 
                 } catch (\Exception $e) {
@@ -79,7 +79,12 @@ class CreateDailyTimeRecord extends CreateRecord
 
             DB::commit();
 
+            // Send batch completion notification to admin
             if ($successCount > 0) {
+                $admin = Auth::user();
+                $admin->notify(new DtrBatchUploadCompleted($successCount, $errorCount, $employeeNames));
+
+                // Show success toast
                 Notification::make()
                     ->title('DTR Records Uploaded Successfully')
                     ->body("Successfully uploaded {$successCount} record(s)." .
@@ -91,7 +96,6 @@ class CreateDailyTimeRecord extends CreateRecord
             return $createdRecords[0] ?? new EmployeeDtr();
 
         } catch (\Exception $e) {
-
             DB::rollBack();
 
             Notification::make()
@@ -103,7 +107,6 @@ class CreateDailyTimeRecord extends CreateRecord
             return new EmployeeDtr();
         }
     }
-
 
     /**
      * Customize form actions
@@ -187,5 +190,9 @@ class CreateDailyTimeRecord extends CreateRecord
 
         return $data;
     }
-    
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'DTR records uploaded successfully';
+    }
 }

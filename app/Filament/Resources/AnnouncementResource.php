@@ -54,6 +54,7 @@ class AnnouncementResource extends Resource
             ->schema([
                 Forms\Components\Grid::make(3)
                     ->schema([
+                        // ── Left column (2/3) ──────────────────────────────
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Section::make()
@@ -96,6 +97,7 @@ class AnnouncementResource extends Resource
                             ])
                             ->columnSpan(2),
 
+                        // ── Right column (1/3) ─────────────────────────────
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Section::make()
@@ -142,6 +144,52 @@ class AnnouncementResource extends Resource
                                     ])
                                     ->heading('Icon')
                                     ->icon('heroicon-o-swatch'),
+
+                                // ── NEW: Auto-Expire Duration ──────────────
+                                Forms\Components\Section::make()
+                                    ->schema([
+                                        Forms\Components\Select::make('duration_hours')
+                                            ->label('Auto-Expire After')
+                                            ->options(Announcement::getDurationOptions())
+                                            ->default('')
+                                            ->native(false)
+                                            ->helperText('Automatically deactivate this announcement after the selected time from now.')
+                                            ->columnSpanFull()
+                                            // Virtual field — not stored directly; we convert it to expires_at
+                                            ->dehydrated(false)
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                // When editing: if expires_at is set and in the future,
+                                                // show the remaining hours as the closest option label.
+                                                if ($record && $record->expires_at && $record->expires_at->isFuture()) {
+                                                    $hoursLeft = (int) now()->diffInHours($record->expires_at, false);
+                                                    // Find the nearest duration option
+                                                    $options = array_keys(array_filter(
+                                                        Announcement::getDurationOptions(),
+                                                        fn($k) => $k !== '',
+                                                        ARRAY_FILTER_USE_KEY
+                                                    ));
+                                                    // Default to empty (manual) — we just inform via expires_at_label
+                                                    $component->state('');
+                                                }
+                                            }),
+
+                                        Forms\Components\Placeholder::make('expires_at_label')
+                                            ->label('Current Auto-Expire')
+                                            ->content(function ($record): string {
+                                                if (! $record || ! $record->expires_at) {
+                                                    return 'Not set (manual control)';
+                                                }
+                                                if ($record->expires_at->isPast()) {
+                                                    return '⛔ Expired — ' . $record->expires_at->format('M d, Y g:i A');
+                                                }
+                                                return '⏱ ' . $record->expires_at->diffForHumans()
+                                                    . ' (' . $record->expires_at->format('M d, Y g:i A') . ')';
+                                            })
+                                            ->visible(fn($record) => $record !== null),
+                                    ])
+                                    ->heading('Auto-Expire')
+                                    ->description('Set a countdown timer to deactivate automatically.')
+                                    ->icon('heroicon-o-clock'),
                             ])
                             ->columnSpan(1),
                     ]),
@@ -170,7 +218,7 @@ class AnnouncementResource extends Resource
                     ])
                     ->icons([
                         'heroicon-m-arrow-up'   => 'high',
-                        'heroicon-m-minus'       => 'medium',
+                        'heroicon-m-minus'      => 'medium',
                         'heroicon-m-arrow-down' => 'low',
                     ])
                     ->sortable(),
@@ -192,6 +240,17 @@ class AnnouncementResource extends Resource
                     ->color('gray')
                     ->size('sm')
                     ->sortable(),
+
+                // NEW: shows the auto-expire countdown
+                Tables\Columns\TextColumn::make('expires_at')
+                    ->label('Auto-Expires')
+                    ->dateTime('M d, Y g:i A')
+                    ->placeholder('—')
+                    ->icon('heroicon-m-clock')
+                    ->color(fn($record) => $record->expires_at?->isPast() ? 'danger' : 'warning')
+                    ->size('sm')
+                    ->sortable()
+                    ->description(fn($record): string => $record->expires_in ?? ''),
 
                 Tables\Columns\TextColumn::make('creator.name')
                     ->label('Created By')
@@ -236,6 +295,11 @@ class AnnouncementResource extends Resource
                 Tables\Filters\Filter::make('active_now')
                     ->label('Currently Published')
                     ->query(fn(Builder $query) => $query->active())
+                    ->toggle(),
+
+                Tables\Filters\Filter::make('has_auto_expire')
+                    ->label('Has Auto-Expire')
+                    ->query(fn(Builder $query) => $query->whereNotNull('expires_at'))
                     ->toggle(),
 
                 Tables\Filters\Filter::make('expiring_soon')

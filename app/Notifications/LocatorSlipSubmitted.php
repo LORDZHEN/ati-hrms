@@ -6,14 +6,13 @@ use App\Models\LocatorSlip;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Filament\Notifications\Notification as FilamentNotification;
+use Filament\Notifications\Actions\Action;
 
 class LocatorSlipSubmitted extends Notification
 {
     use Queueable;
 
-    public function __construct(public LocatorSlip $slip)
-    {
-    }
+    public function __construct(public LocatorSlip $slip) {}
 
     public function via($notifiable): array
     {
@@ -22,33 +21,22 @@ class LocatorSlipSubmitted extends Notification
 
     public function toDatabase($notifiable): array
     {
-        return [
-            'title' => 'New Locator Slip Submitted',
-            'body' => $this->slip->employee_name . ' filed a locator slip.',
-            'url' => route('filament.hrms.resources.locator-slips.index'),
-        ];
-    }
-
-    public function toFilament($notifiable)
-    {
         return FilamentNotification::make()
-            ->title('New Locator Slip')
-            ->body($this->slip->employee_name . ' filed a locator slip.')
-            ->success()
-            ->action('View', route('filament.hrms.resources.locator-slips.index'));
-    }
-
-    public function notifyUser($user)
-    {
-        $user->notify($this);
-        if (class_exists(FilamentNotification::class)) {
-            $data = $this->toDatabase($user);
-            FilamentNotification::make()
-                ->title($data['title'])
-                ->body($data['body'])
-                ->success()
-                ->action('View', $data['url'])
-                ->send();
-        }
+            ->title('New Locator Slip Submitted')
+            ->body(
+                $this->slip->employee_name .
+                ' filed a ' .
+                ($this->slip->transaction_type === 'official' ? 'Official Business' : 'Personal Transaction') .
+                ' locator slip to ' . $this->slip->destination . '.'
+            )
+            ->icon('heroicon-o-map-pin')
+            ->iconColor('warning')
+            ->actions([
+                Action::make('view')
+                    ->label('View Slip')
+                    ->url(route('filament.hrms.resources.locator-slips.view', $this->slip->id))
+                    ->markAsRead(),
+            ])
+            ->getDatabaseMessage();
     }
 }

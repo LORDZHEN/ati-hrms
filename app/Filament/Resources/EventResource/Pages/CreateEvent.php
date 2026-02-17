@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\EventResource\Pages;
 
 use App\Filament\Resources\EventResource;
+use App\Models\User;
+use App\Notifications\EventCreated;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 
 class CreateEvent extends CreateRecord
 {
@@ -18,12 +21,24 @@ class CreateEvent extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        // Send notification to all employees about the new event
+        $users = User::where('id', '!=', Auth::id())->get();
+
+        Notification::send($users, new EventCreated($this->record));
+
+        // Optional: Send to specific users for deadline or meeting types
+        if (in_array($this->record->type, ['deadline', 'meeting'])) {
+            // You can add specific logic here for urgent event types
+        }
+    }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
-    // Remove "Create" and "Create & create another" — only keep Cancel
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()->hidden();
@@ -39,7 +54,6 @@ class CreateEvent extends CreateRecord
         return parent::getCancelFormAction()->label('Cancel');
     }
 
-    // Single explicit "Save Event" button in the header
     protected function getHeaderActions(): array
     {
         return [
@@ -51,5 +65,10 @@ class CreateEvent extends CreateRecord
                     $this->create();
                 }),
         ];
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Event created successfully';
     }
 }
