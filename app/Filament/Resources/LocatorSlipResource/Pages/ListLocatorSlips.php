@@ -7,6 +7,7 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Grid;
 use Carbon\Carbon;
 
 class ListLocatorSlips extends ListRecords
@@ -23,67 +24,77 @@ class ListLocatorSlips extends ListRecords
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
                 ->icon('heroicon-o-document-text')
-                ->color('primary')
+                ->color('info')
                 ->modalHeading('Generate Locator Slip Report')
-                ->modalSubmitActionLabel('Generate')
+                ->modalDescription('Create a detailed PDF report of locator slips within a specific period.')
+                ->modalWidth('2xl')
+                ->modalSubmitActionLabel('Generate PDF')
                 ->form([
-                    // Status dropdown
-                    Select::make('status')
-                        ->label('Locator Slip Status')
-                        ->nullable() // allow "All"
-                        ->options([
-                            'all' => 'All',
-                            'pending' => 'Pending',
-                            'approved' => 'Approved',
-                            'disapproved' => 'Disapproved',
-                        ])
-                        ->default('all')
-                        ->reactive(),
+                    Grid::make(2)->schema([
+                        Select::make('status')
+                            ->label('Locator Slip Status')
+                            ->options([
+                                'all'          => 'All',
+                                'pending'      => 'Pending',
+                                'approved'     => 'Approved',
+                                'disapproved'  => 'Disapproved',
+                            ])
+                            ->default('all')
+                            ->required()
+                            ->native(false),
 
-                    // Period dropdown
-                    Select::make('period')
-                        ->label('Report Period')
-                        ->options([
-                            'weekly' => 'Weekly',
-                            'monthly' => 'Monthly',
-                            'yearly' => 'Yearly',
-                        ])
-                        ->required()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            $now = Carbon::now();
-                            if ($state === 'weekly') {
-                                $set('from', $now->startOfWeek()->toDateString());
-                                $set('to', $now->endOfWeek()->toDateString());
-                            }
-                            if ($state === 'monthly') {
-                                $set('from', $now->startOfMonth()->toDateString());
-                                $set('to', $now->endOfMonth()->toDateString());
-                            }
-                            if ($state === 'yearly') {
-                                $set('from', $now->startOfYear()->toDateString());
-                                $set('to', $now->endOfYear()->toDateString());
-                            }
-                        }),
+                        Select::make('period')
+                            ->label('Report Period')
+                            ->options([
+                                'weekly'    => 'This Week',
+                                'monthly'   => 'This Month',
+                                'quarterly' => 'This Quarter',
+                                'yearly'    => 'This Year',
+                                'custom'    => 'Custom Date Range',
+                            ])
+                            ->default('monthly')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $now = Carbon::now();
 
-                    DatePicker::make('from')
-                        ->label('From')
-                        ->required(),
+                                match ($state) {
+                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()),    $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()),   $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()),    $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default     => null,
+                                };
+                            }),
+                    ]),
 
-                    DatePicker::make('to')
-                        ->label('To')
-                        ->required()
-                        ->after('from'),
+                    Grid::make(2)->schema([
+                        DatePicker::make('from')
+                            ->label('From Date')
+                            ->required()
+                            ->native(false)
+                            ->default(Carbon::now()->startOfMonth()->toDateString()),
+
+                        DatePicker::make('to')
+                            ->label('To Date')
+                            ->required()
+                            ->native(false)
+                            ->after('from')
+                            ->default(Carbon::now()->endOfMonth()->toDateString()),
+                    ]),
                 ])
                 ->action(function (array $data) {
-                    return redirect()->route('locator-slip.report', [
+                    $url = route('locator-slip.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'],
-                        'from' => $data['from'],
-                        'to' => $data['to'],
+                        'from'   => $data['from'],
+                        'to'     => $data['to'],
                     ]);
-                })
-                ->openUrlInNewTab();
+
+                    // Full navigation so browser receives the PDF stream
+                    $this->redirect($url, navigate: false);
+                });
         }
 
         return $actions;

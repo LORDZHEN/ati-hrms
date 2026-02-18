@@ -377,14 +377,13 @@ class DailyTimeRecordResource extends Resource
                         ->label('Download CSV')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('gray')
-                        ->url(function ($record) {
+                        ->action(function ($record) {
                             $filePath = $record->file_path;
                             if (is_array($filePath)) {
                                 $filePath = $filePath[0] ?? '';
                             }
-                            return Storage::disk('public')->url($filePath);
-                        })
-                        ->openUrlInNewTab(),
+                            return Storage::disk('public')->download($filePath);
+                        }),
 
                     Tables\Actions\Action::make('export_pdf')
                         ->label('Export PDF')

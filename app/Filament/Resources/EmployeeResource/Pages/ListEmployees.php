@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
 
@@ -55,22 +54,10 @@ class ListEmployees extends ListRecords
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->modalHeading('Generate Employee Report')
-                ->modalDescription('Create a detailed report of employee data within a specific period')
+                ->modalDescription('Create a detailed PDF report of employee data within a specific period.')
                 ->modalWidth('2xl')
                 ->form([
                     Grid::make(2)->schema([
-                        Select::make('report_type')
-                            ->label('Report Type')
-                            ->options([
-                                'summary' => 'Summary Report',
-                                'detailed' => 'Detailed Report',
-                                'demographics' => 'Demographics Report',
-                                'status' => 'Status Report',
-                            ])
-                            ->default('summary')
-                            ->required()
-                            ->native(false),
-
                         Select::make('status')
                             ->label('Employee Status')
                             ->options([
@@ -80,83 +67,63 @@ class ListEmployees extends ListRecords
                                 'inactive' => 'Inactive',
                             ])
                             ->default('all')
+                            ->required()
                             ->native(false),
+
+                        Select::make('period')
+                            ->label('Report Period')
+                            ->options([
+                                'weekly' => 'This Week',
+                                'monthly' => 'This Month',
+                                'quarterly' => 'This Quarter',
+                                'yearly' => 'This Year',
+                                'custom' => 'Custom Date Range',
+                            ])
+                            ->default('monthly')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $now = Carbon::now();
+
+                                match ($state) {
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default => null,
+                                };
+                            }),
                     ]),
-
-                    Select::make('period')
-                        ->label('Report Period')
-                        ->options([
-                            'weekly' => 'This Week',
-                            'monthly' => 'This Month',
-                            'quarterly' => 'This Quarter',
-                            'yearly' => 'This Year',
-                            'custom' => 'Custom Date Range',
-                        ])
-                        ->default('monthly')
-                        ->required()
-                        ->native(false)
-                        ->live()
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            $now = Carbon::now();
-
-                            match ($state) {
-                                'weekly' => [
-                                    $set('from', $now->startOfWeek()->toDateString()),
-                                    $set('to', $now->endOfWeek()->toDateString()),
-                                ],
-                                'monthly' => [
-                                    $set('from', $now->startOfMonth()->toDateString()),
-                                    $set('to', $now->endOfMonth()->toDateString()),
-                                ],
-                                'quarterly' => [
-                                    $set('from', $now->startOfQuarter()->toDateString()),
-                                    $set('to', $now->endOfQuarter()->toDateString()),
-                                ],
-                                'yearly' => [
-                                    $set('from', $now->startOfYear()->toDateString()),
-                                    $set('to', $now->endOfYear()->toDateString()),
-                                ],
-                                default => null,
-                            };
-                        }),
 
                     Grid::make(2)->schema([
                         DatePicker::make('from')
                             ->label('From Date')
                             ->required()
                             ->native(false)
-                            ->visible(fn(callable $get) => $get('period') === 'custom'),
+                            ->default(Carbon::now()->startOfMonth()->toDateString()),
 
                         DatePicker::make('to')
                             ->label('To Date')
                             ->required()
                             ->native(false)
                             ->after('from')
-                            ->visible(fn(callable $get) => $get('period') === 'custom'),
+                            ->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
-
-                    Select::make('format')
-                        ->label('Output Format')
-                        ->options([
-                            'pdf' => 'PDF Document',
-                            'excel' => 'Excel Spreadsheet',
-                            'csv' => 'CSV File',
-                        ])
-                        ->default('pdf')
-                        ->required()
-                        ->native(false),
                 ])
                 ->action(function (array $data) {
-                    // Implement report generation logic
-                    Notification::make()
-                        ->title('Report Generated')
-                        ->body('Your report is being prepared and will be downloaded shortly.')
-                        ->success()
-                        ->send();
+                    // Build the report URL with query parameters
+                    $url = route('employee.report', [
+                        'status' => $data['status'] ?? 'all',
+                        'period' => $data['period'] ?? 'monthly',
+                        'from' => $data['from'],
+                        'to' => $data['to'],
+                    ]);
 
-                    // For now, just redirect to a report route
-                    // return redirect()->route('employee.report', $data);
+                    // Redirect to the report route — browser will receive the PDF
+                    $this->redirect($url, navigate: false);
                 })
+                ->modalSubmitActionLabel('Generate PDF')
                 ->visible(fn() => auth()->user()?->isAdmin() ?? false),
         ];
     }
@@ -208,8 +175,6 @@ class ListEmployees extends ListRecords
 
     protected function getHeaderWidgets(): array
     {
-        return [
-            // You can add stat widgets here if needed
-        ];
+        return [];
     }
 }

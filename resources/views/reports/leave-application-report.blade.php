@@ -2,231 +2,491 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Leave Application Report</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        /*
+        ┌──────────────────────────────────────────────────────────────────┐
+        │  DomPDF CONSTRAINTS — landscape A4                               │
+        │  · No flexbox / CSS Grid  →  <table> for layout                  │
+        │  · Images via public_path(), not asset()                         │
+        │  · Font: 'DejaVu Sans' (bundled with DomPDF)                    │
+        │  · position:fixed repeats on every page                          │
+        └──────────────────────────────────────────────────────────────────┘
+        */
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Segoe UI', Calibri, Arial, sans-serif;
-            font-size: 13px;
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10.5px;
             line-height: 1.5;
-            margin: 20px;
-            color: #333;
+            color: #1f2937;
+            background: #ffffff;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
+        /* ── Page wrapper ────────────────────────────────────────────── */
+        .page { padding: 24px 28px 50px; }
+
+        /* ── Running page footer ────────────────────────────────────── */
+        .page-footer {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            padding: 5px 28px;
+            border-top: 1px solid #d1d5db;
         }
 
-        .logo-section {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 10px 0;
-        }
+        .page-footer table { width: 100%; }
+        .page-footer td { border: none; padding: 0; font-size: 8px; color: #6b7280; }
 
-        .logo-section .logo img {
-            height: 70px;
-            object-fit: contain;
-        }
-
-        .title-section {
-            text-align: center;
-            margin: 0 15px;
-        }
-
-        .title-section .main-title {
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 2px;
-        }
-
-        .title-section .sub-title {
-            font-weight: bold;
-            font-size: 15px;
-        }
-
-        .org-info {
-            text-align: center;
-            font-size: 11px;
-            line-height: 1.3;
-            margin-top: 5px;
-        }
-
-        h2 {
-            text-align: center;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            text-decoration: underline;
-            font-size: 17px;
-        }
-
-        .report-summary p {
-            font-size: 13px;
+        /* ── Report header ──────────────────────────────────────────── */
+        .report-header {
+            border-bottom: 3px solid #1a3a5c;
+            padding-bottom: 11px;
             margin-bottom: 12px;
-            text-align: justify;
         }
 
-        .report-summary strong {
-            color: #000;
+        .republic-label {
+            text-align: center;
+            font-size: 8px;
+            letter-spacing: 0.07em;
+            color: #4b5563;
+            text-transform: uppercase;
+            margin-bottom: 7px;
         }
 
-        table {
+        .header-layout { width: 100%; }
+        .header-layout td { border: none; padding: 0; vertical-align: middle; }
+
+        .logo-cell { width: 62px; text-align: center; }
+        .logo-cell img { height: 52px; width: auto; }
+
+        .title-cell { text-align: center; padding: 0 10px; }
+
+        .org-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a3a5c;
+            letter-spacing: 0.03em;
+            line-height: 1.2;
+        }
+
+        .org-branch {
+            font-size: 10px;
+            font-weight: bold;
+            color: #2c5f8a;
+            letter-spacing: 0.04em;
+            margin-top: 2px;
+        }
+
+        .header-contact {
+            text-align: center;
+            font-size: 8.5px;
+            color: #4b5563;
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+
+        /* ── Report title ───────────────────────────────────────────── */
+        .title-block { text-align: center; margin: 10px 0 10px; }
+
+        .title-block h1 {
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a3a5c;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .title-hr {
+            width: 160px;
+            border: none;
+            border-top: 1.5px solid #b8860b;
+            margin: 4px auto 0;
+        }
+
+        /* ── Meta info bar ──────────────────────────────────────────── */
+        .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-bottom: 11px;
+            border: 1px solid #d1d5db;
         }
 
-        table, th, td {
-            border: 1px solid #aaa;
-        }
-
-        th, td {
-            padding: 8px;
-            text-align: left;
-            font-size: 12px;
-        }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        .signature {
-            width: 100%;
-            border: none;
-            margin-top: 30px;
-        }
-
-        .signature td {
-            width: 50%;
+        .meta-table td {
+            background: #f8f9fb;
+            padding: 5px 8px;
             text-align: center;
-            border: none;
+            border-right: 1px solid #d1d5db;
+            vertical-align: middle;
         }
 
-        @media print {
-            .status-filter { display: none; }
+        .meta-table td:last-child { border-right: none; }
+
+        .ml { display: block; font-size: 7px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 1px; }
+        .mv { font-size: 9px; font-weight: bold; color: #1a3a5c; }
+
+        /* ── Summary block ──────────────────────────────────────────── */
+        .summary-block {
+            background: #f8f9fb;
+            border-left: 4px solid #1a3a5c;
+            padding: 8px 11px;
+            margin-bottom: 11px;
+            font-size: 10px;
+            line-height: 1.7;
         }
+
+        .summary-block strong { color: #1a3a5c; }
+
+        /* ── Stats row ──────────────────────────────────────────────── */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+
+        .stats-table td {
+            border: 1px solid #d1d5db;
+            padding: 8px 6px;
+            text-align: center;
+            background: #ffffff;
+            vertical-align: middle;
+        }
+
+        .stats-table td.gap { border: none; width: 8px; background: transparent; }
+
+        .s-num          { font-size: 20px; font-weight: bold; color: #1a3a5c; line-height: 1; }
+        .s-num.approved { color: #1a6b3a; }
+        .s-num.disapproved { color: #8b1a1a; }
+        .s-num.pending  { color: #7a4f00; }
+
+        .s-lbl { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 3px; }
+
+        /* ── Section header ─────────────────────────────────────────── */
+        .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 6px; }
+        .sec-hdr td { border: none; padding: 0 0 3px; vertical-align: bottom; }
+        .sec-title { font-size: 11px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sec-count { font-size: 8.5px; font-weight: bold; color: #6b7280; text-align: right; }
+
+        /* ── Leave applications table ───────────────────────────────── */
+        /*  Portrait A4 ≈ 555px usable. 10 cols → trimmed to 8 cols.   */
+        .leave-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.5px;
+            margin-bottom: 20px;
+        }
+
+        .leave-table thead tr { background-color: #1a3a5c; }
+
+        .leave-table thead th {
+            color: #ffffff;
+            padding: 5px 6px;
+            text-align: left;
+            font-size: 7.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .leave-table tbody tr { border-bottom: 1px solid #e5e7eb; }
+        .leave-table tbody tr.even { background-color: #f8f9fb; }
+        .leave-table tbody tr.odd  { background-color: #ffffff; }
+        .leave-table tbody tr:last-child { border-bottom: 2px solid #1a3a5c; }
+
+        .leave-table td {
+            padding: 5px 6px;
+            vertical-align: middle;
+        }
+
+        .row-num   { color: #9ca3af; font-size: 7.5px; }
+        .emp-name  { font-weight: bold; color: #1f2937; }
+        .leave-type { color: #374151; }
+
+        /* ── Badges ─────────────────────────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 7.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .b-approved    { background: #e8f5ee; color: #1a6b3a; border: 1px solid #9dd0b2; }
+        .b-disapproved { background: #fde8e8; color: #8b1a1a; border: 1px solid #f5b8b8; }
+        .b-pending     { background: #fff3cd; color: #7a4f00; border: 1px solid #e8b84b; }
+
+        /* leave type chips */
+        .b-vacation   { background: #e0f7e9; color: #1a5c3a; border: 1px solid #80c9a0; }
+        .b-sick       { background: #fde8e8; color: #8b1a1a; border: 1px solid #f5b8b8; }
+        .b-maternity  { background: #f0e8ff; color: #5a1a8b; border: 1px solid #c0a0e8; }
+        .b-paternity  { background: #e0f0ff; color: #1a4a7a; border: 1px solid #90c0e8; }
+        .b-mandatory  { background: #fff3e0; color: #7a4000; border: 1px solid #e8a84b; }
+        .b-other      { background: #f0f4ff; color: #1a3a7a; border: 1px solid #a0b4e8; }
+
+        /* ── No data ────────────────────────────────────────────────── */
+        .no-data {
+            text-align: center;
+            padding: 26px 20px;
+            color: #6b7280;
+            font-size: 10.5px;
+            border: 1px dashed #d1d5db;
+            margin-bottom: 20px;
+        }
+
+        /* ── Signature section ──────────────────────────────────────── */
+        .sig-section { margin-top: 26px; border-top: 1px solid #d1d5db; padding-top: 16px; page-break-inside: avoid; }
+        .sig-table { width: 100%; }
+        .sig-table td { width: 33.33%; text-align: center; padding: 0 8px; vertical-align: top; border: none; }
+
+        .sig-label { display: block; font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 32px; }
+        .sig-line  { border-top: 1.5px solid #374151; padding-top: 4px; margin: 0 6px; }
+        .sig-name  { font-size: 10px; font-weight: bold; color: #1a3a5c; }
+        .sig-title { font-size: 8.5px; color: #4b5563; margin-top: 2px; }
     </style>
 </head>
 <body>
 
-<!-- Header -->
-<div class="header">
-    <div>Republic of the Philippines</div>
-    <div>Department of Agriculture</div>
-
-    <div class="logo-section">
-        <div class="logo">
-            <img src="{{ asset('images/ati_logo.png') }}" alt="ATI Logo">
-        </div>
-
-        <div class="title-section">
-            <div class="main-title">AGRICULTURAL TRAINING INSTITUTE</div>
-            <div class="sub-title">REGIONAL TRAINING CENTER XI</div>
-        </div>
-
-        <div class="logo">
-            <img src="{{ asset('images/bagong-pilipinas-logo.png') }}" alt="Bagong Pilipinas Logo">
-        </div>
-    </div>
-
-    <div class="org-info">
-        Brgy. Data Abdul Datla, Panabo City, Davao del Norte 8105<br>
-        ☎ (084) 217-3345 📧 ati11.addp4@gmail.com<br>
-        🌐 ati.da.gov.ph/region11 Facebook @atiregion11
-    </div>
-</div>
-
-<h2>Leave Application Report</h2>
-
-@if($from && $to)
-    <p style="text-align:center; font-size:12px;">
-        Period: <strong>{{ ucfirst($period) }}</strong><br>
-        Coverage: {{ \Carbon\Carbon::parse($from)->format('M d, Y') }}
-        to {{ \Carbon\Carbon::parse($to)->format('M d, Y') }}
-    </p>
-@endif
-
-@php
-    $total = $leaveApplications->count();
-    $approved = $leaveApplications->where('status', 'approved')->count();
-    $disapproved = $leaveApplications->where('status', 'disapproved')->count();
-@endphp
-
-<div class="report-summary">
-    @if($status === 'approved')
-        <p>Between <strong>{{ \Carbon\Carbon::parse($from)->format('M d, Y') }}</strong> and
-        <strong>{{ \Carbon\Carbon::parse($to)->format('M d, Y') }}</strong>, a total of
-        <strong>{{ $approved }}</strong> leave applications were approved. This report provides
-        details of all approved leave requests processed during the selected period.</p>
-    @elseif($status === 'disapproved')
-        <p>Between <strong>{{ \Carbon\Carbon::parse($from)->format('M d, Y') }}</strong> and
-        <strong>{{ \Carbon\Carbon::parse($to)->format('M d, Y') }}</strong>, a total of
-        <strong>{{ $disapproved }}</strong> leave applications were disapproved. This report provides
-        details of all disapproved leave requests processed during the selected period.</p>
-    @else
-        <p>Between <strong>{{ \Carbon\Carbon::parse($from)->format('M d, Y') }}</strong> and
-        <strong>{{ \Carbon\Carbon::parse($to)->format('M d, Y') }}</strong>, a total of
-        <strong>{{ $total }}</strong> leave applications were submitted. Of these,
-        <strong>{{ $approved }}</strong> were approved and
-        <strong>{{ $disapproved }}</strong> were disapproved. This report provides a detailed
-        overview of all leave requests processed during the selected period.</p>
-    @endif
-</div>
-
-@if($total > 0)
+{{-- ── Running page footer ──────────────────────────────────────────── --}}
+<div class="page-footer">
     <table>
+        <tr>
+            <td>ATI-RTC XI &bull; Human Resource Management System</td>
+            <td style="text-align:center;">Generated on {{ now()->format('F d, Y \a\t h:i A') }}</td>
+            <td style="text-align:right;">Confidential &bull; For Official Use Only</td>
+        </tr>
+    </table>
+</div>
+
+<div class="page">
+
+    {{-- ──────────────────────────── HEADER ────────────────────────────── --}}
+    <div class="report-header">
+        <div class="republic-label">Republic of the Philippines &bull; Department of Agriculture</div>
+
+        <table class="header-layout">
+            <tr>
+                <td class="logo-cell">
+                    <img src="{{ public_path('images/ati_logo.png') }}" alt="ATI Logo">
+                </td>
+                <td class="title-cell">
+                    <div class="org-name">Agricultural Training Institute</div>
+                    <div class="org-branch">Regional Training Center XI</div>
+                </td>
+                <td class="logo-cell">
+                    <img src="{{ public_path('images/bagong-pilipinas-logo.png') }}" alt="Bagong Pilipinas">
+                </td>
+            </tr>
+        </table>
+
+        <div class="header-contact">
+            Brgy. Data Abdul Dadia, Panabo City, Davao del Norte 8105
+            &nbsp;&bull;&nbsp; (084) 217-3345
+            &nbsp;&bull;&nbsp; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f0918499c1c1de91949480c4b0979d91999cde939f9d">[email&#160;protected]</a>
+            &nbsp;&bull;&nbsp; ati.da.gov.ph/region11
+        </div>
+    </div>
+
+    {{-- ─────────────────────────── TITLE ──────────────────────────────── --}}
+    <div class="title-block">
+        <h1>Leave Application Report</h1>
+        <hr class="title-hr">
+    </div>
+
+    {{-- ──────────────────────────── META BAR ──────────────────────────── --}}
+    @if($from && $to)
+    <table class="meta-table">
+        <tr>
+            <td>
+                <span class="ml">Status Filter</span>
+                <span class="mv">{{ ($status === 'all' || !$status) ? 'All Applications' : ucfirst($status) }}</span>
+            </td>
+            <td>
+                <span class="ml">Period</span>
+                <span class="mv">{{ ucfirst($period ?? 'Custom') }}</span>
+            </td>
+            <td>
+                <span class="ml">From</span>
+                <span class="mv">{{ \Carbon\Carbon::parse($from)->format('M d, Y') }}</span>
+            </td>
+            <td>
+                <span class="ml">To</span>
+                <span class="mv">{{ \Carbon\Carbon::parse($to)->format('M d, Y') }}</span>
+            </td>
+            <td>
+                <span class="ml">Generated</span>
+                <span class="mv">{{ now()->format('M d, Y') }}</span>
+            </td>
+        </tr>
+    </table>
+    @endif
+
+    {{-- ─────────────────────── COMPUTED COUNTS ────────────────────────── --}}
+    @php
+        $total        = $leaveApplications->count();
+        $approved     = $leaveApplications->where('status', 'approved')->count();
+        $disapproved  = $leaveApplications->where('status', 'disapproved')->count();
+        $pending      = $leaveApplications->where('status', 'pending')->count();
+        $totalDays    = $leaveApplications->sum('number_of_working_days');
+    @endphp
+
+    {{-- ─────────────────────────── SUMMARY ───────────────────────────── --}}
+    <div class="summary-block">
+        @if($status === 'approved')
+            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
+            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
+            <strong>{{ $approved }}</strong> leave application(s) were approved,
+            covering <strong>{{ $totalDays }}</strong> working day(s) in aggregate.
+            This report provides details of all approved leave requests processed during the selected period.
+        @elseif($status === 'disapproved')
+            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
+            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
+            <strong>{{ $disapproved }}</strong> leave application(s) were disapproved.
+            This report provides details of all disapproved leave requests processed during the selected period.
+        @elseif($status === 'pending')
+            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
+            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
+            <strong>{{ $pending }}</strong> leave application(s) are currently pending review and approval.
+        @else
+            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
+            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
+            <strong>{{ $total }}</strong> leave application(s) were submitted, covering
+            <strong>{{ $totalDays }}</strong> working day(s) in aggregate.
+            Of these, <strong>{{ $approved }}</strong> were approved,
+            <strong>{{ $disapproved }}</strong> were disapproved, and
+            <strong>{{ $pending }}</strong> remain pending.
+        @endif
+    </div>
+
+    {{-- ─────────────────────────── STATS ─────────────────────────────── --}}
+    <table class="stats-table">
+        <tr>
+            <td>
+                <div class="s-num">{{ $total }}</div>
+                <div class="s-lbl">Total</div>
+            </td>
+            <td class="gap"></td>
+            <td>
+                <div class="s-num approved">{{ $approved }}</div>
+                <div class="s-lbl">Approved</div>
+            </td>
+            <td class="gap"></td>
+            <td>
+                <div class="s-num disapproved">{{ $disapproved }}</div>
+                <div class="s-lbl">Disapproved</div>
+            </td>
+            <td class="gap"></td>
+            <td>
+                <div class="s-num pending">{{ $pending }}</div>
+                <div class="s-lbl">Pending</div>
+            </td>
+            <td class="gap"></td>
+            <td>
+                <div class="s-num">{{ $totalDays }}</div>
+                <div class="s-lbl">Total Days</div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- ─────────────────────── SECTION HEADER ────────────────────────── --}}
+    <table class="sec-hdr">
+        <tr>
+            <td class="sec-title">Leave Application Records</td>
+            <td class="sec-count">{{ $total }} record(s) found</td>
+        </tr>
+    </table>
+
+    {{-- ──────────────────────── LEAVE TABLE ──────────────────────────── --}}
+    @if($total > 0)
+    <table class="leave-table">
         <thead>
             <tr>
-                <th>Employee Name</th>
-                <th>Type of Leave</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Days</th>
-                <th>Status</th>
-                <th>Processed By</th>
-                <th>Date Processed</th>
-                <th>Reason for Disapproval</th>
+                <th style="width:18px;">#</th>
+                <th style="width:110px;">Employee Name</th>
+                <th style="width:100px;">Type of Leave</th>
+                <th style="width:62px;">Leave From</th>
+                <th style="width:62px;">Leave To</th>
+                <th style="width:36px;">Days</th>
+                <th style="width:58px;">Status</th>
+                <th style="width:88px;">Processed By</th>
+                <th>Remarks</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($leaveApplications as $leave)
-            <tr>
-                <td>{{ trim($leave->employee?->first_name . ' ' . ($leave->employee?->middle_name ? $leave->employee->middle_name . ' ' : '') . $leave->employee?->last_name) ?? '-' }}</td>
-                <td>{{ ucfirst(str_replace('_', ' ', $leave->type_of_leave)) }}</td>
-                <td>{{ $leave->leave_date_from?->format('M d, Y') }}</td>
-                <td>{{ $leave->leave_date_to?->format('M d, Y') }}</td>
-                <td>{{ $leave->number_of_working_days }}</td>
-                <td>{{ ucfirst($leave->status) }}</td>
+            @foreach($leaveApplications as $index => $leave)
+            @php
+                $employeeName = trim(
+                    ($leave->employee?->first_name ?? '') . ' ' .
+                    ($leave->employee?->middle_name ? $leave->employee->middle_name . ' ' : '') .
+                    ($leave->employee?->last_name ?? '')
+                ) ?: ($leave->employee?->name ?? '—');
+
+                $leaveTypeRaw = $leave->type_of_leave ?? '';
+                $leaveTypeLabel = $leave->type_of_leave === 'others'
+                    ? ($leave->other_leave_type ?? 'Others')
+                    : ucwords(str_replace('_', ' ', $leaveTypeRaw));
+
+                $leaveTypeBadge = match(true) {
+                    str_contains($leaveTypeRaw, 'vacation')  => 'b-vacation',
+                    str_contains($leaveTypeRaw, 'sick')      => 'b-sick',
+                    str_contains($leaveTypeRaw, 'maternity') => 'b-maternity',
+                    str_contains($leaveTypeRaw, 'paternity') => 'b-paternity',
+                    str_contains($leaveTypeRaw, 'mandatory') => 'b-mandatory',
+                    default                                  => 'b-other',
+                };
+            @endphp
+            <tr class="{{ $index % 2 === 0 ? 'even' : 'odd' }}">
+                <td class="row-num">{{ $index + 1 }}</td>
+                <td><span class="emp-name">{{ $employeeName }}</span></td>
+                <td><span class="badge {{ $leaveTypeBadge }}">{{ $leaveTypeLabel }}</span></td>
+                <td>{{ $leave->leave_date_from?->format('M d, Y') ?? '—' }}</td>
+                <td>{{ $leave->leave_date_to?->format('M d, Y') ?? '—' }}</td>
+                <td style="text-align:center;">{{ $leave->number_of_working_days ?? '—' }}</td>
+                <td>
+                    @if($leave->status === 'approved')
+                        <span class="badge b-approved">Approved</span>
+                    @elseif($leave->status === 'disapproved')
+                        <span class="badge b-disapproved">Disapproved</span>
+                    @else
+                        <span class="badge b-pending">Pending</span>
+                    @endif
+                </td>
                 <td>{{ $leave->authorized_officer ?? 'Not yet processed' }}</td>
-                <td>{{ $leave->date_approved_disapproved?->format('M d, Y') ?? '-' }}</td>
-                <td>{{ $leave->disapproval_reason ?? '-' }}</td>
+                <td>{{ $leave->disapproval_reason ?? '—' }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
-@endif
+    @else
+    <div class="no-data">
+        No leave application records found for the selected filters and date range.
+    </div>
+    @endif
 
-<table class="signature">
-<tr>
-    <td>
-        <strong>Prepared by:</strong><br><br><br>
-        <u>{{ auth()->user()->name }}</u><br>
-        <span>System Administrator</span>
-    </td>
-    <td>
-        <strong>Accomplished by:</strong><br><br><br>
-        <u>{{ auth()->user()->name }}</u><br>
-        <span>HR Officer</span>
-    </td>
-</tr>
-</table>
-
-<script>
-    window.onload = function() {
-        window.print();
-    };
-</script>
-
-</body>
-</html>
+    {{-- ─────────────────────────── SIGNATURES ────────────────────────── --}}
+    <div class="sig-section">
+        <table class="sig-table">
+            <tr>
+                <td>
+                    <span class="sig-label">Prepared by:</span>
+                    <div class="sig-line">
+                        <div class="sig-name">{{ auth()->user()->name }}</div>
+                        <div class="sig-title">System Administrator</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="sig-label">Noted by:</span>
+                    <div class="sig-line">
+                        <div class="sig-name">&nbsp;</div>
+                        <div class="sig-title">HR Officer</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="sig-label">Approved by:</span>
+                    <div class="sig-line">
+                        <div class="sig-name">&nbsp;</div>
+                        <div class="sig-title">Regional Director</div>

@@ -13,6 +13,7 @@ use App\Http\Controllers\PersonalDataSheetPrintController;
 use App\Models\PersonalDataSheet;
 use Carbon\Carbon;
 use App\Livewire\Employee\Pds\EditPds;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/pds/edit', function () {
@@ -57,97 +58,40 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/admin/employee-report', function () {
+
+    // ── Auth & authorization ──────────────────────────────────────
     $user = auth()->user();
     if (!$user || $user->role !== 'admin') {
         abort(403, 'Unauthorized');
     }
 
-    $status = request('status');
+    // ── Query parameters ─────────────────────────────────────────
+    $status = request('status', 'all');   // all | active | pending | inactive
     $from = request('from');
     $to = request('to');
-    $period = request('period');
+    $period = request('period', 'custom');
 
-    $query = User::where('role', 'employee');
+    // ── Resolve from/to when not explicitly provided ─────────────
+    if (!$from || !$to) {
+        $now = Carbon::now();
 
-    if ($status) {
-        $query->where('status', $status);
+        [$from, $to] = match ($period) {
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()], // monthly + custom fallback
+        };
     }
 
-    if ($from && $to) {
-        $query->whereBetween('created_at', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
-        ]);
-    }
+    // ── Build employee query ──────────────────────────────────────
+    $query = User::whereIn('role', ['employee', 'admin']);
 
-    $employees = $query
-        ->orderBy('last_name')
-        ->get();
-
-    return view('reports.employee-report', compact(
-        'employees',
-        'status',
-        'from',
-        'to',
-        'period'
-    ));
-})
-    ->middleware(['auth'])
-    ->name('employee.report');
-
-
-Route::get('/leave-applications/report', function () {
-    $user = auth()->user();
-    if (!$user || $user->role !== 'admin') {
-        abort(403, 'Unauthorized');
-    }
-
-    $from = request('from');
-    $to = request('to');
-    $period = request('period');
-    $status = request('status'); // <-- add this line
-
-    $query = LeaveApplication::with('employee');
-
-    if ($from && $to) {
-        $query->whereBetween('created_at', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
-        ]);
-    }
-
-    // Filter by status if not "All"
+    // Status filter — skip when 'all'
     if ($status && $status !== 'all') {
         $query->where('status', $status);
     }
 
-    $leaveApplications = $query->orderBy('created_at', 'desc')->get();
-
-    // Pass $status to the view
-    return view('reports.leave-application-report', compact(
-        'leaveApplications',
-        'from',
-        'to',
-        'period',
-        'status'  // <-- pass it here
-    ));
-})
-    ->middleware(['auth'])
-    ->name('leave-applications.report');
-
-Route::get('/locator-slip/report', function () {
-    $user = auth()->user();
-    if (!$user || $user->role !== 'admin') {
-        abort(403, 'Unauthorized');
-    }
-
-    $from = request('from');
-    $to = request('to');
-    $period = request('period');
-    $status = request('status') ?? 'all';
-
-    $query = LocatorSlip::query();
-
+    // Date range filter on created_at
     if ($from && $to) {
         $query->whereBetween('created_at', [
             Carbon::parse($from)->startOfDay(),
@@ -155,22 +99,168 @@ Route::get('/locator-slip/report', function () {
         ]);
     }
 
-    // Filter by status
+    $employees = $query->orderBy('last_name')->get();
+
+    // ── Generate PDF ─────────────────────────────────────────────
+    $pdf = Pdf::loadView('reports.employee-report', compact(
+        'employees',
+        'status',
+        'from',
+        'to',
+        'period'
+    ))
+        ->setPaper('a4', 'portrait')
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,   // set true only if you embed external images
+            'dpi' => 150,
+        ]);
+
+    $filename = sprintf(
+        'employee-report-%s-%s.pdf',
+        $status,
+        Carbon::now()->format('Ymd-His')
+    );
+
+    // stream() opens inline in browser; download() forces a file save
+    return $pdf->stream($filename);
+
+})->middleware(['auth'])->name('employee.report');
+
+
+Route::get('/leave-applications/report', function () {
+
+    // ── Auth & authorization ──────────────────────────────────────────────
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
+
+    // ── Query parameters ──────────────────────────────────────────────────
+    $status = request('status', 'all');
+    $from = request('from');
+    $to = request('to');
+    $period = request('period', 'monthly');
+
+    // ── Resolve from/to when not provided ─────────────────────────────────
+    if (!$from || !$to) {
+        $now = Carbon::now();
+
+        [$from, $to] = match ($period) {
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
+        };
+    }
+
+    // ── Build query ────────────────────────────────────────────────────────
+    $query = LeaveApplication::with('employee')
+        ->whereBetween('created_at', [
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
+        ]);
+
     if ($status && $status !== 'all') {
         $query->where('status', $status);
     }
 
-    $locatorSlips = $query->orderBy('created_at', 'desc')->get();
+    $leaveApplications = $query->orderBy('created_at', 'desc')->get();
 
-    // Pass status to blade
-    return view('reports.locator-slip-report', compact(
-        'locatorSlips',
+    // ── Generate PDF ───────────────────────────────────────────────────────
+    $pdf = Pdf::loadView('reports.leave-application-report', compact(
+        'leaveApplications',
+        'status',
         'from',
         'to',
-        'period',
-        'status'
-    ));
+        'period'
+    ))
+        ->setPaper('a4', 'portrait')
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'dpi' => 150,
+        ]);
+
+    $filename = sprintf(
+        'leave-report-%s-%s.pdf',
+        $status,
+        Carbon::now()->format('Ymd-His')
+    );
+
+    return $pdf->stream($filename);
+
+})->middleware(['auth'])->name('leave-applications.report');
+
+
+Route::get('/locator-slip/report', function () {
+
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
+
+    $status = request('status', 'all');
+    $from = request('from');
+    $to = request('to');
+    $period = request('period', 'monthly');
+
+    if (!$from || !$to) {
+        $now = Carbon::now();
+        [$from, $to] = match ($period) {
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
+        };
+    }
+
+    $query = LocatorSlip::query();
+
+    if ($from && $to) {
+        $query->where(function ($q) use ($from, $to) {
+            $q->whereBetween('inclusive_date', [
+                Carbon::parse($from)->startOfDay(),
+                Carbon::parse($to)->endOfDay(),
+            ])->orWhere(function ($q2) use ($from, $to) {
+                $q2->whereNull('inclusive_date')
+                    ->whereBetween('created_at', [
+                        Carbon::parse($from)->startOfDay(),
+                        Carbon::parse($to)->endOfDay(),
+                    ]);
+            });
+        });
+    }
+
+    if ($status && $status !== 'all') {
+        $query->where('status', $status);
+    }
+
+    $locatorSlips = $query->orderBy('inclusive_date', 'desc')->get();
+
+    $pdf = Pdf::loadView('reports.locator-slip-report', compact(
+        'locatorSlips',
+        'status',
+        'from',
+        'to',
+        'period'
+    ))
+        ->setPaper('a4', 'portrait')   // ← portrait, same as employee report
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'dpi' => 150,
+        ]);
+
+    $filename = sprintf('locator-slip-report-%s-%s.pdf', $status, Carbon::now()->format('Ymd-His'));
+
+    return $pdf->stream($filename);
+
 })->middleware(['auth'])->name('locator-slip.report');
+
 
 Route::get('/pds/report', function () {
     $user = auth()->user();
@@ -197,17 +287,34 @@ Route::get('/pds/report', function () {
 
 
 Route::get('/travel-orders/report', function () {
+
+    // ── Auth & authorization ──────────────────────────────────────
     $user = auth()->user();
-    if (!$user || $user->role !== 'admin') {
-        abort(403);
+    if (! $user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
     }
 
-    $from = request('from');
-    $to = request('to');
-    $period = request('period');
-    $status = request('status') ?? 'all';
+    // ── Query parameters ─────────────────────────────────────────
+    $status = request('status', 'all');
+    $from   = request('from');
+    $to     = request('to');
+    $period = request('period', 'monthly');
 
-    $query = TravelOrder::query();
+    // ── Resolve from/to when not explicitly provided ─────────────
+    if (! $from || ! $to) {
+        $now = Carbon::now();
+
+        [$from, $to] = match ($period) {
+            'weekly'    => [$now->copy()->startOfWeek()->toDateString(),    $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly'    => [$now->copy()->startOfYear()->toDateString(),     $now->copy()->endOfYear()->toDateString()],
+            default     => [$now->copy()->startOfMonth()->toDateString(),    $now->copy()->endOfMonth()->toDateString()],
+        };
+    }
+
+    // ── Build query ───────────────────────────────────────────────
+    // Filter on departure_date (the actual travel date, not created_at)
+    $query = TravelOrder::with(['recommender', 'approver', 'creator']);
 
     if ($from && $to) {
         $query->whereBetween('departure_date', [
@@ -222,13 +329,30 @@ Route::get('/travel-orders/report', function () {
 
     $travelOrders = $query->orderBy('departure_date', 'desc')->get();
 
-    return view('reports.travel-order-report', compact(
+    // ── Generate PDF ─────────────────────────────────────────────
+    $pdf = Pdf::loadView('reports.travel-order-report', compact(
         'travelOrders',
+        'status',
         'from',
         'to',
-        'period',
-        'status'
-    ));
+        'period'
+    ))
+    ->setPaper('a4', 'portrait')
+    ->setOptions([
+        'defaultFont'          => 'sans-serif',
+        'isHtml5ParserEnabled' => true,
+        'isRemoteEnabled'      => false,
+        'dpi'                  => 150,
+    ]);
+
+    $filename = sprintf(
+        'travel-order-report-%s-%s.pdf',
+        $status,
+        Carbon::now()->format('Ymd-His')
+    );
+
+    return $pdf->stream($filename);
+
 })->middleware(['auth'])->name('travel-order.report');
 
 
