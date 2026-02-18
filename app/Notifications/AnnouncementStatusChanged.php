@@ -17,23 +17,17 @@ class AnnouncementStatusChanged extends Notification
         public bool $isActive
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via($notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the database representation of the notification.
-     */
     public function toDatabase($notifiable): array
     {
         $status = $this->isActive ? 'Activated' : 'Deactivated';
-        $icon = $this->isActive ? 'heroicon-o-eye' : 'heroicon-o-eye-slash';
-        $color = $this->isActive ? 'success' : 'warning';
-        $emoji = $this->isActive ? '✅' : '⏸️';
+        $icon   = $this->isActive ? 'heroicon-o-eye' : 'heroicon-o-eye-slash';
+        $color  = $this->isActive ? 'success' : 'warning';
+        $emoji  = $this->isActive ? '✅' : '⏸️';
 
         return FilamentNotification::make()
             ->title($emoji . ' Announcement ' . $status)
@@ -46,7 +40,7 @@ class AnnouncementStatusChanged extends Notification
             ->actions([
                 Action::make('view')
                     ->label('View Announcement')
-                    ->url(route('filament.hrms.resources.announcements.edit', $this->announcement->id))
+                    ->url(route('filament.hrms.resources.announcements.index'))
                     ->markAsRead(),
             ])
             ->getDatabaseMessage();

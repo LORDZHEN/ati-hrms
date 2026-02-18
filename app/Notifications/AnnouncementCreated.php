@@ -14,17 +14,11 @@ class AnnouncementCreated extends Notification
 
     public function __construct(public Announcement $announcement) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via($notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the database representation of the notification.
-     */
     public function toDatabase($notifiable): array
     {
         return FilamentNotification::make()
@@ -39,22 +33,19 @@ class AnnouncementCreated extends Notification
             ->actions([
                 Action::make('view')
                     ->label('View Announcement')
-                    ->url(route('filament.hrms.resources.announcements.edit', $this->announcement->id))
+                    ->url(route('filament.hrms.resources.announcements.index'))
                     ->markAsRead(),
             ])
             ->getDatabaseMessage();
     }
 
-    /**
-     * Get color based on announcement priority.
-     */
     protected function getPriorityColor(): string
     {
         return match ($this->announcement->priority) {
-            'high' => 'danger',
+            'high'   => 'danger',
             'medium' => 'warning',
-            'low' => 'success',
-            default => 'info',
+            'low'    => 'success',
+            default  => 'info',
         };
     }
 }

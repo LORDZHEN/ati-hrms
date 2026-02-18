@@ -15,9 +15,23 @@ class EditAnnouncement extends EditRecord
 {
     protected static string $resource = AnnouncementResource::class;
 
+    /**
+     * Employees can open this page (no 403), but we abort the save
+     * before anything is written to the database.
+     */
+    protected function authorizeAccess(): void
+    {
+        // Let everyone through — canEdit() on the resource already returns true for all.
+        // We just skip the default Filament authorization so employees aren't bounced.
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Convert the virtual duration_hours selector to a new expires_at timestamp.
+        // Extra server-side guard: silently reject saves from non-admins.
+        if (!(Auth::user()?->isAdmin() ?? false)) {
+            $this->halt();
+        }
+
         $hours = $this->form->getRawState()['duration_hours'] ?? null;
 
         if ($hours !== null && $hours !== '') {
@@ -29,14 +43,25 @@ class EditAnnouncement extends EditRecord
 
     protected function afterSave(): void
     {
-        // Send notification to all employees when announcement is updated
         $users = User::where('id', '!=', Auth::id())->get();
-
         Notification::send($users, new AnnouncementUpdated($this->record));
     }
 
     protected function getHeaderActions(): array
     {
+        $isAdmin = Auth::user()?->isAdmin() ?? false;
+
+        // Employees get only a back button — no save, no delete, no toggle.
+        if (!$isAdmin) {
+            return [
+                Actions\Action::make('back')
+                    ->label('Back to Announcements')
+                    ->icon('heroicon-o-arrow-left')
+                    ->color('gray')
+                    ->url($this->getResource()::getUrl('index')),
+            ];
+        }
+
         return [
             Actions\Action::make('toggle_active')
                 ->label(fn() => $this->record->is_active ? 'Deactivate' : 'Activate')
@@ -46,7 +71,6 @@ class EditAnnouncement extends EditRecord
                     $newStatus = !$this->record->is_active;
                     $this->record->update(['is_active' => $newStatus]);
 
-                    // Send status change notification
                     $users = User::where('id', '!=', Auth::id())->get();
                     Notification::send($users, new AnnouncementStatusChanged($this->record, $newStatus));
 
@@ -67,7 +91,6 @@ class EditAnnouncement extends EditRecord
                 ->action(function () {
                     $this->record->update(['expires_at' => null]);
                     $this->refreshFormData(['expires_at']);
-                    $this->notify('success', 'Auto-expire timer cleared.');
                 })
                 ->requiresConfirmation()
                 ->modalHeading('Clear Auto-Expire Timer')
@@ -77,6 +100,18 @@ class EditAnnouncement extends EditRecord
             Actions\DeleteAction::make()
                 ->icon('heroicon-o-trash'),
         ];
+    }
+
+    /**
+     * Hide the default "Save changes" footer button for employees.
+     */
+    protected function getFormActions(): array
+    {
+        if (!(Auth::user()?->isAdmin() ?? false)) {
+            return [];
+        }
+
+        return parent::getFormActions();
     }
 
     protected function getRedirectUrl(): string

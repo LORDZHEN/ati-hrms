@@ -18,19 +18,20 @@ class AnnouncementResource extends Resource
     protected static ?string $model = Announcement::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
-
+    protected static ?string $slug = 'announcements';
     protected static ?string $navigationGroup = 'System';
-
     protected static ?int $navigationSort = 1;
+
+    // ── Access control ────────────────────────────────────────────────────────
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canCreate(): bool
@@ -38,9 +39,13 @@ class AnnouncementResource extends Resource
         return Auth::user()?->isAdmin() ?? false;
     }
 
+    /**
+     * Allow everyone to open the edit/view page.
+     * Employees see it read-only; saving is blocked in EditAnnouncement.
+     */
     public static function canEdit($record): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canDelete($record): bool
@@ -48,13 +53,24 @@ class AnnouncementResource extends Resource
         return Auth::user()?->isAdmin() ?? false;
     }
 
+    // ── Form ─────────────────────────────────────────────────────────────────
+
     public static function form(Form $form): Form
     {
+        $isEmployee = ! (Auth::user()?->isAdmin() ?? false);
+
         return $form
             ->schema([
+                // Banner shown to employees
+                Forms\Components\Placeholder::make('readonly_notice')
+                    ->label('')
+                    ->content('📋 You are viewing this announcement in read-only mode.')
+                    ->visible($isEmployee)
+                    ->columnSpanFull(),
+
                 Forms\Components\Grid::make(3)
                     ->schema([
-                        // ── Left column (2/3) ──────────────────────────────
+                        // ── Left column (2/3) ─────────────────────────────
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Section::make()
@@ -63,16 +79,22 @@ class AnnouncementResource extends Resource
                                             ->required()
                                             ->maxLength(255)
                                             ->placeholder('Enter announcement title...')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
 
                                         Forms\Components\Textarea::make('message')
                                             ->required()
                                             ->rows(6)
                                             ->placeholder('Write your announcement message here...')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Announcement Content')
-                                    ->description('Write a clear and concise announcement for your employees.')
+                                    ->description(
+                                        $isEmployee
+                                            ? 'This announcement was posted by an administrator.'
+                                            : 'Write a clear and concise announcement for your employees.'
+                                    )
                                     ->icon('heroicon-o-pencil-square'),
 
                                 Forms\Components\Section::make()
@@ -81,14 +103,16 @@ class AnnouncementResource extends Resource
                                             ->label('Publish Date')
                                             ->placeholder('Publish immediately')
                                             ->helperText('Leave empty to publish right away.')
-                                            ->prefixIcon('heroicon-o-calendar'),
+                                            ->prefixIcon('heroicon-o-calendar')
+                                            ->disabled($isEmployee),
 
                                         Forms\Components\DatePicker::make('expiry_date')
                                             ->label('Expiry Date')
                                             ->placeholder('No expiration')
                                             ->helperText('Leave empty to keep it active indefinitely.')
                                             ->prefixIcon('heroicon-o-calendar-days')
-                                            ->after('publish_date'),
+                                            ->after('publish_date')
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Publishing Schedule')
                                     ->description('Control when this announcement is visible.')
@@ -97,7 +121,7 @@ class AnnouncementResource extends Resource
                             ])
                             ->columnSpan(2),
 
-                        // ── Right column (1/3) ─────────────────────────────
+                        // ── Right column (1/3) ────────────────────────────
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Section::make()
@@ -109,7 +133,8 @@ class AnnouncementResource extends Resource
                                             ->onIcon('heroicon-m-eye')
                                             ->offIcon('heroicon-m-eye-slash')
                                             ->onColor('success')
-                                            ->inline(false),
+                                            ->inline(false)
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Visibility')
                                     ->icon('heroicon-o-eye'),
@@ -127,7 +152,8 @@ class AnnouncementResource extends Resource
                                             ->native(false)
                                             ->selectablePlaceholder(false)
                                             ->helperText('High priority announcements appear at the top.')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Priority')
                                     ->icon('heroicon-o-flag'),
@@ -140,12 +166,13 @@ class AnnouncementResource extends Resource
                                             ->default('heroicon-o-megaphone')
                                             ->native(false)
                                             ->helperText('Choose an icon to represent this announcement.')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Icon')
                                     ->icon('heroicon-o-swatch'),
 
-                                // ── NEW: Auto-Expire Duration ──────────────
+                                // Auto-Expire — hidden from employees entirely
                                 Forms\Components\Section::make()
                                     ->schema([
                                         Forms\Components\Select::make('duration_hours')
@@ -155,20 +182,9 @@ class AnnouncementResource extends Resource
                                             ->native(false)
                                             ->helperText('Automatically deactivate this announcement after the selected time from now.')
                                             ->columnSpanFull()
-                                            // Virtual field — not stored directly; we convert it to expires_at
                                             ->dehydrated(false)
                                             ->afterStateHydrated(function ($component, $record) {
-                                                // When editing: if expires_at is set and in the future,
-                                                // show the remaining hours as the closest option label.
                                                 if ($record && $record->expires_at && $record->expires_at->isFuture()) {
-                                                    $hoursLeft = (int) now()->diffInHours($record->expires_at, false);
-                                                    // Find the nearest duration option
-                                                    $options = array_keys(array_filter(
-                                                        Announcement::getDurationOptions(),
-                                                        fn($k) => $k !== '',
-                                                        ARRAY_FILTER_USE_KEY
-                                                    ));
-                                                    // Default to empty (manual) — we just inform via expires_at_label
                                                     $component->state('');
                                                 }
                                             }),
@@ -189,15 +205,20 @@ class AnnouncementResource extends Resource
                                     ])
                                     ->heading('Auto-Expire')
                                     ->description('Set a countdown timer to deactivate automatically.')
-                                    ->icon('heroicon-o-clock'),
+                                    ->icon('heroicon-o-clock')
+                                    ->hidden($isEmployee),
                             ])
                             ->columnSpan(1),
                     ]),
             ]);
     }
 
+    // ── Table ─────────────────────────────────────────────────────────────────
+
     public static function table(Table $table): Table
     {
+        $isAdmin = Auth::user()?->isAdmin() ?? false;
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('title')
@@ -241,7 +262,6 @@ class AnnouncementResource extends Resource
                     ->size('sm')
                     ->sortable(),
 
-                // NEW: shows the auto-expire countdown
                 Tables\Columns\TextColumn::make('expires_at')
                     ->label('Auto-Expires')
                     ->dateTime('M d, Y g:i A')
@@ -250,14 +270,16 @@ class AnnouncementResource extends Resource
                     ->color(fn($record) => $record->expires_at?->isPast() ? 'danger' : 'warning')
                     ->size('sm')
                     ->sortable()
-                    ->description(fn($record): string => $record->expires_in ?? ''),
+                    ->description(fn($record): string => $record->expires_in ?? '')
+                    ->visible($isAdmin),
 
                 Tables\Columns\TextColumn::make('creator.name')
                     ->label('Created By')
                     ->icon('heroicon-m-user-circle')
                     ->color('gray')
                     ->size('sm')
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($isAdmin),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Posted')
@@ -300,7 +322,8 @@ class AnnouncementResource extends Resource
                 Tables\Filters\Filter::make('has_auto_expire')
                     ->label('Has Auto-Expire')
                     ->query(fn(Builder $query) => $query->whereNotNull('expires_at'))
-                    ->toggle(),
+                    ->toggle()
+                    ->visible($isAdmin),
 
                 Tables\Filters\Filter::make('expiring_soon')
                     ->label('Expiring Soon (7 days)')
@@ -308,20 +331,38 @@ class AnnouncementResource extends Resource
                         ->whereNotNull('expiry_date')
                         ->whereBetween('expiry_date', [now(), now()->addDays(7)])
                     )
-                    ->toggle(),
+                    ->toggle()
+                    ->visible($isAdmin),
 
                 Tables\Filters\Filter::make('no_expiry')
                     ->label('No Expiry Set')
                     ->query(fn(Builder $query) => $query->whereNull('expiry_date'))
-                    ->toggle(),
+                    ->toggle()
+                    ->visible($isAdmin),
             ])
             ->filtersLayout(Tables\Enums\FiltersLayout::AboveContentCollapsible)
             ->actions([
+                // Quick View — everyone
+                Tables\Actions\Action::make('quickView')
+                    ->label('Quick View')
+                    ->icon('heroicon-m-eye')
+                    ->color('info')
+                    ->modalHeading(fn($record) => $record->title)
+                    ->modalContent(fn($record) => view(
+                        'filament.resources.announcements.quick-view',
+                        ['record' => $record]
+                    ))
+                    ->modalWidth('3xl')
+                    ->modalFooterActions(fn() => [])
+                    ->slideOver(),
+
+                // View/Edit — opens for everyone; employees see read-only form
                 Tables\Actions\EditAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-pencil-square')
-                    ->tooltip('Edit'),
+                    ->tooltip(fn() => $isAdmin ? 'Edit' : 'View Details'),
 
+                // Admin-only
                 Tables\Actions\Action::make('toggle_active')
                     ->iconButton()
                     ->icon(fn($record) => $record->is_active ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
@@ -333,12 +374,14 @@ class AnnouncementResource extends Resource
                     ->modalDescription(fn($record) => $record->is_active
                         ? 'This announcement will no longer be visible to employees.'
                         : 'This announcement will become visible to employees.')
-                    ->modalSubmitActionLabel(fn($record) => $record->is_active ? 'Deactivate' : 'Activate'),
+                    ->modalSubmitActionLabel(fn($record) => $record->is_active ? 'Deactivate' : 'Activate')
+                    ->visible($isAdmin),
 
                 Tables\Actions\DeleteAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-trash')
-                    ->tooltip('Delete'),
+                    ->tooltip('Delete')
+                    ->visible($isAdmin),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -348,7 +391,8 @@ class AnnouncementResource extends Resource
                         ->color('success')
                         ->action(fn($records) => $records->each->update(['is_active' => true]))
                         ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion(),
+                        ->deselectRecordsAfterCompletion()
+                        ->visible($isAdmin),
 
                     Tables\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Selected')
@@ -356,9 +400,11 @@ class AnnouncementResource extends Resource
                         ->color('warning')
                         ->action(fn($records) => $records->each->update(['is_active' => false]))
                         ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion(),
+                        ->deselectRecordsAfterCompletion()
+                        ->visible($isAdmin),
 
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible($isAdmin),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -366,11 +412,12 @@ class AnnouncementResource extends Resource
             ->poll('60s')
             ->emptyStateIcon('heroicon-o-megaphone')
             ->emptyStateHeading('No Announcements Yet')
-            ->emptyStateDescription('Create your first announcement to notify your employees.')
+            ->emptyStateDescription('No announcements have been posted.')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Create Announcement')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->visible($isAdmin),
             ]);
     }
 

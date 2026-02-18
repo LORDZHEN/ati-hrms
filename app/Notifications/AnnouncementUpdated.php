@@ -14,17 +14,11 @@ class AnnouncementUpdated extends Notification
 
     public function __construct(public Announcement $announcement) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via($notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the database representation of the notification.
-     */
     public function toDatabase($notifiable): array
     {
         return FilamentNotification::make()
@@ -37,8 +31,8 @@ class AnnouncementUpdated extends Notification
             ->iconColor('info')
             ->actions([
                 Action::make('view')
-                    ->label('View Changes')
-                    ->url(route('filament.hrms.resources.announcements.edit', $this->announcement->id))
+                    ->label('View Announcement')
+                    ->url(route('filament.hrms.resources.announcements.index'))
                     ->markAsRead(),
             ])
             ->getDatabaseMessage();

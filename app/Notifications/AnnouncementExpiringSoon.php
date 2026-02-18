@@ -14,17 +14,11 @@ class AnnouncementExpiringSoon extends Notification
 
     public function __construct(public Announcement $announcement) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via($notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the database representation of the notification.
-     */
     public function toDatabase($notifiable): array
     {
         $expiresAt = $this->announcement->expires_at ?? $this->announcement->expiry_date;
@@ -39,9 +33,9 @@ class AnnouncementExpiringSoon extends Notification
             ->icon('heroicon-o-clock')
             ->iconColor('warning')
             ->actions([
-                Action::make('extend')
-                    ->label('Extend Duration')
-                    ->url(route('filament.hrms.resources.announcements.edit', $this->announcement->id))
+                Action::make('view')
+                    ->label('View Announcements')
+                    ->url(route('filament.hrms.resources.announcements.index'))
                     ->markAsRead(),
             ])
             ->getDatabaseMessage();

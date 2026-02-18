@@ -18,19 +18,19 @@ class EventResource extends Resource
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-
     protected static ?string $navigationGroup = 'System';
-
     protected static ?int $navigationSort = 2;
+
+    // ── Access control ────────────────────────────────────────────────────────
 
     public static function shouldRegisterNavigation(): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canAccess(): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canCreate(): bool
@@ -38,9 +38,12 @@ class EventResource extends Resource
         return Auth::user()?->isAdmin() ?? false;
     }
 
+    /**
+     * Everyone can open the edit/view page — employees see it read-only.
+     */
     public static function canEdit($record): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return Auth::check();
     }
 
     public static function canDelete($record): bool
@@ -48,10 +51,21 @@ class EventResource extends Resource
         return Auth::user()?->isAdmin() ?? false;
     }
 
+    // ── Form ─────────────────────────────────────────────────────────────────
+
     public static function form(Form $form): Form
     {
+        $isEmployee = ! (Auth::user()?->isAdmin() ?? false);
+
         return $form
             ->schema([
+                // Read-only banner for employees
+                Forms\Components\Placeholder::make('readonly_notice')
+                    ->label('')
+                    ->content('📋 You are viewing this event in read-only mode.')
+                    ->visible($isEmployee)
+                    ->columnSpanFull(),
+
                 Forms\Components\Grid::make(3)
                     ->schema([
                         Forms\Components\Group::make()
@@ -62,15 +76,21 @@ class EventResource extends Resource
                                             ->required()
                                             ->maxLength(255)
                                             ->placeholder('Enter event title...')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
 
                                         Forms\Components\Textarea::make('description')
                                             ->rows(5)
                                             ->placeholder('Describe what this event is about...')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Event Details')
-                                    ->description('Provide a clear title and description for the event.')
+                                    ->description(
+                                        $isEmployee
+                                            ? 'This event was created by an administrator.'
+                                            : 'Provide a clear title and description for the event.'
+                                    )
                                     ->icon('heroicon-o-pencil-square'),
 
                                 Forms\Components\Section::make()
@@ -81,21 +101,24 @@ class EventResource extends Resource
                                             ->native(false)
                                             ->displayFormat('M d, Y')
                                             ->default(now())
-                                            ->prefixIcon('heroicon-o-calendar'),
+                                            ->prefixIcon('heroicon-o-calendar')
+                                            ->disabled($isEmployee),
 
                                         Forms\Components\TimePicker::make('event_time')
                                             ->label('Event Time')
                                             ->required()
                                             ->seconds(false)
                                             ->default('09:00')
-                                            ->prefixIcon('heroicon-o-clock'),
+                                            ->prefixIcon('heroicon-o-clock')
+                                            ->disabled($isEmployee),
 
                                         Forms\Components\TextInput::make('location')
                                             ->required()
                                             ->maxLength(255)
                                             ->placeholder('e.g. Conference Room A, Main Hall...')
                                             ->prefixIcon('heroicon-o-map-pin')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Schedule & Location')
                                     ->description('Set when and where the event will take place.')
@@ -115,7 +138,8 @@ class EventResource extends Resource
                                             ->onIcon('heroicon-m-eye')
                                             ->offIcon('heroicon-m-eye-slash')
                                             ->onColor('success')
-                                            ->inline(false),
+                                            ->inline(false)
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Visibility')
                                     ->icon('heroicon-o-eye'),
@@ -135,7 +159,8 @@ class EventResource extends Resource
                                             ->native(false)
                                             ->selectablePlaceholder(false)
                                             ->helperText('Categorize the type of event.')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Event Type')
                                     ->icon('heroicon-o-tag'),
@@ -155,7 +180,8 @@ class EventResource extends Resource
                                             ->native(false)
                                             ->selectablePlaceholder(false)
                                             ->helperText('Color used to highlight this event on the dashboard.')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->disabled($isEmployee),
                                     ])
                                     ->heading('Accent Color')
                                     ->icon('heroicon-o-swatch'),
@@ -165,8 +191,12 @@ class EventResource extends Resource
             ]);
     }
 
+    // ── Table ─────────────────────────────────────────────────────────────────
+
     public static function table(Table $table): Table
     {
+        $isAdmin = Auth::user()?->isAdmin() ?? false;
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('title')
@@ -227,7 +257,8 @@ class EventResource extends Resource
                     ->icon('heroicon-m-user-circle')
                     ->color('gray')
                     ->size('sm')
-                    ->sortable(),
+                    ->sortable()
+                    ->visible($isAdmin),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Status')
@@ -274,11 +305,27 @@ class EventResource extends Resource
             ])
             ->filtersLayout(Tables\Enums\FiltersLayout::AboveContentCollapsible)
             ->actions([
+                // Quick View — everyone
+                Tables\Actions\Action::make('quickView')
+                    ->label('Quick View')
+                    ->icon('heroicon-m-eye')
+                    ->color('info')
+                    ->modalHeading(fn($record) => $record->title)
+                    ->modalContent(fn($record) => view(
+                        'filament.resources.event.quick-view',
+                        ['record' => $record]
+                    ))
+                    ->modalWidth('2xl')
+                    ->modalFooterActions(fn() => [])
+                    ->slideOver(),
+
+                // View/Edit — opens for everyone; employees see read-only form
                 Tables\Actions\EditAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-pencil-square')
-                    ->tooltip('Edit'),
+                    ->tooltip(fn() => $isAdmin ? 'Edit' : 'View Details'),
 
+                // Admin-only
                 Tables\Actions\Action::make('toggle_active')
                     ->iconButton()
                     ->icon(fn($record) => $record->is_active ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
@@ -290,12 +337,14 @@ class EventResource extends Resource
                     ->modalDescription(fn($record) => $record->is_active
                         ? 'This event will no longer appear on the dashboard.'
                         : 'This event will become visible on the dashboard.')
-                    ->modalSubmitActionLabel(fn($record) => $record->is_active ? 'Deactivate' : 'Activate'),
+                    ->modalSubmitActionLabel(fn($record) => $record->is_active ? 'Deactivate' : 'Activate')
+                    ->visible($isAdmin),
 
                 Tables\Actions\DeleteAction::make()
                     ->iconButton()
                     ->icon('heroicon-o-trash')
-                    ->tooltip('Delete'),
+                    ->tooltip('Delete')
+                    ->visible($isAdmin),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -305,7 +354,8 @@ class EventResource extends Resource
                         ->color('success')
                         ->action(fn($records) => $records->each->update(['is_active' => true]))
                         ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion(),
+                        ->deselectRecordsAfterCompletion()
+                        ->visible($isAdmin),
 
                     Tables\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Selected')
@@ -313,9 +363,11 @@ class EventResource extends Resource
                         ->color('warning')
                         ->action(fn($records) => $records->each->update(['is_active' => false]))
                         ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion(),
+                        ->deselectRecordsAfterCompletion()
+                        ->visible($isAdmin),
 
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible($isAdmin),
                 ]),
             ])
             ->defaultSort('event_date', 'asc')
@@ -323,11 +375,12 @@ class EventResource extends Resource
             ->poll('60s')
             ->emptyStateIcon('heroicon-o-calendar-days')
             ->emptyStateHeading('No Events Scheduled')
-            ->emptyStateDescription('Add your first event to display it on the employee dashboard.')
+            ->emptyStateDescription('No events have been scheduled yet.')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Create Event')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->visible($isAdmin),
             ]);
     }
 
