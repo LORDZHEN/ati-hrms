@@ -13,7 +13,6 @@ use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\Split;
 use Filament\Infolists\Components\Group;
-use Filament\Infolists\Components\IconEntry;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -29,8 +28,10 @@ class ViewEmployee extends ViewRecord
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
+
             // Hero Section
             Section::make()
+                ->key('hero')
                 ->schema([
                     Split::make([
                         Grid::make(2)->schema([
@@ -55,33 +56,37 @@ class ViewEmployee extends ViewRecord
                             TextEntry::make('status')
                                 ->badge()
                                 ->size('lg')
-                                ->color(fn($state) => match ($state) {
-                                    'active' => 'success',
-                                    'pending' => 'warning',
-                                    'inactive' => 'danger',
-                                    default => 'gray',
+                                ->color(function (string $state): string {
+                                    return match ($state) {
+                                        'active'   => 'success',
+                                        'pending'  => 'warning',
+                                        'inactive' => 'danger',
+                                        default    => 'gray',
+                                    };
                                 })
-                                ->icon(fn($state) => match ($state) {
-                                    'active' => 'heroicon-m-check-circle',
-                                    'pending' => 'heroicon-m-clock',
-                                    'inactive' => 'heroicon-m-x-circle',
-                                    default => 'heroicon-m-question-mark-circle',
+                                ->icon(function (string $state): string {
+                                    return match ($state) {
+                                        'active'   => 'heroicon-m-check-circle',
+                                        'pending'  => 'heroicon-m-clock',
+                                        'inactive' => 'heroicon-m-x-circle',
+                                        default    => 'heroicon-m-question-mark-circle',
+                                    };
                                 })
-                                ->formatStateUsing(fn($state) => match ($state) {
-                                    'pending' => 'Pending Approval',
-                                    'active' => 'Active',
-                                    'inactive' => 'Inactive',
-                                    default => ucfirst($state),
+                                ->formatStateUsing(function (string $state): string {
+                                    return match ($state) {
+                                        'pending'  => 'Pending Approval',
+                                        'active'   => 'Active',
+                                        'inactive' => 'Inactive',
+                                        default    => ucfirst($state),
+                                    };
                                 }),
                         ])->columnSpan(1),
                     ])->from('md'),
-                ])
-                ->headerActions([
-                    $this->getQuickApproveAction(),
                 ]),
 
-            // Status Overview (for pending employees)
+            // Account Status Overview
             Section::make('Account Status Overview')
+                ->key('status-overview')
                 ->description('Review the current status of this employee account')
                 ->icon('heroicon-o-shield-check')
                 ->schema([
@@ -89,43 +94,43 @@ class ViewEmployee extends ViewRecord
                         TextEntry::make('status')
                             ->label('Account Status')
                             ->badge()
-                            ->size('md')
-                            ->color(fn($state) => match ($state) {
-                                'active' => 'success',
-                                'pending' => 'warning',
-                                'inactive' => 'danger',
-                                default => 'gray',
+                            ->color(function (string $state): string {
+                                return match ($state) {
+                                    'active'   => 'success',
+                                    'pending'  => 'warning',
+                                    'inactive' => 'danger',
+                                    default    => 'gray',
+                                };
                             })
-                            ->icon(fn($state) => match ($state) {
-                                'active' => 'heroicon-m-check-circle',
-                                'pending' => 'heroicon-m-clock',
-                                'inactive' => 'heroicon-m-x-circle',
-                                default => 'heroicon-m-question-mark-circle',
+                            ->icon(function (string $state): string {
+                                return match ($state) {
+                                    'active'   => 'heroicon-m-check-circle',
+                                    'pending'  => 'heroicon-m-clock',
+                                    'inactive' => 'heroicon-m-x-circle',
+                                    default    => 'heroicon-m-question-mark-circle',
+                                };
                             }),
 
                         TextEntry::make('email_verified_at')
                             ->label('Email Status')
                             ->badge()
-                            ->size('md')
-                            ->color(fn($state) => $state ? 'success' : 'danger')
-                            ->icon(fn($state) => $state ? 'heroicon-m-check-badge' : 'heroicon-m-envelope')
-                            ->formatStateUsing(fn($state) => $state ? 'Verified' : 'Not Verified'),
+                            ->color(fn ($state) => $state ? 'success' : 'danger')
+                            ->icon(fn ($state) => $state ? 'heroicon-m-check-badge' : 'heroicon-m-envelope')
+                            ->formatStateUsing(fn ($state) => $state ? 'Verified' : 'Not Verified'),
 
                         TextEntry::make('must_change_password')
                             ->label('Password Status')
                             ->badge()
-                            ->size('md')
-                            ->color(fn($state) => $state ? 'warning' : 'success')
-                            ->icon(fn($state) => $state ? 'heroicon-m-key' : 'heroicon-m-lock-closed')
-                            ->formatStateUsing(fn($state) => $state ? 'Temporary' : 'Set by User'),
+                            ->color(fn ($state) => $state ? 'warning' : 'success')
+                            ->icon(fn ($state) => $state ? 'heroicon-m-key' : 'heroicon-m-lock-closed')
+                            ->formatStateUsing(fn ($state) => $state ? 'Temporary' : 'Set by User'),
 
                         TextEntry::make('days_pending')
                             ->label('Time Pending')
                             ->badge()
-                            ->size('md')
-                            ->color(fn($record) => $record->created_at->diffInDays(now()) > 7 ? 'danger' : 'gray')
+                            ->color(fn ($state, $record) => $record->created_at->diffInDays(now()) > 7 ? 'danger' : 'gray')
                             ->icon('heroicon-m-clock')
-                            ->formatStateUsing(function ($record) {
+                            ->formatStateUsing(function ($state, $record) {
                                 if ($record->status !== 'pending') {
                                     return 'N/A';
                                 }
@@ -134,12 +139,13 @@ class ViewEmployee extends ViewRecord
                             }),
                     ]),
                 ])
-                ->visible(fn($record) => $record->status === 'pending' || is_null($record->email_verified_at))
+                ->visible(fn ($record) => $record->status === 'pending' || is_null($record->email_verified_at))
                 ->collapsible()
                 ->collapsed(false),
 
             // Personal Information
             Section::make('Personal Information')
+                ->key('personal-info')
                 ->description('Employee personal and contact details')
                 ->icon('heroicon-o-user')
                 ->schema([
@@ -167,7 +173,7 @@ class ViewEmployee extends ViewRecord
                             ->icon('heroicon-m-envelope')
                             ->copyable()
                             ->copyMessage('Email copied')
-                            ->url(fn($record) => "mailto:{$record->email}")
+                            ->url(fn ($record) => "mailto:{$record->email}")
                             ->color('primary'),
 
                         TextEntry::make('birthday')
@@ -180,7 +186,7 @@ class ViewEmployee extends ViewRecord
                             ->icon('heroicon-m-calendar')
                             ->badge()
                             ->color('gray')
-                            ->formatStateUsing(fn($record) => $record->birthday
+                            ->formatStateUsing(fn ($state, $record) => $record->birthday
                                 ? Carbon::parse($record->birthday)->age . ' years old'
                                 : 'N/A'
                             ),
@@ -189,8 +195,9 @@ class ViewEmployee extends ViewRecord
                 ->collapsible()
                 ->collapsed(false),
 
-            // Employment Information
+            // Employment Details
             Section::make('Employment Details')
+                ->key('employment-details')
                 ->description('Job position and organizational information')
                 ->icon('heroicon-o-briefcase')
                 ->schema([
@@ -205,26 +212,32 @@ class ViewEmployee extends ViewRecord
                         TextEntry::make('role')
                             ->label('System Role')
                             ->badge()
-                            ->color(fn($state) => match ($state) {
-                                'admin' => 'danger',
-                                'employee' => 'info',
-                                default => 'gray',
+                            ->color(function (string $state): string {
+                                return match ($state) {
+                                    'admin'    => 'danger',
+                                    'employee' => 'info',
+                                    default    => 'gray',
+                                };
                             })
-                            ->icon(fn($state) => match ($state) {
-                                'admin' => 'heroicon-m-shield-check',
-                                'employee' => 'heroicon-m-user',
-                                default => 'heroicon-m-question-mark-circle',
+                            ->icon(function (string $state): string {
+                                return match ($state) {
+                                    'admin'    => 'heroicon-m-shield-check',
+                                    'employee' => 'heroicon-m-user',
+                                    default    => 'heroicon-m-question-mark-circle',
+                                };
                             })
-                            ->formatStateUsing(fn($state) => ucfirst($state)),
+                            ->formatStateUsing(fn (string $state) => ucfirst($state)),
 
                         TextEntry::make('status')
                             ->label('Employment Status')
                             ->badge()
-                            ->color(fn($state) => match ($state) {
-                                'active' => 'success',
-                                'pending' => 'warning',
-                                'inactive' => 'danger',
-                                default => 'gray',
+                            ->color(function (string $state): string {
+                                return match ($state) {
+                                    'active'   => 'success',
+                                    'pending'  => 'warning',
+                                    'inactive' => 'danger',
+                                    default    => 'gray',
+                                };
                             }),
                     ]),
 
@@ -246,6 +259,7 @@ class ViewEmployee extends ViewRecord
 
             // Account Timeline
             Section::make('Account Timeline')
+                ->key('account-timeline')
                 ->description('Important dates and account history')
                 ->icon('heroicon-o-clock')
                 ->schema([
@@ -263,8 +277,8 @@ class ViewEmployee extends ViewRecord
                             ->icon('heroicon-m-check-badge')
                             ->placeholder('Not verified yet')
                             ->badge()
-                            ->color(fn($state) => $state ? 'success' : 'danger')
-                            ->formatStateUsing(fn($state) => $state
+                            ->color(fn ($state) => $state ? 'success' : 'danger')
+                            ->formatStateUsing(fn ($state) => $state
                                 ? Carbon::parse($state)->format('F d, Y h:i A')
                                 : 'Not verified'
                             ),
@@ -281,13 +295,13 @@ class ViewEmployee extends ViewRecord
                         TextEntry::make('member_since')
                             ->label('Member Since')
                             ->icon('heroicon-m-user-group')
-                            ->formatStateUsing(fn($record) => $record->created_at->diffForHumans()),
+                            ->formatStateUsing(fn ($state, $record) => $record->created_at->diffForHumans()),
 
                         TextEntry::make('last_activity')
                             ->label('Last Activity')
                             ->icon('heroicon-m-clock')
-                            ->formatStateUsing(fn($record) => $record->updated_at->diffForHumans())
-                            ->visible(fn($record) => $record->status === 'active'),
+                            ->formatStateUsing(fn ($state, $record) => $record->updated_at->diffForHumans())
+                            ->visible(fn ($record) => $record->status === 'active'),
                     ]),
                 ])
                 ->collapsible()
@@ -314,54 +328,22 @@ class ViewEmployee extends ViewRecord
         ];
     }
 
-    // Actions
-
-    private function getQuickApproveAction(): Actions\Action
-    {
-        return Actions\Action::make('quick_approve')
-            ->label('Quick Approve')
-            ->icon('heroicon-o-check-circle')
-            ->color('success')
-            ->size('sm')
-            ->visible(fn() => $this->isPendingAndUnverified())
-            ->requiresConfirmation()
-            ->modalHeading('Quick Approve Employee')
-            ->modalDescription(fn() =>
-                "Approve {$this->record->name} and send login credentials?"
-            )
-            ->action(function () {
-                $service = app(EmployeeRegistrationService::class);
-
-                if (!$service->approveEmployee($this->record)) {
-                    Notification::make()
-                        ->title('Approval Failed')
-                        ->body('Unable to generate password from birthday. Please check the date format.')
-                        ->danger()
-                        ->send();
-                    return;
-                }
-
-                Notification::make()
-                    ->title('Employee Approved')
-                    ->body("Login credentials sent to {$this->record->email}")
-                    ->success()
-                    ->send();
-
-                redirect()->route('filament.hrms.resources.employees.index');
-            });
-    }
-
     private function getApproveAction(): Actions\Action
     {
         return Actions\Action::make('approve')
-            ->label('Approve Registration')
-            ->icon('heroicon-o-check-circle')
+            ->label('Approve & Verify Registration')
+            ->icon('heroicon-o-check-badge')
             ->color('success')
-            ->visible(fn() => $this->isPendingAndUnverified())
+            ->visible(fn () => $this->record->status === 'pending')
             ->requiresConfirmation()
-            ->modalHeading('Approve Employee Registration')
-            ->modalDescription(fn() =>
-                "You are about to approve {$this->record->name}'s registration. A temporary password will be generated from their birthday (MMDDYYYY format) and sent via email."
+            ->modalHeading('Approve & Verify Employee Registration')
+            ->modalDescription(fn () =>
+                "You are about to approve {$this->record->name}'s registration.\n\n" .
+                "This will:\n" .
+                "• Activate their account\n" .
+                "• Verify their email address\n" .
+                "• Generate a temporary password from their birthday (MMDDYYYY)\n" .
+                "• Send login credentials to {$this->record->email}"
             )
             ->modalIcon('heroicon-o-check-badge')
             ->modalIconColor('success')
@@ -370,19 +352,19 @@ class ViewEmployee extends ViewRecord
 
                 if (!$service->approveEmployee($this->record)) {
                     Notification::make()
-                        ->title('Invalid Birthday Format')
-                        ->body('Unable to generate password from birthday. Please verify the date is correct.')
+                        ->title('Invalid Birthday')
+                        ->body('Birthday is missing or invalid. Please edit the employee record and add a valid date of birth first.')
                         ->danger()
-                        ->duration(5000)
+                        ->persistent()
                         ->send();
                     return;
                 }
 
                 Notification::make()
-                    ->title('Employee Approved Successfully')
-                    ->body("Credentials sent to {$this->record->email}")
+                    ->title('Employee Approved & Verified ✅')
+                    ->body("Account activated, email verified, and credentials sent to {$this->record->email}.")
                     ->success()
-                    ->duration(5000)
+                    ->duration(6000)
                     ->send();
 
                 redirect()->route('filament.hrms.resources.employees.index');
@@ -395,11 +377,12 @@ class ViewEmployee extends ViewRecord
             ->label('Reject Registration')
             ->icon('heroicon-o-x-circle')
             ->color('danger')
-            ->visible(fn() => $this->record->status === 'pending')
+            ->visible(fn () => $this->record->status === 'pending')
             ->requiresConfirmation()
             ->modalHeading('Reject Employee Registration')
-            ->modalDescription(fn() =>
-                "Are you sure you want to reject {$this->record->name}'s registration? This will set their account status to inactive and they won't be able to access the system."
+            ->modalDescription(fn () =>
+                "Are you sure you want to reject {$this->record->name}'s registration? " .
+                "Their account status will be set to inactive."
             )
             ->modalIcon('heroicon-o-exclamation-triangle')
             ->modalIconColor('danger')
@@ -409,7 +392,7 @@ class ViewEmployee extends ViewRecord
 
                 Notification::make()
                     ->title('Registration Rejected')
-                    ->body('The employee has been notified.')
+                    ->body('The employee registration has been rejected.')
                     ->warning()
                     ->duration(5000)
                     ->send();
@@ -424,28 +407,30 @@ class ViewEmployee extends ViewRecord
             ->label('Resend Credentials')
             ->icon('heroicon-o-envelope')
             ->color('info')
-            ->visible(fn() => $this->record->status === 'active' && $this->record->must_change_password)
+            ->visible(fn () => $this->record->status === 'active' && $this->record->must_change_password)
             ->requiresConfirmation()
             ->modalHeading('Resend Login Credentials')
-            ->modalDescription(fn() =>
-                "Send login credentials to {$this->record->name} again?"
+            ->modalDescription(fn () =>
+                "Resend login credentials to {$this->record->name} at {$this->record->email}? " .
+                "The temporary password (birthday in MMDDYYYY format) will be reset and resent."
             )
             ->action(function () {
-                // Implement resend credentials logic here
+                $service = app(EmployeeRegistrationService::class);
+
+                if (!$service->resendCredentials($this->record)) {
+                    Notification::make()
+                        ->title('Failed to Resend')
+                        ->body('Birthday is missing or invalid. Cannot regenerate credentials.')
+                        ->danger()
+                        ->send();
+                    return;
+                }
 
                 Notification::make()
-                    ->title('Credentials Sent')
-                    ->body("Login details sent to {$this->record->email}")
+                    ->title('Credentials Resent ✅')
+                    ->body("Login details sent to {$this->record->email}.")
                     ->success()
                     ->send();
             });
-    }
-
-    // Helper Methods
-
-    private function isPendingAndUnverified(): bool
-    {
-        return is_null($this->record->email_verified_at)
-            && $this->record->status === 'pending';
     }
 }

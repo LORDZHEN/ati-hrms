@@ -15,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Filters\SelectFilter;
@@ -59,7 +58,8 @@ class EmployeeResource extends Resource
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, callable $set, callable $get) =>
+                            ->afterStateUpdated(
+                                fn($state, callable $set, callable $get) =>
                                 self::updateFullName($set, $get)
                             )
                             ->autofocus(),
@@ -68,7 +68,8 @@ class EmployeeResource extends Resource
                             ->label('Middle Name')
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, callable $set, callable $get) =>
+                            ->afterStateUpdated(
+                                fn($state, callable $set, callable $get) =>
                                 self::updateFullName($set, $get)
                             )
                             ->placeholder('Optional'),
@@ -78,7 +79,8 @@ class EmployeeResource extends Resource
                             ->required()
                             ->maxLength(255)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, callable $set, callable $get) =>
+                            ->afterStateUpdated(
+                                fn($state, callable $set, callable $get) =>
                                 self::updateFullName($set, $get)
                             ),
                     ]),
@@ -166,7 +168,6 @@ class EmployeeResource extends Resource
         return $table
             ->columns([
                 Split::make([
-                    // Left side - Avatar and main info
                     Stack::make([
                         TextColumn::make('employee_id')
                             ->label('ID')
@@ -187,7 +188,6 @@ class EmployeeResource extends Resource
                             ->iconColor('gray'),
                     ])->space(2),
 
-                    // Right side - Status badges
                     Stack::make([
                         TextColumn::make('status')
                             ->badge()
@@ -234,7 +234,6 @@ class EmployeeResource extends Resource
                     ])->space(1)->alignment('end'),
                 ])->from('md'),
 
-                // Additional columns for desktop view
                 TextColumn::make('created_at')
                     ->label('Registered')
                     ->date('M d, Y')
@@ -247,7 +246,8 @@ class EmployeeResource extends Resource
 
                 TextColumn::make('birthday')
                     ->label('Age')
-                    ->formatStateUsing(fn($record) => $record->birthday
+                    ->formatStateUsing(
+                        fn($record) => $record->birthday
                         ? Carbon::parse($record->birthday)->age . ' years'
                         : 'N/A'
                     )
@@ -289,9 +289,10 @@ class EmployeeResource extends Resource
 
                 Filter::make('pending_approval')
                     ->label('Pending Approval')
-                    ->query(fn(Builder $query) => $query
-                        ->where('status', 'pending')
-                        ->whereNull('email_verified_at')
+                    ->query(
+                        fn(Builder $query) => $query
+                            ->where('status', 'pending')
+                            ->whereNull('email_verified_at')
                     )
                     ->toggle()
                     ->default(false),
@@ -327,12 +328,10 @@ class EmployeeResource extends Resource
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-                        if ($data['age_from'] ?? null) {
+                        if ($data['age_from'] ?? null)
                             $indicators[] = 'Age from: ' . $data['age_from'];
-                        }
-                        if ($data['age_to'] ?? null) {
+                        if ($data['age_to'] ?? null)
                             $indicators[] = 'Age to: ' . $data['age_to'];
-                        }
                         return $indicators;
                     }),
             ], layout: FiltersLayout::AboveContentCollapsible)
@@ -351,20 +350,7 @@ class EmployeeResource extends Resource
                         ->color('warning')
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false),
 
-                    Tables\Actions\Action::make('verify_email')
-                        ->label('Verify Email')
-                        ->icon('heroicon-o-check-badge')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->visible(fn($record) => is_null($record->email_verified_at))
-                        ->action(function ($record) {
-                            $record->update(['email_verified_at' => now()]);
-                            \Filament\Notifications\Notification::make()
-                                ->title('Email Verified')
-                                ->success()
-                                ->send();
-                        }),
-
+                    // verify_email removed — now lives inside ViewEmployee
                     Tables\Actions\Action::make('reset_password')
                         ->label('Reset Password')
                         ->icon('heroicon-o-key')
@@ -372,7 +358,6 @@ class EmployeeResource extends Resource
                         ->requiresConfirmation()
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false)
                         ->action(function ($record) {
-                            // Implement password reset logic
                             \Filament\Notifications\Notification::make()
                                 ->title('Password reset email sent')
                                 ->success()
@@ -424,7 +409,7 @@ class EmployeeResource extends Resource
             ])
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
-            ->poll('30s'); // Auto-refresh every 30 seconds
+            ->poll('30s');
     }
 
     public static function getEloquentQuery(): Builder
@@ -471,8 +456,6 @@ class EmployeeResource extends Resource
     {
         return [];
     }
-
-    // Private helper methods
 
     private static function updateFullName(callable $set, callable $get): void
     {

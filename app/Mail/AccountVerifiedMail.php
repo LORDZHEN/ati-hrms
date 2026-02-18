@@ -22,7 +22,7 @@ class AccountVerifiedMail extends Mailable
 
     public function build(): self
     {
-        return $this->subject('Your Account is Verified')
+        return $this->subject('✅ Your ATI-HRMS Account Has Been Approved')
             ->markdown('emails.account-verified');
     }
 }

@@ -5,11 +5,7 @@
     <title>Login - HRMS Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,7 +17,6 @@
             position: relative;
         }
 
-        /* ── Background image layer ── */
         body::before {
             content: '';
             position: fixed;
@@ -33,7 +28,6 @@
             z-index: 0;
         }
 
-        /* ── Green overlay layer ── */
         body::after {
             content: '';
             position: fixed;
@@ -47,7 +41,6 @@
             z-index: 1;
         }
 
-        /* ── Card container ── */
         .login-container {
             position: relative;
             z-index: 2;
@@ -58,12 +51,9 @@
             -webkit-backdrop-filter: blur(14px);
             border-radius: 20px;
             padding: 40px 36px;
-            box-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.3);
         }
 
-        /* ── Logo & headings ── */
         .login-logo {
             width: 90px;
             height: 90px;
@@ -86,7 +76,6 @@
             margin-top: 4px;
         }
 
-        /* ── Error message ── */
         .error-message {
             background: #fef2f2;
             border: 1px solid #fca5a5;
@@ -99,7 +88,6 @@
             font-size: 0.875rem;
         }
 
-        /* ── Submit button ── */
         .login-button {
             width: 100%;
             padding: 14px;
@@ -120,11 +108,8 @@
             box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
         }
 
-        .login-button:active {
-            transform: translateY(0);
-        }
+        .login-button:active { transform: translateY(0); }
 
-        /* ── Register link ── */
         .register-link {
             display: block;
             text-align: center;
@@ -139,11 +124,8 @@
             text-decoration: none;
         }
 
-        .register-link a:hover {
-            text-decoration: underline;
-        }
+        .register-link a:hover { text-decoration: underline; }
 
-        /* ── Toast notification ── */
         .toast {
             position: fixed;
             top: 20px;
@@ -152,7 +134,7 @@
             color: white;
             padding: 12px 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
             z-index: 9999;
             font-weight: 500;
             font-size: 0.9rem;
@@ -165,63 +147,49 @@
 </head>
 <body>
 
-    <div class="login-container">
+    {{-- Single root element required by Livewire --}}
+    <div>
 
-        {{-- Logo & heading --}}
-        <div>
-            <img
-                src="{{ asset('images/ati_logo.png') }}"
-                alt="ATI Logo"
-                class="login-logo"
-            >
+        <div class="login-container">
+
+            <img src="{{ asset('images/ati_logo.png') }}" alt="ATI Logo" class="login-logo">
             <h1 class="login-title">HRMS Login</h1>
             <p class="login-subtitle">Welcome! Please sign in to continue.</p>
+
+            @if ($errors->any())
+                <div class="error-message">{{ $errors->first() }}</div>
+            @endif
+
+            <form wire:submit.prevent="authenticate">
+                {{ $this->form }}
+                <button type="submit" class="login-button">Sign In</button>
+            </form>
+
+            <p class="register-link">
+                Don't have an account?
+                <a href="{{ route('filament.hrms.auth.register') }}">Create one</a>
+            </p>
+
         </div>
 
-        {{-- Validation errors --}}
-        @if ($errors->any())
-            <div class="error-message">
-                {{ $errors->first() }}
+        {{-- Toast inside the single root --}}
+        @if (session('registration_success'))
+            <div class="toast" id="reg-toast">
+                {{ session('registration_success') }}
             </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const toast = document.getElementById('reg-toast');
+                    setTimeout(() => toast.style.opacity = '1', 100);
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.remove(), 400);
+                    }, 5000);
+                });
+            </script>
         @endif
 
-        {{-- Login form --}}
-        <form wire:submit.prevent="authenticate">
-            {{ $this->form }}
-
-            <button type="submit" class="login-button">
-                Sign In
-            </button>
-        </form>
-
-        {{-- Register link --}}
-        <p class="register-link">
-            Don't have an account?
-            <a href="{{ route('filament.hrms.auth.register') }}">Create one</a>
-        </p>
-
     </div>
-
-    {{-- Registration success toast --}}
-    @if (session('registration_success'))
-        <div class="toast" id="reg-toast">
-            {{ session('registration_success') }}
-        </div>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const toast = document.getElementById('reg-toast');
-
-                // Fade in
-                setTimeout(() => toast.style.opacity = '1', 100);
-
-                // Fade out after 5 s
-                setTimeout(() => {
-                    toast.style.opacity = '0';
-                    setTimeout(() => toast.remove(), 400);
-                }, 5000);
-            });
-        </script>
-    @endif
 
     @livewireScripts
 </body>

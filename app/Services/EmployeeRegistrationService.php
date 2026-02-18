@@ -3,98 +3,130 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Mail\AdminTemporaryPasswordMail;
+use App\Mail\AccountVerifiedMail;
 use App\Mail\PendingRegistrationMail;
-use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class EmployeeRegistrationService
 {
     /**
-     * Process a newly created employee or admin account.
+     * Called when a new employee is created via Admin (CreateEmployee page).
+     * Sends the pending registration email.
      */
-    public function processNewEmployee(User $user): void
+    public function processNewEmployee(User $employee): void
     {
-        if ($user->role === 'admin') {
-            $this->activateAdminAccount($user);
-        } else {
-            $this->setPendingEmployeeAccount($user);
-        }
-
-        $this->notifyAdmins($user);
-    }
-
-    /**
-     * Activate an admin account with a temporary password.
-     */
-    private function activateAdminAccount(User $user): void
-    {
-        $tempPassword = Str::random(12);
-
-        $user->update([
-            'status' => 'active',
-            'email_verified_at' => now(),
-            'must_change_password' => true,
-            'password' => Hash::make($tempPassword),
-        ]);
-
-        Mail::to($user->email)->send(new AdminTemporaryPasswordMail($user, $tempPassword));
-    }
-
-    /**
-     * Set employee account to pending status.
-     */
-    private function setPendingEmployeeAccount(User $user): void
-    {
-        Mail::to($user->email)->send(new PendingRegistrationMail($user));
-    }
-
-    /**
-     * Notify all admins about the new registration.
-     */
-    private function notifyAdmins(User $newUser): void
-    {
-        $admins = User::where('role', 'admin')->get();
-
-        foreach ($admins as $admin) {
-            Notification::make()
-                ->title('New Employee Registered')
-                ->body("A new employee account was created: **{$newUser->name}**")
-                ->success()
-                ->sendToDatabase($admin);
+        try {
+            Mail::to($employee->email)->send(new PendingRegistrationMail($employee));
+        } catch (\Throwable $e) {
+            Log::error("Failed to send pending registration email to {$employee->email}: " . $e->getMessage());
         }
     }
 
     /**
-     * Approve a pending employee registration.
+     * Approves an employee registration:
+     * 1. Generates temp password from birthday in MMDDYYYY format
+     *    e.g. December 04, 2002 → "12042002"
+     * 2. Updates the user record (active, verified, new password)
+     * 3. Sends approval email with the temp password
+     *
+     * Returns false if birthday is missing or unparseable.
      */
     public function approveEmployee(User $employee): bool
     {
-        $birthday = $employee->birthday?->format('mdY');
+        $temporaryPassword = $this->generatePasswordFromBirthday($employee->birthday);
 
-        if (!$birthday || strlen($birthday) !== 8) {
+        if (!$temporaryPassword) {
+            Log::warning("Cannot approve employee ID {$employee->id}: birthday is missing or invalid.");
             return false;
         }
 
+        // Update employee to active
         $employee->update([
-            'email_verified_at' => now(),
-            'password' => Hash::make($birthday),
-            'must_change_password' => true,
             'status' => 'active',
+            'email_verified_at' => now(),
+            'password' => Hash::make($temporaryPassword),
+            'must_change_password' => true,
         ]);
 
-        Mail::to($employee->email)->send(new \App\Mail\AccountVerifiedMail($employee, $birthday));
+        // Send approval email with credentials
+        try {
+            Mail::to($employee->email)->send(
+                new AccountVerifiedMail($employee, $temporaryPassword)
+            );
+        } catch (\Throwable $e) {
+            Log::error("Failed to send approval email to {$employee->email}: " . $e->getMessage());
+            // Return true anyway — DB was updated successfully
+        }
 
         return true;
     }
 
     /**
-     * Reject a pending employee registration.
+     * Rejects an employee registration.
+     * Sets status to inactive.
      */
     public function rejectEmployee(User $employee): void
     {
-        $employee->update(['status' => 'inactive']);
+        $employee->update([
+            'status' => 'inactive',
+        ]);
+    }
+
+    /**
+     * Resends login credentials to an already-approved employee.
+     * Regenerates password from birthday and resends email.
+     */
+    public function resendCredentials(User $employee): bool
+    {
+        $temporaryPassword = $this->generatePasswordFromBirthday($employee->birthday);
+
+        if (!$temporaryPassword) {
+            return false;
+        }
+
+        $employee->update([
+            'password' => Hash::make($temporaryPassword),
+            'must_change_password' => true,
+        ]);
+
+        try {
+            Mail::to($employee->email)->send(
+                new AccountVerifiedMail($employee, $temporaryPassword)
+            );
+        } catch (\Throwable $e) {
+            Log::error("Failed to resend credentials to {$employee->email}: " . $e->getMessage());
+        }
+
+        return true;
+    }
+
+    /**
+     * Generates a temporary password from the employee's birthday.
+     *
+     * Format : MMDDYYYY  (zero-padded month and day)
+     * Example: December 04, 2002  →  "12042002"
+     * Example: January 9, 1995    →  "01091995"
+     *
+     * @param  string|null  $birthday
+     * @return string|null  Returns null if birthday is missing/invalid.
+     */
+    public function generatePasswordFromBirthday(?string $birthday): ?string
+    {
+        if (!$birthday) {
+            return null;
+        }
+
+        try {
+            // format('m') = zero-padded month (01-12)
+            // format('d') = zero-padded day   (01-31)
+            // format('Y') = 4-digit year
+            return Carbon::parse($birthday)->format('mdY');
+        } catch (\Throwable $e) {
+            Log::error("Birthday parse failed for value '{$birthday}': " . $e->getMessage());
+            return null;
+        }
     }
 }
