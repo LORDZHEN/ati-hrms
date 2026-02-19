@@ -41,6 +41,15 @@ class PersonalDataSheetResource extends Resource
     protected static ?int $navigationSort = 4;
     protected static ?string $navigationGroup = 'Documents';
 
+    /* ============================================================
+       AUTHORIZATION
+       ============================================================ */
+
+    public static function canCreate(): bool
+    {
+        return Auth::user()->role === 'employee';
+    }
+
     public static function form(Form $form): Form
     {
         $isLocked = fn($record) =>
@@ -49,7 +58,6 @@ class PersonalDataSheetResource extends Resource
 
         return $form->schema([
 
-            // Admin Remarks (if any)
             Textarea::make('remarks')
                 ->label('Remarks from Admin')
                 ->rows(4)
@@ -57,20 +65,12 @@ class PersonalDataSheetResource extends Resource
                 ->disabled()
                 ->hidden(fn($record) => blank($record?->remarks)),
 
-            // ============================================================
-            // CUSTOM PDS LAYOUT VIEW - THE ONLY VISIBLE FORM
-            // ============================================================
             ViewComponent::make('filament.resources.personal-data-sheet.pds-form')
                 ->columnSpanFull(),
-
-            // ============================================================
-            // ALL FORM FIELDS - HIDDEN (for validation and data binding)
-            // ============================================================
 
             Section::make('Form Fields (Do Not Edit Directly - Use Form Above)')
                 ->description('⚠️ These fields are automatically filled when you use the CSC format form above.')
                 ->schema([
-                    // SECTION 1: PERSONAL INFORMATION
                     TextInput::make('surname')->required()->disabled($isLocked),
                     TextInput::make('first_name')->required()->disabled($isLocked),
                     TextInput::make('middle_name')->disabled($isLocked),
@@ -99,7 +99,6 @@ class PersonalDataSheetResource extends Resource
                         ->visible(fn($get) => $get('dual_citizenship'))
                         ->disabled($isLocked),
 
-                    // SECTION 2: ADDRESSES & CONTACT
                     TextInput::make('res_house_block_lot_no')->disabled($isLocked),
                     TextInput::make('res_street')->disabled($isLocked),
                     TextInput::make('res_subdivision_village')->disabled($isLocked),
@@ -134,7 +133,6 @@ class PersonalDataSheetResource extends Resource
                     TextInput::make('mobile')->disabled($isLocked),
                     TextInput::make('email')->email()->disabled($isLocked),
 
-                    // SECTION 3: FAMILY BACKGROUND
                     TextInput::make('spouse_surname')->disabled($isLocked),
                     TextInput::make('spouse_first_name')->disabled($isLocked),
                     TextInput::make('spouse_middle_name')->disabled($isLocked),
@@ -161,7 +159,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 4: EDUCATIONAL BACKGROUND
                     Repeater::make('education')
                         ->schema([
                             Select::make('level')
@@ -182,7 +179,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 5: CIVIL SERVICE ELIGIBILITY
                     Repeater::make('civil_service_eligibility')
                         ->schema([
                             TextInput::make('career_service'),
@@ -195,7 +191,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 6: WORK EXPERIENCE
                     Repeater::make('work_experience')
                         ->schema([
                             DatePicker::make('from')->required(),
@@ -210,7 +205,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 7: VOLUNTARY WORK
                     Repeater::make('voluntary_work')
                         ->schema([
                             TextInput::make('organization_name'),
@@ -222,7 +216,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 8: LEARNING & DEVELOPMENT
                     Repeater::make('learning_development')
                         ->schema([
                             TextInput::make('training_title'),
@@ -235,7 +228,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 9: OTHER INFORMATION
                     Repeater::make('special_skills')
                         ->simple(TextInput::make('skill'))
                         ->defaultItems(0)
@@ -251,7 +243,6 @@ class PersonalDataSheetResource extends Resource
                         ->defaultItems(0)
                         ->disabled($isLocked),
 
-                    // SECTION 10: QUESTIONS
                     Radio::make('related_third_degree')->boolean()->inline()->reactive()->disabled($isLocked),
                     Textarea::make('related_third_degree_details')
                         ->visible(fn($get) => $get('related_third_degree') === true)
@@ -305,7 +296,6 @@ class PersonalDataSheetResource extends Resource
                         ->visible(fn($get) => $get('is_solo_parent'))
                         ->disabled($isLocked),
 
-                    // SECTION 11: REFERENCES
                     Repeater::make('references')
                         ->schema([
                             TextInput::make('name')->required(),
@@ -319,7 +309,6 @@ class PersonalDataSheetResource extends Resource
                         ->deletable(false)
                         ->disabled($isLocked),
 
-                    // SECTION 12: GOVERNMENT ID & DECLARATION
                     TextInput::make('gov_id_type')->disabled($isLocked),
                     TextInput::make('gov_id_no')->disabled($isLocked),
                     TextInput::make('gov_id_issued')->disabled($isLocked),
@@ -344,7 +333,6 @@ class PersonalDataSheetResource extends Resource
             ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    // Bulk Approve (Admin only)
                     Tables\Actions\BulkAction::make('bulkApprove')
                         ->label('Approve Selected')
                         ->icon('heroicon-o-check-circle')
@@ -355,7 +343,6 @@ class PersonalDataSheetResource extends Resource
                         ->modalDescription('Are you sure you want to approve all selected Personal Data Sheets?')
                         ->action(function (Collection $records) {
                             $count = 0;
-
                             foreach ($records as $record) {
                                 if ($record->status !== 'approved') {
                                     $record->update(['status' => 'approved']);
@@ -363,7 +350,6 @@ class PersonalDataSheetResource extends Resource
                                     $count++;
                                 }
                             }
-
                             Notification::make()
                                 ->success()
                                 ->title('Bulk Approval Complete')
@@ -372,7 +358,6 @@ class PersonalDataSheetResource extends Resource
                         })
                         ->deselectRecordsAfterCompletion(),
 
-                    // Bulk Disapprove (Admin only)
                     Tables\Actions\BulkAction::make('bulkDisapprove')
                         ->label('Disapprove Selected')
                         ->icon('heroicon-o-x-circle')
@@ -387,7 +372,6 @@ class PersonalDataSheetResource extends Resource
                         ])
                         ->action(function (Collection $records, array $data) {
                             $count = 0;
-
                             foreach ($records as $record) {
                                 if ($record->status !== 'disapproved') {
                                     $record->update([
@@ -398,7 +382,6 @@ class PersonalDataSheetResource extends Resource
                                     $count++;
                                 }
                             }
-
                             Notification::make()
                                 ->danger()
                                 ->title('Bulk Disapproval Complete')
@@ -407,7 +390,6 @@ class PersonalDataSheetResource extends Resource
                         })
                         ->deselectRecordsAfterCompletion(),
 
-                    // Delete Action
                     Tables\Actions\DeleteBulkAction::make()
                         ->visible(fn() => $isAdmin)
                         ->requiresConfirmation()
@@ -430,24 +412,25 @@ class PersonalDataSheetResource extends Resource
             ->poll('30s');
     }
 
-    /**
-     * Card-Style Layout Columns (Similar to SALN)
-     */
+    /* ============================================================
+       CARD-STYLE TABLE COLUMNS
+       ============================================================ */
+
     protected static function getCardLayoutColumns(): array
     {
         return [
-            // Header: Employee Name & Info
-            Tables\Columns\Layout\Stack::make([
-                Tables\Columns\TextColumn::make('full_name')
-                    ->label('Employee')
-                    ->getStateUsing(fn($record) => self::getFullName($record))
-                    ->searchable(['surname', 'first_name', 'middle_name'])
-                    ->weight(FontWeight::Bold)
-                    ->size(Tables\Columns\TextColumn\TextColumnSize::Large)
-                    ->icon('heroicon-o-user-circle')
-                    ->iconColor('primary'),
+            Tables\Columns\Layout\Split::make([
+                // Left: Employee Name & Info
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('full_name')
+                        ->label('Employee')
+                        ->getStateUsing(fn($record) => self::getFullName($record))
+                        ->searchable(['surname', 'first_name', 'middle_name'])
+                        ->weight(FontWeight::Bold)
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Large)
+                        ->icon('heroicon-o-user-circle')
+                        ->iconColor('primary'),
 
-                Tables\Columns\Layout\Split::make([
                     Tables\Columns\TextColumn::make('place_of_birth')
                         ->label('Place of Birth')
                         ->icon('heroicon-o-map-pin')
@@ -464,12 +447,9 @@ class PersonalDataSheetResource extends Resource
                         ->iconColor('gray')
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
                         ->color('gray'),
-                ]),
-            ])->space(1),
+                ])->space(1),
 
-            // Personal Info Summary
-            Tables\Columns\Layout\Split::make([
-                // Left: Contact Info
+                // Middle: Contact Info
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('email')
                         ->label('Email')
@@ -500,12 +480,12 @@ class PersonalDataSheetResource extends Resource
                         ->colors([
                             'warning' => 'submitted',
                             'success' => 'approved',
-                            'danger' => 'disapproved',
+                            'danger'  => 'disapproved',
                         ])
                         ->icons([
-                            'heroicon-m-clock' => 'submitted',
+                            'heroicon-m-clock'        => 'submitted',
                             'heroicon-m-check-circle' => 'approved',
-                            'heroicon-m-x-circle' => 'disapproved',
+                            'heroicon-m-x-circle'     => 'disapproved',
                         ])
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Medium)
                         ->weight(FontWeight::SemiBold),
@@ -518,12 +498,12 @@ class PersonalDataSheetResource extends Resource
                         ->color(fn($state) => match (true) {
                             $state >= 90 => 'success',
                             $state >= 70 => 'warning',
-                            default => 'danger',
+                            default      => 'danger',
                         })
                         ->icon(fn($state) => match (true) {
                             $state >= 90 => 'heroicon-o-check-circle',
                             $state >= 70 => 'heroicon-o-exclamation-circle',
-                            default => 'heroicon-o-x-circle',
+                            default      => 'heroicon-o-x-circle',
                         })
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Small),
                 ])->space(1)->alignment('end'),
@@ -548,7 +528,10 @@ class PersonalDataSheetResource extends Resource
                         ->wrap()
                         ->default('No remarks - All good!')
                         ->color(fn($record) => blank($record->remarks) ? 'success' : 'warning')
-                        ->icon(fn($record) => blank($record->remarks) ? 'heroicon-o-check' : 'heroicon-o-exclamation-triangle'),
+                        ->icon(fn($record) => blank($record->remarks)
+                            ? 'heroicon-o-check'
+                            : 'heroicon-o-exclamation-triangle'
+                        ),
                 ]),
             ])
                 ->collapsible()
@@ -556,19 +539,19 @@ class PersonalDataSheetResource extends Resource
         ];
     }
 
-    /**
-     * Enhanced Filters
-     */
+    /* ============================================================
+       ENHANCED FILTERS
+       ============================================================ */
+
     protected static function getEnhancedFilters(): array
     {
         $isAdmin = Auth::user()->role === 'admin';
 
         return [
-            // Status Filter
             Tables\Filters\SelectFilter::make('status')
                 ->options([
-                    'submitted' => 'Submitted',
-                    'approved' => 'Approved',
+                    'submitted'   => 'Submitted',
+                    'approved'    => 'Approved',
                     'disapproved' => 'Disapproved',
                 ])
                 ->label('Status')
@@ -577,7 +560,6 @@ class PersonalDataSheetResource extends Resource
                 ->indicator('Status')
                 ->native(false),
 
-            // Date Range Filter
             Tables\Filters\Filter::make('date_range')
                 ->form([
                     Grid::make(2)->schema([
@@ -593,14 +575,8 @@ class PersonalDataSheetResource extends Resource
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
-                        ->when(
-                            $data['submitted_from'],
-                            fn($q, $date) => $q->whereDate('created_at', '>=', $date)
-                        )
-                        ->when(
-                            $data['submitted_until'],
-                            fn($q, $date) => $q->whereDate('created_at', '<=', $date)
-                        );
+                        ->when($data['submitted_from'], fn($q, $date) => $q->whereDate('created_at', '>=', $date))
+                        ->when($data['submitted_until'], fn($q, $date) => $q->whereDate('created_at', '<=', $date));
                 })
                 ->indicateUsing(function (array $data): array {
                     $indicators = [];
@@ -617,27 +593,23 @@ class PersonalDataSheetResource extends Resource
                     return $indicators;
                 }),
 
-            // Has Remarks Filter
             Tables\Filters\TernaryFilter::make('has_remarks')
                 ->label('Admin Remarks')
                 ->placeholder('All records')
                 ->trueLabel('With remarks')
                 ->falseLabel('Without remarks')
                 ->queries(
-                    true: fn(Builder $query) => $query->whereNotNull('remarks')
-                        ->where('remarks', '!=', ''),
-                    false: fn(Builder $query) => $query->where(fn($q) =>
-                        $q->whereNull('remarks')->orWhere('remarks', '')),
+                    true: fn(Builder $query) => $query->whereNotNull('remarks')->where('remarks', '!=', ''),
+                    false: fn(Builder $query) => $query->where(fn($q) => $q->whereNull('remarks')->orWhere('remarks', '')),
                 )
                 ->visible($isAdmin)
                 ->indicator('Remarks'),
 
-            // Completion Rate Filter
             Tables\Filters\SelectFilter::make('completion_level')
                 ->label('Completion Level')
                 ->options([
-                    'complete' => 'High (90%+)',
-                    'moderate' => 'Moderate (70-89%)',
+                    'complete'   => 'High (90%+)',
+                    'moderate'   => 'Moderate (70-89%)',
                     'incomplete' => 'Low (<70%)',
                 ])
                 ->placeholder('All levels')
@@ -646,14 +618,14 @@ class PersonalDataSheetResource extends Resource
         ];
     }
 
-    /**
-     * Contextual Actions (Similar to SALN)
-     */
+    /* ============================================================
+       CONTEXTUAL ACTIONS
+       ============================================================ */
+
     protected static function getContextualActions($isAdmin): array
     {
         return [
             Tables\Actions\ActionGroup::make([
-                // Quick View Action
                 Tables\Actions\Action::make('quickView')
                     ->label('Quick View')
                     ->icon('heroicon-m-eye')
@@ -664,7 +636,6 @@ class PersonalDataSheetResource extends Resource
                     ->modalFooterActions(fn() => [])
                     ->slideOver(),
 
-                // Approve Action (Admin only)
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
@@ -675,7 +646,6 @@ class PersonalDataSheetResource extends Resource
                     ->modalDescription(fn($record) => 'Are you sure you want to approve the PDS for ' . self::getFullName($record) . '?')
                     ->action(function ($record) {
                         $record->update(['status' => 'approved']);
-
                         Notification::make()
                             ->success()
                             ->title('PDS Approved')
@@ -683,7 +653,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // Disapprove Action (Admin only)
                 Tables\Actions\Action::make('disapprove')
                     ->label('Disapprove')
                     ->icon('heroicon-o-x-circle')
@@ -698,11 +667,7 @@ class PersonalDataSheetResource extends Resource
                     ])
                     ->action(function ($record, array $data) {
                         $record->update(['remarks' => $data['remarks']]);
-
-                        // Notify the employee
                         $record->user->notify(new PDSRemarksAdded($record));
-
-                        // Flash for admin
                         Notification::make()
                             ->success()
                             ->title('Remarks Updated')
@@ -710,7 +675,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // Add/Edit Remarks Action (Admin only)
                 Tables\Actions\Action::make('remarks')
                     ->label(fn($record) => blank($record->remarks) ? 'Add Remarks' : 'Edit Remarks')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -726,7 +690,6 @@ class PersonalDataSheetResource extends Resource
                     ])
                     ->action(function ($record, array $data) {
                         $record->update(['remarks' => $data['remarks']]);
-
                         Notification::make()
                             ->success()
                             ->title('Remarks Updated')
@@ -734,7 +697,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // Reset to Submitted Action (Admin only)
                 Tables\Actions\Action::make('resetToSubmitted')
                     ->label('Reset Status')
                     ->icon('heroicon-o-arrow-path')
@@ -744,15 +706,8 @@ class PersonalDataSheetResource extends Resource
                     ->modalHeading('Reset to Submitted')
                     ->modalDescription('This will reset the status back to "Submitted" and clear any remarks.')
                     ->action(function ($record) {
-                        $record->update([
-                            'status' => 'submitted',
-                            'remarks' => null,
-                        ]);
-
-                        // Notify the employee
+                        $record->update(['status' => 'submitted', 'remarks' => null]);
                         $record->user->notify(new PDSStatusUpdated($record));
-
-                        // Flash for admin
                         Notification::make()
                             ->info()
                             ->title('Status Reset')
@@ -760,7 +715,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // Print Action
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
@@ -769,18 +723,15 @@ class PersonalDataSheetResource extends Resource
                     ->url(fn($record) => route('pds.print', $record))
                     ->openUrlInNewTab(),
 
-                // Edit Action (Employees only for non-approved)
                 Tables\Actions\EditAction::make()
                     ->label('Edit')
                     ->icon('heroicon-m-pencil-square')
                     ->color('warning')
-                    ->visible(
-                        fn($record) =>
+                    ->visible(fn($record) =>
                         Auth::user()->role === 'employee' &&
                         $record->status !== 'approved'
                     ),
 
-                // Delete Action (Admin only)
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
@@ -793,9 +744,10 @@ class PersonalDataSheetResource extends Resource
         ];
     }
 
-    /**
-     * Get formatted full name
-     */
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+
     protected static function getFullName($record): string
     {
         $parts = array_filter([
@@ -804,75 +756,35 @@ class PersonalDataSheetResource extends Resource
             $record->middle_name,
             $record->name_extension,
         ]);
-
         return implode(' ', $parts);
     }
 
-    /**
-     * Calculate completion rate based on filled fields
-     */
     protected static function calculateCompletionRate($record): int
     {
         $totalFields = 0;
         $filledFields = 0;
 
-        // Basic info fields
-        $basicFields = [
-            'surname',
-            'first_name',
-            'date_of_birth',
-            'place_of_birth',
-            'sex',
-            'civil_status',
-            'height',
-            'weight',
-            'blood_type',
-            'mobile',
-            'email'
-        ];
-
+        $basicFields = ['surname', 'first_name', 'date_of_birth', 'place_of_birth', 'sex', 'civil_status', 'height', 'weight', 'blood_type', 'mobile', 'email'];
         foreach ($basicFields as $field) {
             $totalFields++;
-            if (!blank($record->$field))
-                $filledFields++;
+            if (!blank($record->$field)) $filledFields++;
         }
 
-        // Address fields
-        $addressFields = [
-            'res_house_block_lot_no',
-            'res_street',
-            'res_barangay',
-            'res_city_municipality',
-            'res_province',
-            'res_zip_code'
-        ];
-
+        $addressFields = ['res_house_block_lot_no', 'res_street', 'res_barangay', 'res_city_municipality', 'res_province', 'res_zip_code'];
         foreach ($addressFields as $field) {
             $totalFields++;
-            if (!blank($record->$field))
-                $filledFields++;
+            if (!blank($record->$field)) $filledFields++;
         }
 
-        // JSON fields (repeaters)
-        $jsonFields = [
-            'children',
-            'education',
-            'work_experience',
-            'references'
-        ];
-
+        $jsonFields = ['children', 'education', 'work_experience', 'references'];
         foreach ($jsonFields as $field) {
             $totalFields++;
             $value = $record->$field;
             $data = is_array($value) ? $value : (is_string($value) ? json_decode($value, true) : []);
-            if (is_array($data) && count($data) > 0)
-                $filledFields++;
+            if (is_array($data) && count($data) > 0) $filledFields++;
         }
 
-        // Government IDs
-        if (!blank($record->gov_id_type) && !blank($record->gov_id_no)) {
-            $filledFields++;
-        }
+        if (!blank($record->gov_id_type) && !blank($record->gov_id_no)) $filledFields++;
         $totalFields++;
 
         return $totalFields > 0 ? round(($filledFields / $totalFields) * 100) : 0;
@@ -881,42 +793,32 @@ class PersonalDataSheetResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-
         if (Auth::user()->role === 'employee') {
             $query->where('user_id', Auth::id());
         }
-
         return $query;
     }
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin') {
-            return null;
-        }
-
+        if (auth()->user()?->role !== 'admin') return null;
         $count = PersonalDataSheet::where('status', 'submitted')->count();
-
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        if (auth()->user()?->role !== 'admin') {
-            return null;
-        }
-
+        if (auth()->user()?->role !== 'admin') return null;
         $count = PersonalDataSheet::where('status', 'submitted')->count();
-
         return $count > 0 ? 'warning' : 'success';
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPersonalDataSheets::route('/'),
+            'index'  => Pages\ListPersonalDataSheets::route('/'),
             'create' => Pages\CreatePersonalDataSheet::route('/create'),
-            'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
+            'edit'   => Pages\EditPersonalDataSheet::route('/{record}/edit'),
         ];
     }
 }

@@ -21,6 +21,15 @@ class LeaveApplicationResource extends Resource
     protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 2;
 
+    /* ============================================================
+       AUTHORIZATION
+       ============================================================ */
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->role === 'employee';
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -84,14 +93,12 @@ class LeaveApplicationResource extends Resource
                             ->minDate(function (Forms\Get $get) {
                                 $leaveType = $get('type_of_leave');
 
-                                // Vacation Leave: Must be filed 5 days in advance
                                 if ($leaveType === 'vacation_leave') {
                                     return now()->addDays(5)->startOfDay();
                                 }
 
-                                // Sick Leave: Can only file for past dates (including today)
                                 if ($leaveType === 'sick_leave') {
-                                    return null; // No minimum, but maxDate will restrict
+                                    return null;
                                 }
 
                                 return now()->startOfDay();
@@ -99,14 +106,14 @@ class LeaveApplicationResource extends Resource
                             ->maxDate(function (Forms\Get $get) {
                                 $leaveType = $get('type_of_leave');
 
-                                // Sick Leave: Cannot file for future dates
                                 if ($leaveType === 'sick_leave') {
                                     return now()->endOfDay();
                                 }
 
                                 return null;
                             })
-                            ->afterStateUpdated(fn($state, Forms\Set $set, Forms\Get $get) =>
+                            ->afterStateUpdated(
+                                fn($state, Forms\Set $set, Forms\Get $get) =>
                                 self::calculateWorkingDays($state, $get('leave_date_to'), $set)
                             ),
 
@@ -119,14 +126,14 @@ class LeaveApplicationResource extends Resource
                             ->maxDate(function (Forms\Get $get) {
                                 $leaveType = $get('type_of_leave');
 
-                                // Sick Leave: Cannot file for future dates
                                 if ($leaveType === 'sick_leave') {
                                     return now()->endOfDay();
                                 }
 
                                 return null;
                             })
-                            ->afterStateUpdated(fn($state, Forms\Set $set, Forms\Get $get) =>
+                            ->afterStateUpdated(
+                                fn($state, Forms\Set $set, Forms\Get $get) =>
                                 self::calculateWorkingDays($get('leave_date_from'), $state, $set)
                             ),
 
@@ -143,11 +150,13 @@ class LeaveApplicationResource extends Resource
                         Forms\Components\FileUpload::make('supporting_document')
                             ->label('Supporting Document')
                             ->helperText('Required for sick leave of 3 days or more')
-                            ->visible(fn(Forms\Get $get) =>
+                            ->visible(
+                                fn(Forms\Get $get) =>
                                 $get('type_of_leave') === 'sick_leave' &&
                                 ($get('number_of_working_days') ?? 0) >= 3
                             )
-                            ->required(fn(Forms\Get $get) =>
+                            ->required(
+                                fn(Forms\Get $get) =>
                                 $get('type_of_leave') === 'sick_leave' &&
                                 ($get('number_of_working_days') ?? 0) >= 3
                             )
@@ -181,7 +190,8 @@ class LeaveApplicationResource extends Resource
                                     ])
                                     ->inline()
                                     ->live()
-                                    ->required(fn(Forms\Get $get) =>
+                                    ->required(
+                                        fn(Forms\Get $get) =>
                                         in_array($get('type_of_leave'), ['vacation_leave', 'special_privilege_leave'])
                                     ),
 
@@ -191,7 +201,8 @@ class LeaveApplicationResource extends Resource
                                     ->required(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
                                     ->maxLength(255),
                             ])
-                            ->visible(fn(Forms\Get $get) =>
+                            ->visible(
+                                fn(Forms\Get $get) =>
                                 in_array($get('type_of_leave'), ['vacation_leave', 'special_privilege_leave'])
                             ),
 
@@ -304,7 +315,8 @@ class LeaveApplicationResource extends Resource
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Create Leave Application')
-                    ->icon('heroicon-o-plus'),
+                    ->icon('heroicon-o-plus')
+                    ->visible(fn() => auth()->user()->role === 'employee'),
             ]);
     }
 
@@ -315,11 +327,9 @@ class LeaveApplicationResource extends Resource
     protected static function getModernLeaveTableColumns(): array
     {
         return [
-            // Main Content Card Layout
             Tables\Columns\Layout\Split::make([
                 // Left Side - Employee & Leave Type Info
                 Tables\Columns\Layout\Stack::make([
-                    // Employee Name with Icon
                     Tables\Columns\TextColumn::make('employee.name')
                         ->label('Employee')
                         ->searchable()
@@ -329,18 +339,17 @@ class LeaveApplicationResource extends Resource
                         ->icon('heroicon-o-user-circle')
                         ->iconColor('primary'),
 
-                    // Position & Department
                     Tables\Columns\TextColumn::make('position')
                         ->label('Position')
                         ->size('sm')
                         ->color('gray')
                         ->icon('heroicon-o-briefcase')
                         ->iconColor('gray')
-                        ->formatStateUsing(fn($record) =>
+                        ->formatStateUsing(
+                            fn($record) =>
                             $record->position . ' • ' . ($record->office_department ?? 'N/A')
                         ),
 
-                    // Leave Type Badge
                     Tables\Columns\BadgeColumn::make('type_of_leave')
                         ->label('Leave Type')
                         ->formatStateUsing(fn($state) => str_replace('_', ' ', ucwords($state, '_')))
@@ -352,7 +361,7 @@ class LeaveApplicationResource extends Resource
                             'primary' => fn($state) => in_array($state, ['special_privilege_leave', 'study_leave']),
                             'secondary' => 'others',
                         ])
-                        ->icon(fn($state) => match($state) {
+                        ->icon(fn($state) => match ($state) {
                             'vacation_leave' => 'heroicon-o-sun',
                             'sick_leave' => 'heroicon-o-heart',
                             'maternity_leave', 'paternity_leave' => 'heroicon-o-user-group',
@@ -363,19 +372,18 @@ class LeaveApplicationResource extends Resource
 
                 // Middle - Date Range & Duration
                 Tables\Columns\Layout\Stack::make([
-                    // Date Range Display
                     Tables\Columns\TextColumn::make('leave_dates')
                         ->label('Leave Period')
                         ->weight('medium')
                         ->icon('heroicon-o-calendar-days')
                         ->iconColor('warning')
-                        ->formatStateUsing(fn($record) =>
+                        ->formatStateUsing(
+                            fn($record) =>
                             Carbon::parse($record->leave_date_from)->format('M d, Y') .
                             ' → ' .
                             Carbon::parse($record->leave_date_to)->format('M d, Y')
                         ),
 
-                    // Duration with visual indicator
                     Tables\Columns\TextColumn::make('number_of_working_days')
                         ->label('Duration')
                         ->size('sm')
@@ -384,7 +392,6 @@ class LeaveApplicationResource extends Resource
                         ->color('info')
                         ->icon('heroicon-o-clock'),
 
-                    // Commutation Status
                     Tables\Columns\IconColumn::make('commutation')
                         ->label('Commutation')
                         ->boolean()
@@ -398,7 +405,6 @@ class LeaveApplicationResource extends Resource
 
                 // Right Side - Status & Processing Info
                 Tables\Columns\Layout\Stack::make([
-                    // Status Badge - Prominent
                     Tables\Columns\BadgeColumn::make('status')
                         ->label('Status')
                         ->colors([
@@ -414,7 +420,6 @@ class LeaveApplicationResource extends Resource
                         ->formatStateUsing(fn(string $state): string => ucfirst($state))
                         ->size('md'),
 
-                    // Filed Date
                     Tables\Columns\TextColumn::make('date_of_filing')
                         ->label('Filed')
                         ->date('M d, Y')
@@ -423,7 +428,6 @@ class LeaveApplicationResource extends Resource
                         ->icon('heroicon-o-paper-airplane')
                         ->iconColor('gray'),
 
-                    // Processed Info
                     Tables\Columns\TextColumn::make('authorized_officer')
                         ->label('Processed By')
                         ->size('sm')
@@ -433,14 +437,12 @@ class LeaveApplicationResource extends Resource
                         ->iconColor('gray')
                         ->limit(20)
                         ->tooltip(fn($record) => $record->authorized_officer),
-
                 ])->space(2)->alignment('end'),
             ])->from('md'),
 
-            // Additional Details Row (Toggleable)
+            // Additional Details Panel (Collapsible)
             Tables\Columns\Layout\Panel::make([
                 Tables\Columns\Layout\Split::make([
-                    // Vacation/Sick Leave Specific Details
                     Tables\Columns\TextColumn::make('leave_details')
                         ->label('Additional Details')
                         ->formatStateUsing(function ($record) {
@@ -469,7 +471,6 @@ class LeaveApplicationResource extends Resource
                         ->size('sm')
                         ->color('gray'),
 
-                    // Processing Date
                     Tables\Columns\TextColumn::make('date_approved_disapproved')
                         ->label('Processed On')
                         ->dateTime('M d, Y h:i A')
@@ -607,7 +608,8 @@ class LeaveApplicationResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(fn($record) =>
+                    ->visible(
+                        fn($record) =>
                         auth()->user()->role === 'employee' &&
                         $record->status === 'pending'
                     ),
@@ -630,7 +632,8 @@ class LeaveApplicationResource extends Resource
 
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
-                    ->visible(fn($record) =>
+                    ->visible(
+                        fn($record) =>
                         auth()->user()->role === 'employee' &&
                         $record->status === 'pending'
                     ),
@@ -661,7 +664,7 @@ class LeaveApplicationResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return auth()->user()?->role === 'admin' &&
-               LeaveApplication::where('status', 'pending')->count() > 0
+            LeaveApplication::where('status', 'pending')->count() > 0
             ? 'warning'
             : null;
     }

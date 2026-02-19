@@ -14,6 +14,7 @@ use App\Models\PersonalDataSheet;
 use Carbon\Carbon;
 use App\Livewire\Employee\Pds\EditPds;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Saln;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/pds/edit', function () {
@@ -263,26 +264,72 @@ Route::get('/locator-slip/report', function () {
 
 
 Route::get('/pds/report', function () {
-    $user = auth()->user();
-    if (!$user || $user->role !== 'admin')
-        abort(403);
 
+    // ── Auth & authorization ──────────────────────────────────────────────
+    $user = auth()->user();
+    if (!$user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
+
+    // ── Query parameters ──────────────────────────────────────────────────
+    $status = request('status', 'all');
     $from = request('from');
     $to = request('to');
-    $period = request('period');
+    $period = request('period', 'monthly');
 
-    $query = PersonalDataSheet::query()->with('employee');
+    // ── Resolve from/to when not explicitly provided ──────────────────────
+    if (!$from || !$to) {
+        $now = Carbon::now();
+
+        [$from, $to] = match ($period) {
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
+        };
+    }
+
+    // ── Build query ───────────────────────────────────────────────────────
+    // Filter on created_at (submission date), eager-load user for fallback name
+    $query = PersonalDataSheet::query()->with('user');
 
     if ($from && $to) {
         $query->whereBetween('created_at', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
         ]);
+    }
+
+    if ($status && $status !== 'all') {
+        $query->where('status', $status);
     }
 
     $personalDataSheets = $query->orderBy('created_at', 'desc')->get();
 
-    return view('reports.pds-report', compact('personalDataSheets', 'from', 'to', 'period'));
+    // ── Generate PDF ──────────────────────────────────────────────────────
+    $pdf = Pdf::loadView('reports.pds-report', compact(
+        'personalDataSheets',
+        'status',
+        'from',
+        'to',
+        'period'
+    ))
+        ->setPaper('a4', 'landscape')   // landscape fits the wider table comfortably
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'dpi' => 150,
+        ]);
+
+    $filename = sprintf(
+        'pds-report-%s-%s.pdf',
+        $status,
+        Carbon::now()->format('Ymd-His')
+    );
+
+    return $pdf->stream($filename);
+
 })->middleware(['auth'])->name('pds.report');
 
 
@@ -290,25 +337,25 @@ Route::get('/travel-orders/report', function () {
 
     // ── Auth & authorization ──────────────────────────────────────
     $user = auth()->user();
-    if (! $user || $user->role !== 'admin') {
+    if (!$user || $user->role !== 'admin') {
         abort(403, 'Unauthorized');
     }
 
     // ── Query parameters ─────────────────────────────────────────
     $status = request('status', 'all');
-    $from   = request('from');
-    $to     = request('to');
+    $from = request('from');
+    $to = request('to');
     $period = request('period', 'monthly');
 
     // ── Resolve from/to when not explicitly provided ─────────────
-    if (! $from || ! $to) {
+    if (!$from || !$to) {
         $now = Carbon::now();
 
         [$from, $to] = match ($period) {
-            'weekly'    => [$now->copy()->startOfWeek()->toDateString(),    $now->copy()->endOfWeek()->toDateString()],
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
             'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
-            'yearly'    => [$now->copy()->startOfYear()->toDateString(),     $now->copy()->endOfYear()->toDateString()],
-            default     => [$now->copy()->startOfMonth()->toDateString(),    $now->copy()->endOfMonth()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
         };
     }
 
@@ -337,13 +384,13 @@ Route::get('/travel-orders/report', function () {
         'to',
         'period'
     ))
-    ->setPaper('a4', 'portrait')
-    ->setOptions([
-        'defaultFont'          => 'sans-serif',
-        'isHtml5ParserEnabled' => true,
-        'isRemoteEnabled'      => false,
-        'dpi'                  => 150,
-    ]);
+        ->setPaper('a4', 'portrait')
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'dpi' => 150,
+        ]);
 
     $filename = sprintf(
         'travel-order-report-%s-%s.pdf',
@@ -358,28 +405,80 @@ Route::get('/travel-orders/report', function () {
 
 // SALN Comprehensive Report Route
 Route::get('/saln/report', function () {
+
+    // ── Auth & authorization ──────────────────────────────────────────────
     $user = auth()->user();
-    if (!$user || $user->role !== 'admin')
-        abort(403);
+    if (! $user || $user->role !== 'admin') {
+        abort(403, 'Unauthorized');
+    }
 
-    $from = request('from');
-    $to = request('to');
-    $period = request('period');
+    // ── Query parameters ──────────────────────────────────────────────────
+    $remarks_filter = request('remarks_filter', 'all'); // all | with_remarks | no_remarks
+    $from           = request('from');
+    $to             = request('to');
+    $period         = request('period', 'monthly');
 
-    $query = \App\Models\Saln::with('user');
+    // ── Resolve from/to when not explicitly provided ──────────────────────
+    if (! $from || ! $to) {
+        $now = Carbon::now();
+
+        [$from, $to] = match ($period) {
+            'weekly'    => [$now->copy()->startOfWeek()->toDateString(),    $now->copy()->endOfWeek()->toDateString()],
+            'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
+            'yearly'    => [$now->copy()->startOfYear()->toDateString(),     $now->copy()->endOfYear()->toDateString()],
+            default     => [$now->copy()->startOfMonth()->toDateString(),    $now->copy()->endOfMonth()->toDateString()],
+        };
+    }
+
+    // ── Build query ───────────────────────────────────────────────────────
+    // Filter on as_of_date (the SALN declaration date, not created_at)
+    $query = Saln::with(['user'])
+        ->with([
+            'realProperties',
+            'personalProperties',
+            'liabilities',
+            'businessInterests',
+            'relativesInGovernment',
+        ]);
 
     if ($from && $to) {
         $query->whereBetween('as_of_date', [
-            \Carbon\Carbon::parse($from)->startOfDay(),
-            \Carbon\Carbon::parse($to)->endOfDay(),
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
         ]);
+    }
+
+    // Remarks filter
+    if ($remarks_filter === 'with_remarks') {
+        $query->whereNotNull('remarks')->where('remarks', '!=', '');
+    } elseif ($remarks_filter === 'no_remarks') {
+        $query->where(fn($q) => $q->whereNull('remarks')->orWhere('remarks', ''));
     }
 
     $salns = $query->orderBy('as_of_date', 'desc')->get();
 
-    return view('reports.saln-report', compact('salns', 'from', 'to', 'period'));
-})
-    ->middleware(['auth'])
-    ->name('saln.report');
+    // ── Generate PDF ──────────────────────────────────────────────────────
+    $pdf = Pdf::loadView('reports.saln-report', compact(
+        'salns',
+        'remarks_filter',
+        'from',
+        'to',
+        'period'
+    ))
+    ->setPaper('a4', 'landscape')   // landscape fits the financial columns comfortably
+    ->setOptions([
+        'defaultFont'          => 'sans-serif',
+        'isHtml5ParserEnabled' => true,
+        'isRemoteEnabled'      => false,
+        'dpi'                  => 150,
+    ]);
 
+    $filename = sprintf(
+        'saln-report-%s-%s.pdf',
+        $remarks_filter,
+        Carbon::now()->format('Ymd-His')
+    );
 
+    return $pdf->stream($filename);
+
+})->middleware(['auth'])->name('saln.report');

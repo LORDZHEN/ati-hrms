@@ -36,12 +36,11 @@ class ListTravelOrders extends ListRecords
                         Select::make('status')
                             ->label('Travel Order Status')
                             ->options([
-                                'all' => 'All',
-                                'draft' => 'Draft',
-                                'pending' => 'Pending',
+                                'all'         => 'All',
+                                'pending'     => 'Pending',
                                 'recommended' => 'Recommended',
-                                'approved' => 'Approved',
-                                'rejected' => 'Rejected',
+                                'approved'    => 'Approved',
+                                'rejected'    => 'Rejected',
                             ])
                             ->default('all')
                             ->required()
@@ -50,11 +49,11 @@ class ListTravelOrders extends ListRecords
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly' => 'This Week',
-                                'monthly' => 'This Month',
+                                'weekly'    => 'This Week',
+                                'monthly'   => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly' => 'This Year',
-                                'custom' => 'Custom Date Range',
+                                'yearly'    => 'This Year',
+                                'custom'    => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -62,13 +61,12 @@ class ListTravelOrders extends ListRecords
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
-
                                 match ($state) {
-                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
                                     'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default => null,
+                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default     => null,
                                 };
                             }),
                     ]),
@@ -92,11 +90,9 @@ class ListTravelOrders extends ListRecords
                     $url = route('travel-order.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'],
-                        'from' => $data['from'],
-                        'to' => $data['to'],
+                        'from'   => $data['from'],
+                        'to'     => $data['to'],
                     ]);
-
-                    // Full navigation so browser receives the PDF stream
                     $this->redirect($url, navigate: false);
                 });
         }
@@ -106,7 +102,7 @@ class ListTravelOrders extends ListRecords
 
     public function getTabs(): array
     {
-        // Admin sees all MAIN orders (excluding tagged copies)
+        // Admin sees all MAIN orders (excluding single-employee tagged copies)
         if (Auth::user()->role === 'admin') {
             return [
                 'all' => Tab::make('All Travel Orders')
@@ -118,8 +114,7 @@ class ListTravelOrders extends ListRecords
                                     ->whereRaw('JSON_LENGTH(employee_ids) > 1');
                             });
                     })->count())
-                    ->modifyQueryUsing(
-                        fn(Builder $query) =>
+                    ->modifyQueryUsing(fn(Builder $query) =>
                         $query->where(function ($q) {
                             $q->where('travel_type', 'solo')
                                 ->orWhere(function ($subQ) {
@@ -131,23 +126,21 @@ class ListTravelOrders extends ListRecords
             ];
         }
 
-        // Employees see two tabs
+        // Employees see their own orders and orders they are tagged in
         return [
             'my_orders' => Tab::make('My Travel Orders')
                 ->icon('heroicon-o-user')
-                ->badge(
-                    fn() => TravelOrder::where('created_by', Auth::id())
-                        ->where(function ($query) {
-                            $query->where('travel_type', 'solo')
-                                ->orWhere(function ($q) {
-                                    $q->where('travel_type', 'batch')
-                                        ->whereRaw('JSON_LENGTH(employee_ids) > 1');
-                                });
-                        })
-                        ->count()
+                ->badge(fn() => TravelOrder::where('created_by', Auth::id())
+                    ->where(function ($query) {
+                        $query->where('travel_type', 'solo')
+                            ->orWhere(function ($q) {
+                                $q->where('travel_type', 'batch')
+                                    ->whereRaw('JSON_LENGTH(employee_ids) > 1');
+                            });
+                    })
+                    ->count()
                 )
-                ->modifyQueryUsing(
-                    fn(Builder $query) =>
+                ->modifyQueryUsing(fn(Builder $query) =>
                     $query->where('created_by', Auth::id())
                         ->where(function ($q) {
                             $q->where('travel_type', 'solo')
@@ -160,15 +153,13 @@ class ListTravelOrders extends ListRecords
 
             'tagged' => Tab::make('Tagged Travel Orders')
                 ->icon('heroicon-o-tag')
-                ->badge(
-                    fn() => TravelOrder::where('travel_type', 'batch')
-                        ->whereJsonContains('employee_ids', Auth::id())
-                        ->whereRaw('JSON_LENGTH(employee_ids) = 1')
-                        ->count()
+                ->badge(fn() => TravelOrder::where('travel_type', 'batch')
+                    ->whereJsonContains('employee_ids', Auth::id())
+                    ->whereRaw('JSON_LENGTH(employee_ids) = 1')
+                    ->count()
                 )
                 ->badgeColor('success')
-                ->modifyQueryUsing(
-                    fn(Builder $query) =>
+                ->modifyQueryUsing(fn(Builder $query) =>
                     $query->where('travel_type', 'batch')
                         ->whereJsonContains('employee_ids', Auth::id())
                         ->whereRaw('JSON_LENGTH(employee_ids) = 1')

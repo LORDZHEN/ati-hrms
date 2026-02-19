@@ -252,15 +252,9 @@
 
         <table class="header-layout">
             <tr>
-                <td class="logo-cell">
-                    <img src="{{ public_path('images/ati_logo.png') }}" alt="ATI Logo">
-                </td>
                 <td class="title-cell">
                     <div class="org-name">Agricultural Training Institute</div>
                     <div class="org-branch">Regional Training Center XI</div>
-                </td>
-                <td class="logo-cell">
-                    <img src="{{ public_path('images/bagong-pilipinas-logo.png') }}" alt="Bagong Pilipinas">
                 </td>
             </tr>
         </table>

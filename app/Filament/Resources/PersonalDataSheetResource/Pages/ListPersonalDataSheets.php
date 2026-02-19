@@ -7,6 +7,7 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Grid;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,56 +19,89 @@ class ListPersonalDataSheets extends ListRecords
     {
         $actions = [];
 
-        // ✅ Create PDS (Standard Filament Create Action)
+        // Employee: create their own PDS
         if (Auth::user()->role === 'employee') {
             $actions[] = Actions\CreateAction::make()
                 ->label('New Personal Data Sheet')
                 ->color('primary');
         }
 
-        // ✅ Admin-only report generation
+        // Admin-only: generate PDF report
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
                 ->icon('heroicon-o-document-text')
-                ->color('primary')
+                ->color('info')
                 ->modalHeading('Generate PDS Report')
-                ->modalSubmitActionLabel('Generate')
+                ->modalDescription('Create a detailed PDF report of Personal Data Sheets within a specific period.')
+                ->modalWidth('2xl')
+                ->modalSubmitActionLabel('Generate PDF')
                 ->form([
-                    Select::make('period')
-                        ->label('Report Period')
-                        ->options([
-                            'weekly' => 'Weekly',
-                            'monthly' => 'Monthly',
-                            'yearly' => 'Yearly',
-                        ])
-                        ->required()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            $now = Carbon::now();
+                    Grid::make(2)->schema([
+                        Select::make('status')
+                            ->label('PDS Status')
+                            ->options([
+                                'all' => 'All',
+                                'submitted' => 'Submitted',
+                                'approved' => 'Approved',
+                                'disapproved' => 'Disapproved',
+                            ])
+                            ->default('all')
+                            ->required()
+                            ->native(false),
 
-                            match ($state) {
-                                'weekly' => [
-                                    $set('from', $now->startOfWeek()->toDateString()),
-                                    $set('to', $now->endOfWeek()->toDateString()),
-                                ],
-                                'monthly' => [
-                                    $set('from', $now->startOfMonth()->toDateString()),
-                                    $set('to', $now->endOfMonth()->toDateString()),
-                                ],
-                                'yearly' => [
-                                    $set('from', $now->startOfYear()->toDateString()),
-                                    $set('to', $now->endOfYear()->toDateString()),
-                                ],
-                            };
-                        }),
-                    DatePicker::make('from')->required(),
-                    DatePicker::make('to')->required()->after('from'),
+                        Select::make('period')
+                            ->label('Report Period')
+                            ->options([
+                                'weekly' => 'This Week',
+                                'monthly' => 'This Month',
+                                'quarterly' => 'This Quarter',
+                                'yearly' => 'This Year',
+                                'custom' => 'Custom Date Range',
+                            ])
+                            ->default('monthly')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $now = Carbon::now();
+
+                                match ($state) {
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default => null,
+                                };
+                            }),
+                    ]),
+
+                    Grid::make(2)->schema([
+                        DatePicker::make('from')
+                            ->label('From Date')
+                            ->required()
+                            ->native(false)
+                            ->default(Carbon::now()->startOfMonth()->toDateString()),
+
+                        DatePicker::make('to')
+                            ->label('To Date')
+                            ->required()
+                            ->native(false)
+                            ->after('from')
+                            ->default(Carbon::now()->endOfMonth()->toDateString()),
+                    ]),
                 ])
-                ->action(fn (array $data) =>
-                    redirect()->route('pds.report', $data)
-                )
-                ->openUrlInNewTab();
+                ->action(function (array $data) {
+                    $url = route('pds.report', [
+                        'status' => $data['status'] ?? 'all',
+                        'period' => $data['period'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
+                    ]);
+
+                    // Full navigation so the browser receives the PDF stream
+                    $this->redirect($url, navigate: false);
+                });
         }
 
         return $actions;
