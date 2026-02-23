@@ -62,11 +62,11 @@
                     </div>
                 </div>
 
-                {{-- Modal Body with Proper Margins --}}
+                {{-- Modal Body --}}
                 <form wire:submit.prevent="updatePassword" class="p-6 space-y-5 bg-gradient-to-br from-gray-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
 
                     {{-- Current Password --}}
-                    <div x-data="{ showCurrent: false }" class="bg-white dark:bg-gray-800 p-5 shadow-sm">
+                    <div x-data="{ showCurrent: false }" class="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <label class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white mb-2">
                             <x-heroicon-o-key class="w-5 h-5 text-amber-600" />
                             Current Password <span class="text-red-600">*</span>
@@ -80,14 +80,11 @@
                                     focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20
                                     transition-all placeholder:text-gray-400"
                             />
-                            <button
-                                type="button"
-                                @click="showCurrent = !showCurrent"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            >
-                                <x-heroicon-o-eye x-show="!showCurrent" class="w-4 h-4 text-gray-400" />
-                                <x-heroicon-o-eye-slash x-show="showCurrent" class="w-4 h-4 text-gray-400" style="display: none;" />
-                            </button>
+                            {{-- <button type="button" @click="showCurrent = !showCurrent"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <x-heroicon-o-eye x-show="!showCurrent" class="w-5 h-5" />
+                                <x-heroicon-o-eye-slash x-show="showCurrent" class="w-5 h-5" />
+                            </button> --}}
                         </div>
                         @error('current_password')
                             <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
@@ -95,17 +92,28 @@
                     </div>
 
                     {{-- New Password --}}
-                    <div x-data="{ showNew: false }" class="bg-white dark:bg-gray-800 @if($password) @if($passwordStrength === 'weak') border-red-300 dark:border-red-700 @elseif($passwordStrength === 'medium') border-yellow-300 dark:border-yellow-700 @else border-green-300 dark:border-green-700 @endif @else border-gray-200 dark:border-gray-700 @endif p-5 shadow-sm transition-colors">
+                    <div x-data="{ showNew: false }"
+                         class="bg-white dark:bg-gray-800 transition-colors
+                            @if($password)
+                                @if($passwordStrength === 'weak') border-red-400 dark:border-red-600
+                                @elseif($passwordStrength === 'medium') border-yellow-400 dark:border-yellow-600
+                                @else border-green-400 dark:border-green-600
+                                @endif
+                            @else border-gray-200 dark:border-gray-700
+                            @endif">
+
                         <label class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white mb-2">
                             <x-heroicon-o-lock-closed class="w-5 h-5 text-amber-600" />
                             New Password <span class="text-red-600">*</span>
                         </label>
+
                         <div class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <p class="text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2">
                                 <x-heroicon-o-information-circle class="w-4 h-4 flex-shrink-0 mt-0.5" />
                                 <span>Must contain uppercase, lowercase, number, and special character</span>
                             </p>
                         </div>
+
                         <div class="relative">
                             <input
                                 x-bind:type="showNew ? 'text' : 'password'"
@@ -122,81 +130,86 @@
                                         border-gray-300 dark:border-gray-600 focus:border-amber-500 focus:ring-amber-500/20
                                     @endif"
                             />
-                            <button
-                                type="button"
-                                @click="showNew = !showNew"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            >
-                                <x-heroicon-o-eye x-show="!showNew" class="w-4 h-4 text-gray-400" />
-                                <x-heroicon-o-eye-slash x-show="showNew" class="w-4 h-4 text-gray-400" style="display: none;" />
-                            </button>
+                            {{-- <button type="button" @click="showNew = !showNew"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <x-heroicon-o-eye x-show="!showNew" class="w-5 h-5" />
+                                <x-heroicon-o-eye-slash x-show="showNew" class="w-5 h-5" />
+                            </button> --}}
                         </div>
 
                         {{-- Password Strength Indicator --}}
                         @if($password)
                             <div class="mt-4 space-y-3">
+
                                 {{-- Strength Bar --}}
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Password Strength</span>
-                                        <span class="text-xs font-bold
-                                            @if($passwordStrength === 'weak') text-red-600 dark:text-red-400
-                                            @elseif($passwordStrength === 'medium') text-yellow-600 dark:text-yellow-400
-                                            @else text-green-600 dark:text-green-400
-                                            @endif">
+                                        {{-- FIX: inline style avoids Tailwind JIT purging dynamic color classes --}}
+                                        <span class="text-xs font-bold" style="color: {{ $passwordStrength === 'weak' ? '#ef4444' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e') }}">
                                             {{ ucfirst($passwordStrength) }}
                                         </span>
                                     </div>
-                                    <div class="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
-                                        <div
-                                            class="h-full transition-all duration-500 ease-out rounded-full
-                                                @if($passwordStrength === 'weak') bg-gradient-to-r from-red-500 to-red-600 w-1/3
-                                                @elseif($passwordStrength === 'medium') bg-gradient-to-r from-yellow-500 to-yellow-600 w-2/3
-                                                @else bg-gradient-to-r from-green-500 to-green-600 w-full
-                                                @endif"
-                                        ></div>
+                                    {{-- FIX: Segmented bar uses inline style so colors are never purged by Tailwind --}}
+                                    @php
+                                        $seg1Color = $passwordStrength === 'weak' ? '#ef4444' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e');
+                                        $seg2Color = $passwordStrength === 'weak' ? '#e5e7eb' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e');
+                                        $seg3Color = $passwordStrength === 'strong' ? '#22c55e' : '#e5e7eb';
+                                    @endphp
+                                    <div class="flex gap-1.5" style="height: 10px;">
+                                        <div class="flex-1 rounded-full" style="background-color: {{ $seg1Color }};"></div>
+                                        <div class="flex-1 rounded-full" style="background-color: {{ $seg2Color }};"></div>
+                                        <div class="flex-1 rounded-full" style="background-color: {{ $seg3Color }};"></div>
                                     </div>
                                 </div>
 
                                 {{-- Requirements Checklist --}}
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div class="flex items-center gap-2 text-xs p-2 rounded-lg @if($hasMinLength) bg-green-50 dark:bg-green-900/20 @else bg-gray-50 dark:bg-gray-800 @endif">
-                                        @if($hasMinLength)
-                                            <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                            <span class="text-gray-900 dark:text-white font-semibold">8+ characters</span>
-                                        @else
-                                            <x-heroicon-o-x-circle class="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                            <span class="text-gray-500 dark:text-gray-400">8+ characters</span>
+                                @if($passwordStrength === 'strong')
+                                    {{-- Strong: just show success message --}}
+                                    <div class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                        <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                            Password is <span class="text-green-600 dark:text-green-400 font-bold">Strong</span> — all requirements met!
+                                        </span>
+                                    </div>
+                                @else
+                                    {{-- Weak or Medium: show only MISSING requirements --}}
+                                    <div class="space-y-2">
+                                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                            Missing requirements:
+                                        </p>
+                                        @if(!$hasMinLength)
+                                            <div class="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                                <x-heroicon-o-x-circle class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
+                                                <span class="text-red-700 dark:text-red-300 font-medium">At least 8 characters</span>
+                                            </div>
+                                        @endif
+                                        @if(!$hasUppercase || !$hasLowercase)
+                                            <div class="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                                <x-heroicon-o-x-circle class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
+                                                <span class="text-red-700 dark:text-red-300 font-medium">
+                                                    @if(!$hasUppercase && !$hasLowercase) Uppercase and lowercase letters
+                                                    @elseif(!$hasUppercase) At least one uppercase letter
+                                                    @else At least one lowercase letter
+                                                    @endif
+                                                </span>
+                                            </div>
+                                        @endif
+                                        @if(!$hasNumber)
+                                            <div class="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                                <x-heroicon-o-x-circle class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
+                                                <span class="text-red-700 dark:text-red-300 font-medium">At least one number</span>
+                                            </div>
+                                        @endif
+                                        @if(!$hasSpecial)
+                                            <div class="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                                <x-heroicon-o-x-circle class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
+                                                <span class="text-red-700 dark:text-red-300 font-medium">At least one special character (!@#$%^&*)</span>
+                                            </div>
                                         @endif
                                     </div>
-                                    <div class="flex items-center gap-2 text-xs p-2 rounded-lg @if($hasUppercase && $hasLowercase) bg-green-50 dark:bg-green-900/20 @else bg-gray-50 dark:bg-gray-800 @endif">
-                                        @if($hasUppercase && $hasLowercase)
-                                            <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                            <span class="text-gray-900 dark:text-white font-semibold">Upper & Lower</span>
-                                        @else
-                                            <x-heroicon-o-x-circle class="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                            <span class="text-gray-500 dark:text-gray-400">Upper & Lower</span>
-                                        @endif
-                                    </div>
-                                    <div class="flex items-center gap-2 text-xs p-2 rounded-lg @if($hasNumber) bg-green-50 dark:bg-green-900/20 @else bg-gray-50 dark:bg-gray-800 @endif">
-                                        @if($hasNumber)
-                                            <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                            <span class="text-gray-900 dark:text-white font-semibold">Number</span>
-                                        @else
-                                            <x-heroicon-o-x-circle class="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                            <span class="text-gray-500 dark:text-gray-400">Number</span>
-                                        @endif
-                                    </div>
-                                    <div class="flex items-center gap-2 text-xs p-2 rounded-lg @if($hasSpecial) bg-green-50 dark:bg-green-900/20 @else bg-gray-50 dark:bg-gray-800 @endif">
-                                        @if($hasSpecial)
-                                            <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                                            <span class="text-gray-900 dark:text-white font-semibold">Special char</span>
-                                        @else
-                                            <x-heroicon-o-x-circle class="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                            <span class="text-gray-500 dark:text-gray-400">Special char</span>
-                                        @endif
-                                    </div>
-                                </div>
+                                @endif
+
                             </div>
                         @endif
 
@@ -206,7 +219,16 @@
                     </div>
 
                     {{-- Confirm Password --}}
-                    <div x-data="{ showConfirm: false }" class="bg-white dark:bg-gray-800 @if($password_confirmation) @if($passwordsMatch === true) border-green-300 dark:border-green-700 @elseif($passwordsMatch === false) border-red-300 dark:border-red-700 @else border-gray-200 dark:border-gray-700 @endif @else border-gray-200 dark:border-gray-700 @endif p-5 shadow-sm transition-colors">
+                    <div x-data="{ showConfirm: false }"
+                         class="bg-white dark:bg-gray-800  transition-colors
+                            @if($password_confirmation)
+                                @if($passwordsMatch === true) border-green-400 dark:border-green-600
+                                @elseif($passwordsMatch === false) border-red-400 dark:border-red-600
+                                @else border-gray-200 dark:border-gray-700
+                                @endif
+                            @else border-gray-200 dark:border-gray-700
+                            @endif">
+
                         <label class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white mb-2">
                             <x-heroicon-o-lock-closed class="w-5 h-5 text-amber-600" />
                             Confirm New Password <span class="text-red-600">*</span>
@@ -227,14 +249,11 @@
                                         border-gray-300 dark:border-gray-600 focus:border-amber-500 focus:ring-amber-500/20
                                     @endif"
                             />
-                            <button
-                                type="button"
-                                @click="showConfirm = !showConfirm"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            >
-                                <x-heroicon-o-eye x-show="!showConfirm" class="w-4 h-4 text-gray-400" />
-                                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-4 h-4 text-gray-400" style="display: none;" />
-                            </button>
+                            {{-- <button type="button" @click="showConfirm = !showConfirm"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <x-heroicon-o-eye x-show="!showConfirm" class="w-5 h-5" />
+                                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-5 h-5" />
+                            </button> --}}
                         </div>
 
                         {{-- Match Indicator --}}

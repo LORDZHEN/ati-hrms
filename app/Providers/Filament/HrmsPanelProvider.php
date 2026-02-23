@@ -6,11 +6,10 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -18,7 +17,8 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Navigation\NavigationGroup;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class HrmsPanelProvider extends PanelProvider
 {
@@ -45,6 +45,45 @@ class HrmsPanelProvider extends PanelProvider
                     ->collapsible(),
             ])
             ->sidebarCollapsibleOnDesktop()
+            ->globalSearch(false)
+
+            // ── User name stacked over role, displayed beside the avatar ──
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn(): HtmlString => new HtmlString(
+                    Auth::check()
+                    ? '<div style="
+                                display: flex;
+                                flex-direction: column;
+                                align-items: flex-end;
+                                justify-content: center;
+                                padding-right: 0.5rem;
+                                line-height: 1.3;
+                           ">
+                               <span style="
+                                   font-size: 0.875rem;
+                                   font-weight: 700;
+                                   color: #1f2937;
+                                   white-space: nowrap;
+                               ">'
+                    . e(Auth::user()->full_name ?: Auth::user()->name)
+                    . '</span>
+                               <span style="
+                                   font-size: 0.6875rem;
+                                   font-weight: 500;
+                                   color: #9ca3af;
+                                   white-space: nowrap;
+                                   text-transform: uppercase;
+                                   letter-spacing: 0.06em;
+                               ">'
+                    . e(Auth::user()->getRoleDisplayName())
+                    . '</span>
+                           </div>'
+                    : ''
+                )
+            )
+            // ─────────────────────────────────────────────────────────────
+
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

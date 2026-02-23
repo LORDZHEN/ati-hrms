@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 use App\Mail\PendingRegistrationMail;
+use App\Notifications\NewEmployeeRegistered;
 use Carbon\Carbon;
 
 class Register extends BaseRegister
@@ -39,6 +40,7 @@ class Register extends BaseRegister
     {
         return [
             Section::make('I. Personal Information')
+                ->extraAttributes(['class' => 'fi-section-transparent'])
                 ->schema([
                     Forms\Components\TextInput::make('employee_id')
                         ->label('Employee ID')
@@ -80,30 +82,23 @@ class Register extends BaseRegister
 
                     Forms\Components\TextInput::make('phone')
                         ->label('Phone Number')
+                        ->nullable()
+                        ->rule('nullable')
                         ->regex('/^[0-9]{11}$/'),
-
-                    Forms\Components\TextInput::make('region_id')
-                        ->label('Region')
-                        ->required(),
-
-                    Forms\Components\TextInput::make('province_id')
-                        ->label('Province')
-                        ->required(),
-
-                    Forms\Components\TextInput::make('city_id')
-                        ->label('City / Municipality')
-                        ->required(),
-
-                    Forms\Components\TextInput::make('barangay_id')
-                        ->label('Barangay')
-                        ->required(),
-
-                    Forms\Components\TextInput::make('purok_street')
-                        ->label('Purok / Street'),
                 ])
                 ->columns(2),
 
+            // ── Address fields are Hidden here ──
+            // The actual dropdowns are rendered in the Blade via Alpine.js
+            // and push their values back into these hidden form fields via $wire.set()
+            Forms\Components\Hidden::make('region_id'),
+            Forms\Components\Hidden::make('province_id'),
+            Forms\Components\Hidden::make('city_id'),
+            Forms\Components\Hidden::make('barangay_id'),
+            Forms\Components\Hidden::make('purok_street'),
+
             Section::make('II. Employment Information')
+                ->extraAttributes(['class' => 'fi-section-transparent'])
                 ->schema([
                     Forms\Components\TextInput::make('position')
                         ->label('Position')
@@ -136,12 +131,18 @@ class Register extends BaseRegister
     {
         $data = $this->form->getState();
 
+        // Validate that address fields were filled via Alpine.js
+        if (empty($data['region_id']) || empty($data['province_id']) ||
+            empty($data['city_id'])   || empty($data['barangay_id'])) {
+
+            $this->addError('data.region_id', 'Please complete your full address.');
+            return null;
+        }
+
         $this->handleRegistration($data);
 
-        // Flash success message so login page toast picks it up
         session()->flash('registration_success', $this->successMessage);
 
-        // Redirect to login — returning null prevents Filament doing anything else
         $this->redirect(route('filament.hrms.auth.login'));
 
         return null;
@@ -188,6 +189,16 @@ class Register extends BaseRegister
             Mail::to($user->email)->send(new PendingRegistrationMail($user));
         } catch (\Throwable $e) {
             Log::error('Registration mail failed: ' . $e->getMessage());
+        }
+
+        // Notify all admins via in-app notification (bell icon)
+        try {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new NewEmployeeRegistered($user));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Admin notification failed: ' . $e->getMessage());
         }
 
         // Ensure the newly created user is never auto-logged in

@@ -116,6 +116,28 @@
         background-clip: text;
     }
 
+    /* Section header link */
+    .section-header-link {
+        margin-left: auto;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--ati-green);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 6px;
+        border: 1px solid var(--ati-green);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .section-header-link:hover {
+        background: var(--ati-green);
+        color: white;
+    }
+
     /* Compact Module Cards */
     .modules-grid {
         display: grid;
@@ -284,6 +306,8 @@
         border: 2px solid transparent;
         transition: all 0.25s ease;
         animation: fadeInUp 0.5s ease-out backwards;
+        text-decoration: none;
+        cursor: pointer;
     }
 
     .activity-item:last-child { margin-bottom: 0; }
@@ -292,6 +316,7 @@
         background: #f9fafb;
         border-color: var(--ati-green);
         transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
     }
 
     .dark .activity-item:hover { background: #111827; }
@@ -311,16 +336,13 @@
         transform: scale(1.08) rotate(3deg);
     }
 
-    .activity-icon-wrapper.blue { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
-    .activity-icon-wrapper.amber { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
+    .activity-icon-wrapper.blue   { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
+    .activity-icon-wrapper.amber  { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
     .activity-icon-wrapper.purple { background: linear-gradient(135deg, #e9d5ff, #c084fc); }
-    .activity-icon-wrapper.rose { background: linear-gradient(135deg, #ffe4e6, #fda4af); }
-    .activity-icon-wrapper.green { background: linear-gradient(135deg, #d1fae5, #6ee7b7); }
+    .activity-icon-wrapper.rose   { background: linear-gradient(135deg, #ffe4e6, #fda4af); }
+    .activity-icon-wrapper.green  { background: linear-gradient(135deg, #d1fae5, #6ee7b7); }
 
-    .activity-content {
-        flex: 1;
-        min-width: 0;
-    }
+    .activity-content { flex: 1; min-width: 0; }
 
     .activity-title {
         font-weight: 700;
@@ -353,20 +375,46 @@
         letter-spacing: 0.3px;
     }
 
-    .activity-badge.blue { background: #dbeafe; color: #1e40af; }
-    .activity-badge.amber { background: #fef3c7; color: #92400e; }
+    .activity-badge.blue   { background: #dbeafe; color: #1e40af; }
+    .activity-badge.amber  { background: #fef3c7; color: #92400e; }
     .activity-badge.purple { background: #e9d5ff; color: #6b21a8; }
-    .activity-badge.rose { background: #ffe4e6; color: #9f1239; }
-    .activity-badge.green { background: #d1fae5; color: #065f46; }
+    .activity-badge.rose   { background: #ffe4e6; color: #9f1239; }
+    .activity-badge.green  { background: #d1fae5; color: #065f46; }
+
+    /* Arrow shown on hover */
+    .activity-arrow {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: translateX(-4px);
+        transition: all 0.25s ease;
+    }
+
+    .dark .activity-arrow { background: #374151; }
+
+    .activity-item:hover .activity-arrow {
+        opacity: 1;
+        transform: translateX(0);
+        background: linear-gradient(135deg, var(--ati-green), var(--ati-green-dark));
+    }
 
     /* Announcements Widget */
     .announcement-item {
+        display: block;
+        text-decoration: none;
         padding: 1rem;
         border-left: 3px solid #e5e7eb;
         margin-bottom: 0.875rem;
         background: #f9fafb;
         border-radius: 0 8px 8px 0;
         transition: all 0.25s ease;
+        cursor: pointer;
     }
 
     .announcement-item:last-child { margin-bottom: 0; }
@@ -398,7 +446,8 @@
 
     .announcement-item:hover {
         transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-left-width: 4px;
     }
 
     .announcement-header {
@@ -441,6 +490,9 @@
         background: #f9fafb;
         margin-bottom: 0.75rem;
         transition: all 0.25s ease;
+        text-decoration: none;
+        cursor: pointer;
+        border: 2px solid transparent;
     }
 
     .event-item:last-child { margin-bottom: 0; }
@@ -449,8 +501,9 @@
 
     .event-item:hover {
         background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
         transform: translateY(-2px);
+        border-color: var(--ati-green);
     }
 
     .dark .event-item:hover { background: #1f2937; }
@@ -463,6 +516,11 @@
         border-radius: 10px;
         text-align: center;
         color: white;
+        transition: all 0.25s ease;
+    }
+
+    .event-item:hover .event-date-box {
+        background: linear-gradient(135deg, var(--ati-amber), var(--ati-amber-dark));
     }
 
     .event-month {
@@ -478,10 +536,7 @@
         line-height: 1;
     }
 
-    .event-details {
-        flex: 1;
-        min-width: 0;
-    }
+    .event-details { flex: 1; min-width: 0; }
 
     .event-title {
         font-weight: 700;
@@ -584,6 +639,7 @@
         margin-bottom: 0.75rem;
         transition: all 0.25s ease;
         cursor: pointer;
+        text-decoration: none;
     }
 
     .pending-action-item:last-child { margin-bottom: 0; }
@@ -607,9 +663,11 @@
         justify-content: center;
     }
 
-    .pending-icon.blue { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
-    .pending-icon.amber { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
+    .pending-icon.blue   { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
+    .pending-icon.amber  { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
     .pending-icon.purple { background: linear-gradient(135deg, #e9d5ff, #c084fc); }
+    .pending-icon.green  { background: linear-gradient(135deg, #d1fae5, #6ee7b7); }
+    .pending-icon.rose   { background: linear-gradient(135deg, #ffe4e6, #fda4af); }
 
     .pending-info { flex: 1; }
 
@@ -772,6 +830,10 @@
     }
 
     /* Responsive */
+    @media (max-width: 1024px) {
+        .admin-grid-3col { grid-template-columns: 1fr 1fr !important; }
+    }
+
     @media (max-width: 768px) {
         .dashboard-container { padding: 0.875rem; }
         .hero-section { padding: 1.25rem 1rem; }
@@ -779,6 +841,7 @@
         .hero-subtitle { font-size: 0.875rem; }
         .modules-grid { grid-template-columns: 1fr; }
         .widgets-grid { grid-template-columns: 1fr; }
+        .admin-grid-3col { grid-template-columns: 1fr !important; }
     }
 
     /* Stagger Animations */
@@ -820,9 +883,7 @@
 {{-- Dashboard Container --}}
 <div class="dashboard-container">
 
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- HERO / GREETING SECTION (shared) --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- HERO / GREETING SECTION --}}
     <div class="hero-section">
         <div class="hero-content">
             <h1 class="hero-title">{{ $this->getGreeting() }}</h1>
@@ -851,9 +912,7 @@
         </div>
     </div>
 
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- EMPLOYEE VIEW: Announcements & Events directly below hero --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- EMPLOYEE VIEW --}}
     @if(!$user->isAdmin())
         <div class="widgets-grid" style="margin-bottom: 1.25rem;">
 
@@ -862,16 +921,21 @@
                 <div class="section-header">
                     <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     <h3 class="section-title">Announcements</h3>
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="section-header-link">
+                        View All
+                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+                    </a>
                 </div>
                 @forelse($announcements as $announcement)
-                    <div class="announcement-item {{ $announcement['priority'] }}">
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}"
+                       class="announcement-item {{ $announcement['priority'] }}">
                         <div class="announcement-header">
                             <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
                             <div class="announcement-title">{{ $announcement['title'] }}</div>
                             <div class="announcement-date">{{ $announcement['date'] }}</div>
                         </div>
                         <div class="announcement-message">{{ $announcement['message'] }}</div>
-                    </div>
+                    </a>
                 @empty
                     <div class="empty-state">
                         <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
@@ -886,9 +950,13 @@
                 <div class="section-header">
                     <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
                     <h3 class="section-title">Upcoming Events</h3>
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="section-header-link">
+                        View All
+                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+                    </a>
                 </div>
                 @forelse($upcomingEvents as $event)
-                    <div class="event-item">
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="event-item">
                         <div class="event-date-box">
                             <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
                             <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
@@ -906,7 +974,7 @@
                                 </span>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 @empty
                     <div class="empty-state">
                         <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
@@ -919,36 +987,39 @@
         </div>
     @endif
 
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- ADMIN VIEW: All widgets directly below hero --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- ADMIN VIEW --}}
     @if($user->isAdmin())
-        <div class="widgets-grid" style="margin-bottom: 1.25rem;">
+        {{-- Row 1: Three columns --}}
+        <div class="admin-grid-3col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
 
-            {{-- Recent Activities (admin only) --}}
+            {{-- Col 1: Recent Activities --}}
             <div class="widget-card stagger-1">
                 <div class="section-header">
                     <x-heroicon-o-clock class="w-6 h-6 text-amber-600 dark:text-amber-400" />
                     <h3 class="section-title">Recent Activities</h3>
                 </div>
                 @forelse($recentActivities as $index => $activity)
-                    <div class="activity-item" style="animation-delay: {{ $index * 0.05 }}s">
+                    <a href="{{ $activity['url'] }}"
+                       class="activity-item"
+                       style="animation-delay: {{ $index * 0.05 }}s">
                         <div class="activity-icon-wrapper {{ $activity['color'] }}">
-                            <x-dynamic-component :component="$activity['icon']"
+                            <x-dynamic-component
+                                :component="$activity['icon']"
                                 class="w-5 h-5 text-{{ $activity['color'] }}-600" />
                         </div>
                         <div class="activity-content">
                             <div class="activity-title">{{ $activity['employee'] }}</div>
                             <div class="activity-meta">
-                                <span class="activity-badge {{ $activity['color'] }}">
-                                    {{ $activity['type'] }}
-                                </span>
+                                <span class="activity-badge {{ $activity['color'] }}">{{ $activity['type'] }}</span>
                                 <span>{{ $activity['status'] }}</span>
                                 <span>•</span>
                                 <span>{{ $activity['date'] }}</span>
                             </div>
                         </div>
-                    </div>
+                        <div class="activity-arrow">
+                            <x-heroicon-o-arrow-right class="w-3.5 h-3.5 text-white" />
+                        </div>
+                    </a>
                 @empty
                     <div class="empty-state">
                         <x-heroicon-o-inbox class="empty-icon text-gray-400" />
@@ -958,7 +1029,7 @@
                 @endforelse
             </div>
 
-            {{-- Pending Actions (admin only) --}}
+            {{-- Col 2: Pending Actions --}}
             <div class="widget-card stagger-2">
                 <div class="section-header">
                     <x-heroicon-o-bell-alert class="w-6 h-6 text-amber-600 dark:text-amber-400" />
@@ -984,21 +1055,26 @@
                 @endforelse
             </div>
 
-            {{-- Announcements (admin) --}}
+            {{-- Col 3: Announcements --}}
             <div class="widget-card stagger-3">
                 <div class="section-header">
                     <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     <h3 class="section-title">Announcements</h3>
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="section-header-link">
+                        View All
+                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+                    </a>
                 </div>
                 @forelse($announcements as $announcement)
-                    <div class="announcement-item {{ $announcement['priority'] }}">
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}"
+                       class="announcement-item {{ $announcement['priority'] }}">
                         <div class="announcement-header">
                             <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
                             <div class="announcement-title">{{ $announcement['title'] }}</div>
                             <div class="announcement-date">{{ $announcement['date'] }}</div>
                         </div>
                         <div class="announcement-message">{{ $announcement['message'] }}</div>
-                    </div>
+                    </a>
                 @empty
                     <div class="empty-state">
                         <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
@@ -1008,14 +1084,21 @@
                 @endforelse
             </div>
 
-            {{-- Upcoming Events (admin) --}}
-            <div class="widget-card stagger-4">
-                <div class="section-header">
-                    <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    <h3 class="section-title">Upcoming Events</h3>
-                </div>
+        </div>
+
+        {{-- Row 2: Upcoming Events full-width --}}
+        <div class="widget-card stagger-4" style="margin-bottom: 1.25rem;">
+            <div class="section-header">
+                <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <h3 class="section-title">Upcoming Events</h3>
+                <a href="{{ route('filament.hrms.resources.events.index') }}" class="section-header-link">
+                    View All
+                    <x-heroicon-o-arrow-right class="w-3 h-3" />
+                </a>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem;">
                 @forelse($upcomingEvents as $event)
-                    <div class="event-item">
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="event-item" style="margin-bottom: 0;">
                         <div class="event-date-box">
                             <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
                             <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
@@ -1033,22 +1116,19 @@
                                 </span>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 @empty
-                    <div class="empty-state">
+                    <div class="empty-state" style="grid-column: 1 / -1;">
                         <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
                         <h4 class="empty-title">No Upcoming Events</h4>
                         <p class="empty-text">Stay tuned for future events.</p>
                     </div>
                 @endforelse
             </div>
-
         </div>
     @endif
 
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- QUICK ACCESS MODULES (shared) --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- QUICK ACCESS MODULES --}}
     <div>
         <div class="section-header">
             <x-heroicon-o-squares-2x2 class="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -1084,13 +1164,11 @@
         </div>
     </div>
 
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- BIRTHDAY CELEBRANTS (shared, below modules) --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- BIRTHDAY CELEBRANTS --}}
     <div class="widget-card stagger-1" style="margin-bottom: 1.25rem;">
         <div class="section-header">
             <x-heroicon-o-cake class="w-6 h-6 text-pink-600 dark:text-pink-400" />
-            <h3 class="section-title">Birthday Celebrants</h3>
+            <h3 class="section-title">Birthday Celebrants This Month</h3>
         </div>
         @forelse($birthdayCelebrants as $celebrant)
             <div class="birthday-item {{ $celebrant['is_today'] ? 'today' : '' }}">

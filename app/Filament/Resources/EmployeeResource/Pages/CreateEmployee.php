@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\EmployeeResource\Pages;
 
 use App\Filament\Resources\EmployeeResource;
+use App\Models\User;
+use App\Notifications\NewEmployeeRegistered;
 use App\Services\EmployeeRegistrationService;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class CreateEmployee extends CreateRecord
 {
@@ -47,7 +50,20 @@ class CreateEmployee extends CreateRecord
         // Process the new employee registration
         app(EmployeeRegistrationService::class)->processNewEmployee($this->record);
 
-        // Send additional notification if status is pending
+        // Notify all admins via in-app notification (bell icon)
+        try {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                // Don't notify the admin who just created the record
+                if ($admin->id !== auth()->id()) {
+                    $admin->notify(new NewEmployeeRegistered($this->record));
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Admin notification failed: ' . $e->getMessage());
+        }
+
+        // Show additional flash notification if status is pending
         if ($this->record->status === 'pending') {
             Notification::make()
                 ->info()

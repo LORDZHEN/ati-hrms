@@ -68,47 +68,58 @@ class User extends Authenticatable implements FilamentUser
        FILAMENT REQUIRED METHODS
        ============================================================ */
 
+    /**
+     * Displayed in the Filament topbar — avatar initials + user menu label.
+     * Uses full name (first + middle + last + suffix) instead of the plain
+     * `name` column so "SA" becomes e.g. "System Administrator".
+     */
     public function getFilamentName(): string
     {
-        return $this->name ?? 'User';
+        return $this->full_name ?: ($this->name ?: 'User');
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
         return match ($panel->getId()) {
-            'hrms' => $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_EMPLOYEE,
+            'hrms' => in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EMPLOYEE]),
             default => false,
         };
     }
 
     /**
-     * Fix: Filament Top-Right Avatar
-     * Filament will call this method to show the user's profile photo
+     * Filament topbar avatar image.
+     * Shows the uploaded profile photo, or falls back to a generated
+     * initials avatar using the user's full name.
      */
     public function getFilamentAvatarUrl(): ?string
     {
-        // If user has uploaded photo
-        if ($this->profile_photo_path && file_exists(storage_path('app/public/' . $this->profile_photo_path))) {
+        if (
+            $this->profile_photo_path &&
+            file_exists(storage_path('app/public/' . $this->profile_photo_path))
+        ) {
             return asset('storage/' . $this->profile_photo_path);
         }
-        // fallback to initials
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute() ?? 'User');
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name ?: 'User')
+            . '&background=10b981&color=ffffff&bold=true';
     }
 
     /* ============================================================
        ACCESSORS
        ============================================================ */
 
+    /**
+     * Returns the user's full name assembled from individual name parts,
+     * filtering out any null / empty segments.
+     */
     public function getFullNameAttribute(): string
     {
-        $parts = [
+        return implode(' ', array_filter([
             $this->first_name,
             $this->middle_name,
             $this->last_name,
-            $this->suffix
-        ];
-
-        return implode(' ', array_filter($parts));
+            $this->suffix,
+        ]));
     }
 
     public function getRoleDisplayName(): string
@@ -116,11 +127,16 @@ class User extends Authenticatable implements FilamentUser
         return self::getRoles()[$this->role] ?? 'Unknown';
     }
 
+    /**
+     * Public profile photo URL used in blade templates / dashboard widgets.
+     * Falls back to a generated initials avatar matching the ATI green brand color.
+     */
     public function getProfilePhotoUrlAttribute(): string
     {
         return $this->profile_photo_path
             ? asset('storage/' . $this->profile_photo_path)
-            : 'https://ui-avatars.com/api/?name=' . urlencode($this->getFullNameAttribute() ?? 'User');
+            : 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name ?: 'User')
+            . '&background=10b981&color=ffffff&bold=true';
     }
 
     /* ============================================================
@@ -158,5 +174,4 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->role === self::ROLE_ADMIN;
     }
-
 }
