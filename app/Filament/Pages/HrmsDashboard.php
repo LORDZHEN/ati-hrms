@@ -258,7 +258,7 @@ class HrmsDashboard extends Page
         $this->recentActivities = collect();
 
         $leaves = LeaveApplication::latest()->take(6)->get();
-        $travelOrders = TravelOrder::latest()->take(6)->get();
+        $travelOrders = TravelOrder::with('creator')->latest()->take(6)->get();
         $locatorSlips = LocatorSlip::latest()->take(6)->get();
         $salns = Saln::latest()->take(6)->get();
 
@@ -286,11 +286,10 @@ class HrmsDashboard extends Page
         }
 
         foreach ($travelOrders as $order) {
-            $employeeName = 'Unknown';
-            if (!empty($order->employee_details) && is_array($order->employee_details)) {
-                $firstEmployee = $order->employee_details[0] ?? null;
-                $employeeName = $firstEmployee['name'] ?? 'Unknown';
-            }
+            $employeeName = $order->name
+                ?? $order->creator?->full_name
+                ?? $order->creator?->name
+                ?? 'Unknown';
 
             $addActivity(
                 'Travel Order',

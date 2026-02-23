@@ -161,6 +161,44 @@
         .login-link a:hover {
             text-decoration: underline;
         }
+
+        /* ── Dark mode ── */
+        @media (prefers-color-scheme: dark) {
+            .register-container {
+                background: rgba(17, 24, 39, 0.92);
+                box-shadow:
+                    0 8px 32px rgba(0, 0, 0, 0.5),
+                    0 0 0 1px rgba(255, 255, 255, 0.08);
+            }
+
+            .register-title {
+                color: #86efac;
+            }
+
+            .register-subtitle {
+                color: #6ee7b7;
+            }
+
+            .success-alert {
+                background: #052e16;
+                border-color: #166534;
+                color: #86efac;
+            }
+
+            .error-alert {
+                background: #3b0f0f;
+                border-color: #b91c1c;
+                color: #fca5a5;
+            }
+
+            .login-link {
+                color: #6ee7b7;
+            }
+
+            .login-link a {
+                color: #4ade80;
+            }
+        }
     </style>
     @livewireStyles
 </head>

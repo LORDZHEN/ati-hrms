@@ -142,6 +142,40 @@
             transition: opacity 0.4s ease;
             max-width: 320px;
         }
+
+        /* ── Dark mode ── */
+        @media (prefers-color-scheme: dark) {
+            .login-container {
+                background: rgba(17, 24, 39, 0.92);
+                box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+            }
+
+            .login-title {
+                color: #86efac;
+            }
+
+            .login-subtitle {
+                color: #6ee7b7;
+            }
+
+            .error-message {
+                background: #3b0f0f;
+                border-color: #b91c1c;
+                color: #fca5a5;
+            }
+
+            .register-link {
+                color: #6ee7b7;
+            }
+
+            .register-link a {
+                color: #4ade80;
+            }
+
+            .toast {
+                background: #15803d;
+            }
+        }
     </style>
     @livewireStyles
 </head>
