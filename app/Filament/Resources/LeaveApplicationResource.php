@@ -21,10 +21,6 @@ class LeaveApplicationResource extends Resource
     protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 2;
 
-    /* ============================================================
-       AUTHORIZATION
-       ============================================================ */
-
     public static function canCreate(): bool
     {
         return auth()->user()->role === 'employee';
@@ -33,245 +29,274 @@ class LeaveApplicationResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            self::getLeaveTypeSection(),
-            self::getLeaveDetailsSection(),
-            self::getHiddenFields(),
+
+            // ============================================================
+            // CUSTOM LEAVE FORM VIEW - THE ONLY VISIBLE FORM
+            // ============================================================
+            Forms\Components\View::make('filament.resources.leave-application-resource.leave-form')
+                ->columnSpanFull(),
+
+            // ============================================================
+            // ALL FORM FIELDS - COLLAPSED (for data binding & validation)
+            // ============================================================
+            Forms\Components\Section::make('Form Fields (For Validation Only)')
+                ->description('⚠️ Fill out the official CSC Form 6 above. These fields are for data binding.')
+                ->schema([
+
+                    // Hidden employee fields
+                    Forms\Components\Hidden::make('employee_id')
+                        ->default(fn() => auth()->id()),
+                    Forms\Components\Hidden::make('first_name')
+                        ->default(fn() => auth()->user()->first_name),
+                    Forms\Components\Hidden::make('middle_name')
+                        ->default(fn() => auth()->user()->middle_name),
+                    Forms\Components\Hidden::make('last_name')
+                        ->default(fn() => auth()->user()->last_name),
+                    Forms\Components\Hidden::make('office_department')
+                        ->default(fn() => auth()->user()->department),
+                    Forms\Components\Hidden::make('position')
+                        ->default(fn() => auth()->user()->position),
+                    Forms\Components\Hidden::make('date_of_filing')
+                        ->default(fn() => now()),
+                    Forms\Components\Hidden::make('status')
+                        ->default('pending'),
+
+                    // Leave type selection
+                    Forms\Components\Select::make('type_of_leave')
+                        ->label('Type of Leave')
+                        ->options([
+                            'vacation_leave' => 'Vacation Leave',
+                            'mandatory_forced_leave' => 'Mandatory/Forced Leave',
+                            'sick_leave' => 'Sick Leave',
+                            'maternity_leave' => 'Maternity Leave',
+                            'paternity_leave' => 'Paternity Leave',
+                            'special_privilege_leave' => 'Special Privilege Leave',
+                            'solo_parent_leave' => 'Solo Parent Leave',
+                            'study_leave' => 'Study Leave',
+                            '10_day_vawc_leave' => '10-Day VAWC Leave',
+                            'rehabilitation_privilege' => 'Rehabilitation Privilege',
+                            'special_leave_benefits_for_women' => 'Special Leave Benefits for Women',
+                            'special_emergency_leave' => 'Special Emergency Leave',
+                            'adoption_leave' => 'Adoption Leave',
+                            'others' => 'Others',
+                        ])
+                        ->required()
+                        ->live()
+                        ->native(false),
+
+                    Forms\Components\TextInput::make('other_leave_type')
+                        ->label('Specify Other Leave Type')
+                        ->visible(fn(Forms\Get $get) => $get('type_of_leave') === 'others')
+                        ->required(fn(Forms\Get $get) => $get('type_of_leave') === 'others')
+                        ->maxLength(255),
+
+                    // ============================================================
+                    // DATE FROM
+                    // vacation_leave  → earliest selectable = today + 5 working days
+                    // sick_leave      → latest selectable   = today (no future dates)
+                    // all others      → earliest selectable = today
+                    // ============================================================
+                    Forms\Components\DatePicker::make('leave_date_from')
+                        ->label('Leave Date From')
+                        ->required()
+                        ->live()
+                        ->native(false)
+                        ->minDate(function (Forms\Get $get) {
+                            $leaveType = $get('type_of_leave');
+                            if ($leaveType === 'vacation_leave') {
+                                // Must file at least 5 working days in advance
+                                return self::addWorkingDays(now(), 5);
+                            }
+                            if ($leaveType === 'sick_leave') {
+                                // Sick leave: past dates only — no minimum restriction
+                                return null;
+                            }
+                            // All other leave types: cannot be before today
+                            return now()->startOfDay();
+                        })
+                        ->maxDate(function (Forms\Get $get) {
+                            if ($get('type_of_leave') === 'sick_leave') {
+                                // Sick leave: cannot select future dates
+                                return now()->endOfDay();
+                            }
+                            return null;
+                        })
+                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                            self::calculateWorkingDays($state, $get('leave_date_to'), $set);
+                            // Clear "to" date if it's now before "from"
+                            $to = $get('leave_date_to');
+                            if ($to && Carbon::parse($state)->gt(Carbon::parse($to))) {
+                                $set('leave_date_to', null);
+                            }
+                        }),
+
+                    // ============================================================
+                    // DATE TO
+                    // vacation_leave  → min = leave_date_from (or today+5 if not set)
+                    // sick_leave      → max = today (no future dates)
+                    // all others      → min = leave_date_from
+                    // ============================================================
+                    Forms\Components\DatePicker::make('leave_date_to')
+                        ->label('Leave Date To')
+                        ->required()
+                        ->live()
+                        ->native(false)
+                        ->minDate(function (Forms\Get $get) {
+                            $leaveType = $get('type_of_leave');
+                            $from = $get('leave_date_from');
+
+                            if ($leaveType === 'vacation_leave') {
+                                // "To" must be on or after "from", which itself is already +5 days
+                                return $from ? Carbon::parse($from) : self::addWorkingDays(now(), 5);
+                            }
+                            if ($leaveType === 'sick_leave') {
+                                // Sick leave past dates only — allow from the start of "from" date
+                                return $from ? Carbon::parse($from) : null;
+                            }
+                            // All others: must be on or after "from"
+                            return $from ? Carbon::parse($from) : now()->startOfDay();
+                        })
+                        ->maxDate(function (Forms\Get $get) {
+                            if ($get('type_of_leave') === 'sick_leave') {
+                                // Sick leave: cannot select future dates
+                                return now()->endOfDay();
+                            }
+                            return null;
+                        })
+                        ->afterStateUpdated(
+                            fn($state, Forms\Set $set, Forms\Get $get) =>
+                            self::calculateWorkingDays($get('leave_date_from'), $state, $set)
+                        ),
+
+                    Forms\Components\TextInput::make('number_of_working_days')
+                        ->label('Number of Working Days')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0.5)
+                        ->step(0.5)
+                        ->readOnly(),
+
+                    // Supporting document
+                    Forms\Components\FileUpload::make('supporting_document')
+                        ->label('Supporting Document')
+                        ->visible(
+                            fn(Forms\Get $get) =>
+                            $get('type_of_leave') === 'sick_leave' &&
+                            ($get('number_of_working_days') ?? 0) >= 3
+                        )
+                        ->required(
+                            fn(Forms\Get $get) =>
+                            $get('type_of_leave') === 'sick_leave' &&
+                            ($get('number_of_working_days') ?? 0) >= 3
+                        )
+                        ->acceptedFileTypes(['image/*', 'application/pdf'])
+                        ->directory('leave-documents')
+                        ->maxSize(5120)
+                        ->image()
+                        ->imageEditor(),
+
+                    // Vacation details
+                    Forms\Components\Radio::make('vacation_location')
+                        ->label('Vacation Location')
+                        ->options([
+                            'within_philippines' => 'Within the Philippines',
+                            'abroad' => 'Abroad',
+                        ])
+                        ->inline()
+                        ->live(),
+
+                    Forms\Components\TextInput::make('abroad_specify')
+                        ->label('Specify Country/Location Abroad')
+                        ->visible(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
+                        ->required(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
+                        ->maxLength(255),
+
+                    // Sick leave details
+                    Forms\Components\Radio::make('sick_leave_location')
+                        ->label('Sick Leave Location')
+                        ->options([
+                            'in_hospital' => 'In Hospital (Confined)',
+                            'out_patient' => 'Out Patient',
+                        ])
+                        ->inline()
+                        ->live(),
+
+                    Forms\Components\TextInput::make('hospital_illness_specify')
+                        ->label('Hospital Illness')
+                        ->visible(fn(Forms\Get $get) => $get('sick_leave_location') === 'in_hospital')
+                        ->required(fn(Forms\Get $get) => $get('sick_leave_location') === 'in_hospital')
+                        ->maxLength(255),
+
+                    Forms\Components\TextInput::make('outpatient_illness_specify')
+                        ->label('Outpatient Illness')
+                        ->visible(fn(Forms\Get $get) => $get('sick_leave_location') === 'out_patient')
+                        ->required(fn(Forms\Get $get) => $get('sick_leave_location') === 'out_patient')
+                        ->maxLength(255),
+
+                    // Women's illness
+                    Forms\Components\TextInput::make('women_illness_specify')
+                        ->label("Women's Illness")
+                        ->maxLength(255),
+
+                    // Study leave
+                    Forms\Components\Radio::make('study_leave_purpose')
+                        ->label('Study Leave Purpose')
+                        ->options([
+                            'masters_degree' => "Completion of Master's Degree",
+                            'bar_board_review' => 'BAR/Board Examination Review',
+                        ])
+                        ->inline(),
+
+                    // Other purpose
+                    Forms\Components\Radio::make('other_purpose')
+                        ->label('Other Purpose')
+                        ->options([
+                            'monetization' => 'Monetization of Leave Credits',
+                            'terminal_leave' => 'Terminal Leave',
+                        ])
+                        ->inline(),
+
+                    // Commutation
+                    Forms\Components\Radio::make('commutation')
+                        ->label('Commutation')
+                        ->options([
+                            'not_requested' => 'Not Requested',
+                            'requested' => 'Requested',
+                        ])
+                        ->default('not_requested')
+                        ->inline()
+                        ->required(),
+
+                ])
+                ->collapsed()
+                ->collapsible()
+                ->columnSpanFull(),
         ]);
     }
 
-    protected static function getLeaveTypeSection(): Forms\Components\Section
+    /**
+     * Add N working days (Mon–Fri) to a given Carbon date.
+     * Skips weekends. Does NOT account for public holidays.
+     */
+    protected static function addWorkingDays(Carbon $date, int $days): Carbon
     {
-        return Forms\Components\Section::make('Leave Type Selection')
-            ->description('Choose the type of leave you want to apply for')
-            ->icon('heroicon-o-clipboard-document-list')
-            ->schema([
-                Forms\Components\Select::make('type_of_leave')
-                    ->label('Type of Leave')
-                    ->options([
-                        'vacation_leave' => 'Vacation Leave',
-                        'mandatory_forced_leave' => 'Mandatory/Forced Leave',
-                        'sick_leave' => 'Sick Leave',
-                        'maternity_leave' => 'Maternity Leave',
-                        'paternity_leave' => 'Paternity Leave',
-                        'special_privilege_leave' => 'Special Privilege Leave',
-                        'solo_parent_leave' => 'Solo Parent Leave',
-                        'study_leave' => 'Study Leave',
-                        '10_day_vawc_leave' => '10-Day VAWC Leave',
-                        'rehabilitation_privilege' => 'Rehabilitation Privilege',
-                        'special_leave_benefits_for_women' => 'Special Leave Benefits for Women',
-                        'special_emergency_leave' => 'Special Emergency Leave',
-                        'adoption_leave' => 'Adoption Leave',
-                        'others' => 'Others',
-                    ])
-                    ->required()
-                    ->live()
-                    ->native(false),
+        $result = $date->copy()->startOfDay();
+        $added = 0;
 
-                Forms\Components\TextInput::make('other_leave_type')
-                    ->label('Specify Other Leave Type')
-                    ->visible(fn(Forms\Get $get) => $get('type_of_leave') === 'others')
-                    ->required(fn(Forms\Get $get) => $get('type_of_leave') === 'others')
-                    ->maxLength(255),
-            ])
-            ->columns(1);
-    }
+        while ($added < $days) {
+            $result->addDay();
+            if ($result->isWeekday()) {
+                $added++;
+            }
+        }
 
-    protected static function getLeaveDetailsSection(): Forms\Components\Section
-    {
-        return Forms\Components\Section::make('Leave Details & Duration')
-            ->description('Specify the duration and specific details of your leave')
-            ->icon('heroicon-o-calendar-days')
-            ->schema([
-                Forms\Components\Grid::make(2)->schema([
-                    // Left Column - Main Leave Details
-                    Forms\Components\Group::make([
-                        Forms\Components\DatePicker::make('leave_date_from')
-                            ->label('Leave Date From')
-                            ->required()
-                            ->live()
-                            ->native(false)
-                            ->minDate(function (Forms\Get $get) {
-                                $leaveType = $get('type_of_leave');
-
-                                if ($leaveType === 'vacation_leave') {
-                                    return now()->addDays(5)->startOfDay();
-                                }
-
-                                if ($leaveType === 'sick_leave') {
-                                    return null;
-                                }
-
-                                return now()->startOfDay();
-                            })
-                            ->maxDate(function (Forms\Get $get) {
-                                $leaveType = $get('type_of_leave');
-
-                                if ($leaveType === 'sick_leave') {
-                                    return now()->endOfDay();
-                                }
-
-                                return null;
-                            })
-                            ->afterStateUpdated(
-                                fn($state, Forms\Set $set, Forms\Get $get) =>
-                                self::calculateWorkingDays($state, $get('leave_date_to'), $set)
-                            ),
-
-                        Forms\Components\DatePicker::make('leave_date_to')
-                            ->label('Leave Date To')
-                            ->required()
-                            ->live()
-                            ->native(false)
-                            ->minDate(fn(Forms\Get $get) => $get('leave_date_from') ?: now())
-                            ->maxDate(function (Forms\Get $get) {
-                                $leaveType = $get('type_of_leave');
-
-                                if ($leaveType === 'sick_leave') {
-                                    return now()->endOfDay();
-                                }
-
-                                return null;
-                            })
-                            ->afterStateUpdated(
-                                fn($state, Forms\Set $set, Forms\Get $get) =>
-                                self::calculateWorkingDays($get('leave_date_from'), $state, $set)
-                            ),
-
-                        Forms\Components\TextInput::make('number_of_working_days')
-                            ->label('Number of Working Days')
-                            ->numeric()
-                            ->required()
-                            ->minValue(0.5)
-                            ->step(0.5)
-                            ->suffix('days')
-                            ->readOnly()
-                            ->helperText('Automatically calculated based on selected dates'),
-
-                        Forms\Components\FileUpload::make('supporting_document')
-                            ->label('Supporting Document')
-                            ->helperText('Required for sick leave of 3 days or more')
-                            ->visible(
-                                fn(Forms\Get $get) =>
-                                $get('type_of_leave') === 'sick_leave' &&
-                                ($get('number_of_working_days') ?? 0) >= 3
-                            )
-                            ->required(
-                                fn(Forms\Get $get) =>
-                                $get('type_of_leave') === 'sick_leave' &&
-                                ($get('number_of_working_days') ?? 0) >= 3
-                            )
-                            ->acceptedFileTypes(['image/*', 'application/pdf'])
-                            ->directory('leave-documents')
-                            ->maxSize(5120)
-                            ->image()
-                            ->imageEditor(),
-
-                        Forms\Components\Radio::make('commutation')
-                            ->label('Commutation')
-                            ->options([
-                                'not_requested' => 'Not Requested',
-                                'requested' => 'Requested',
-                            ])
-                            ->default('not_requested')
-                            ->inline()
-                            ->required(),
-                    ]),
-
-                    // Right Column - Specific Leave Type Details
-                    Forms\Components\Group::make([
-                        // Vacation/Special Privilege Leave Details
-                        Forms\Components\Fieldset::make('Location Details')
-                            ->schema([
-                                Forms\Components\Radio::make('vacation_location')
-                                    ->label('Where will you spend your leave?')
-                                    ->options([
-                                        'within_philippines' => 'Within the Philippines',
-                                        'abroad' => 'Abroad',
-                                    ])
-                                    ->inline()
-                                    ->live()
-                                    ->required(
-                                        fn(Forms\Get $get) =>
-                                        in_array($get('type_of_leave'), ['vacation_leave', 'special_privilege_leave'])
-                                    ),
-
-                                Forms\Components\TextInput::make('abroad_specify')
-                                    ->label('Specify Country/Location Abroad')
-                                    ->visible(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
-                                    ->required(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
-                                    ->maxLength(255),
-                            ])
-                            ->visible(
-                                fn(Forms\Get $get) =>
-                                in_array($get('type_of_leave'), ['vacation_leave', 'special_privilege_leave'])
-                            ),
-
-                        // Sick Leave Details
-                        Forms\Components\Fieldset::make('Treatment Details')
-                            ->schema([
-                                Forms\Components\Radio::make('sick_leave_location')
-                                    ->label('Type of Treatment')
-                                    ->options([
-                                        'in_hospital' => 'In Hospital (Confined)',
-                                        'out_patient' => 'Out Patient',
-                                    ])
-                                    ->inline()
-                                    ->live()
-                                    ->required(fn(Forms\Get $get) => $get('type_of_leave') === 'sick_leave'),
-
-                                Forms\Components\TextInput::make('hospital_illness_specify')
-                                    ->label('Specify Illness/Reason')
-                                    ->visible(fn(Forms\Get $get) => $get('sick_leave_location') === 'in_hospital')
-                                    ->required(fn(Forms\Get $get) => $get('sick_leave_location') === 'in_hospital')
-                                    ->maxLength(255),
-
-                                Forms\Components\TextInput::make('outpatient_illness_specify')
-                                    ->label('Specify Illness/Reason')
-                                    ->visible(fn(Forms\Get $get) => $get('sick_leave_location') === 'out_patient')
-                                    ->required(fn(Forms\Get $get) => $get('sick_leave_location') === 'out_patient')
-                                    ->maxLength(255),
-                            ])
-                            ->visible(fn(Forms\Get $get) => $get('type_of_leave') === 'sick_leave'),
-                    ]),
-                ]),
-            ])
-            ->columns(1);
-    }
-
-    protected static function getHiddenFields(): Forms\Components\Group
-    {
-        return Forms\Components\Group::make([
-            Forms\Components\Hidden::make('employee_id')
-                ->default(fn() => auth()->id()),
-
-            Forms\Components\Hidden::make('first_name')
-                ->default(fn() => auth()->user()->first_name),
-
-            Forms\Components\Hidden::make('middle_name')
-                ->default(fn() => auth()->user()->middle_name),
-
-            Forms\Components\Hidden::make('last_name')
-                ->default(fn() => auth()->user()->last_name),
-
-            Forms\Components\Hidden::make('office_department')
-                ->default(fn() => auth()->user()->department),
-
-            Forms\Components\Hidden::make('position')
-                ->default(fn() => auth()->user()->position),
-
-            Forms\Components\Hidden::make('date_of_filing')
-                ->default(fn() => now()),
-
-            Forms\Components\Hidden::make('status')
-                ->default('pending'),
-        ]);
+        return $result;
     }
 
     protected static function calculateWorkingDays($from, $to, Forms\Set $set): void
     {
-        if (!$from || !$to) {
+        if (!$from || !$to)
             return;
-        }
 
         try {
             $fromDate = Carbon::parse($from);
@@ -320,15 +345,10 @@ class LeaveApplicationResource extends Resource
             ]);
     }
 
-    /* ============================================================
-       MODERN LEAVE TABLE COLUMNS - CARD-STYLE LAYOUT
-       ============================================================ */
-
     protected static function getModernLeaveTableColumns(): array
     {
         return [
             Tables\Columns\Layout\Split::make([
-                // Left Side - Employee & Leave Type Info
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('employee.name')
                         ->label('Employee')
@@ -370,7 +390,6 @@ class LeaveApplicationResource extends Resource
                         }),
                 ])->space(2),
 
-                // Middle - Date Range & Duration
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('leave_dates')
                         ->label('Leave Period')
@@ -403,7 +422,6 @@ class LeaveApplicationResource extends Resource
                         ->getStateUsing(fn($record) => $record->commutation === 'requested'),
                 ])->space(1),
 
-                // Right Side - Status & Processing Info
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\BadgeColumn::make('status')
                         ->label('Status')
@@ -440,32 +458,27 @@ class LeaveApplicationResource extends Resource
                 ])->space(2)->alignment('end'),
             ])->from('md'),
 
-            // Additional Details Panel (Collapsible)
             Tables\Columns\Layout\Panel::make([
                 Tables\Columns\Layout\Split::make([
                     Tables\Columns\TextColumn::make('leave_details')
                         ->label('Additional Details')
                         ->formatStateUsing(function ($record) {
                             $details = [];
-
                             if ($record->vacation_location) {
                                 $location = $record->vacation_location === 'abroad'
                                     ? 'Abroad: ' . ($record->abroad_specify ?? 'Not specified')
                                     : 'Within Philippines';
                                 $details[] = '📍 ' . $location;
                             }
-
                             if ($record->sick_leave_location) {
                                 $treatment = $record->sick_leave_location === 'in_hospital'
                                     ? 'Hospital: ' . ($record->hospital_illness_specify ?? 'Not specified')
                                     : 'Outpatient: ' . ($record->outpatient_illness_specify ?? 'Not specified');
                                 $details[] = '🏥 ' . $treatment;
                             }
-
                             if ($record->supporting_document) {
                                 $details[] = '📎 Medical certificate attached';
                             }
-
                             return !empty($details) ? implode(' • ', $details) : 'No additional details';
                         })
                         ->size('sm')
@@ -483,10 +496,6 @@ class LeaveApplicationResource extends Resource
             ])->collapsible(),
         ];
     }
-
-    /* ============================================================
-       ENHANCED FILTERS
-       ============================================================ */
 
     protected static function getEnhancedFilters(): array
     {
@@ -545,15 +554,12 @@ class LeaveApplicationResource extends Resource
                 })
                 ->indicateUsing(function (array $data): array {
                     $indicators = [];
-
                     if ($data['filed_from'] ?? null) {
                         $indicators['from'] = 'Filed from ' . Carbon::parse($data['filed_from'])->toFormattedDateString();
                     }
-
                     if ($data['filed_until'] ?? null) {
                         $indicators['until'] = 'Filed until ' . Carbon::parse($data['filed_until'])->toFormattedDateString();
                     }
-
                     return $indicators;
                 }),
 
@@ -579,23 +585,16 @@ class LeaveApplicationResource extends Resource
                 })
                 ->indicateUsing(function (array $data): array {
                     $indicators = [];
-
                     if ($data['leave_from'] ?? null) {
                         $indicators['leave_from'] = 'Leave from ' . Carbon::parse($data['leave_from'])->toFormattedDateString();
                     }
-
                     if ($data['leave_until'] ?? null) {
                         $indicators['leave_until'] = 'Leave until ' . Carbon::parse($data['leave_until'])->toFormattedDateString();
                     }
-
                     return $indicators;
                 }),
         ];
     }
-
-    /* ============================================================
-       CONTEXTUAL ACTIONS
-       ============================================================ */
 
     protected static function getContextualActions(): array
     {
@@ -653,10 +652,8 @@ class LeaveApplicationResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin') {
+        if (auth()->user()?->role !== 'admin')
             return null;
-        }
-
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }

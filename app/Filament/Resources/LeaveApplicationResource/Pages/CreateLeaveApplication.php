@@ -16,7 +16,7 @@ class CreateLeaveApplication extends CreateRecord
     {
         return [
             Actions\Action::make('create')
-                ->label('Send')
+                ->label('Submit Leave Application')
                 ->submit('create')
                 ->color('primary'),
 
@@ -29,18 +29,28 @@ class CreateLeaveApplication extends CreateRecord
 
     protected function afterCreate(): void
     {
+        // Notify all admins
         $admins = User::where('role', 'admin')->get();
 
         foreach ($admins as $admin) {
-            // notify() calls via() → toDatabase() → saves to notifications table
-            // Filament's bell picks it up automatically. No extra step needed.
             $admin->notify(new LeaveApplicationSubmitted($this->record));
         }
-    }
 
+        \Filament\Notifications\Notification::make()
+            ->title('Leave Application Submitted')
+            ->body('Your leave application has been sent for review.')
+            ->success()
+            ->send();
+    }
 
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
+
+    // ============================================================
+    // NOTE: Leave Application has NO repeaters
+    // Unlike PDS/SALN, no add/remove methods needed here
+    // All fields are simple inputs without dynamic add/remove
+    // ============================================================
 }

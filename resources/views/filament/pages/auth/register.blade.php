@@ -133,9 +133,7 @@
             box-shadow: 0 10px 25px rgba(34, 197, 94, 0.35);
         }
 
-        .register-button:active {
-            transform: translateY(0);
-        }
+        .register-button:active { transform: translateY(0); }
 
         .login-link {
             display: block;
@@ -151,9 +149,7 @@
             text-decoration: none;
         }
 
-        .login-link a:hover {
-            text-decoration: underline;
-        }
+        .login-link a:hover { text-decoration: underline; }
 
         /* ── Strip Filament Section card backgrounds ── */
         .fi-section,
@@ -170,9 +166,7 @@
         }
 
         /* ── Address Picker Styles ── */
-        .address-section {
-            margin-top: 8px;
-        }
+        .address-section { margin-top: 8px; }
 
         .address-section-label {
             font-size: 0.8rem;
@@ -243,9 +237,7 @@
             background-size: 16px;
         }
 
-        .address-field-full {
-            grid-column: 1 / -1;
-        }
+        .address-field-full { grid-column: 1 / -1; }
 
         .address-error {
             font-size: 0.75rem;
@@ -254,9 +246,7 @@
             display: none;
         }
 
-        .address-error.visible {
-            display: block;
-        }
+        .address-error.visible { display: block; }
 
         /* ── Dark mode ── */
         @media (prefers-color-scheme: dark) {
@@ -265,15 +255,13 @@
                 box-shadow:
                     0 8px 32px rgba(0, 0, 0, 0.5),
                     0 0 0 1px rgba(255, 255, 255, 0.08);
+                color: #e5e7eb;
             }
 
-            .register-title {
-                color: #86efac;
-            }
-
-            .register-subtitle {
-                color: #6ee7b7;
-            }
+            .register-title    { color: #86efac; }
+            .register-subtitle { color: #6ee7b7; }
+            .login-link        { color: #6ee7b7; }
+            .login-link a      { color: #4ade80; }
 
             .success-alert {
                 background: #052e16;
@@ -287,26 +275,17 @@
                 color: #fca5a5;
             }
 
-            .login-link {
-                color: #6ee7b7;
-            }
-
-            .login-link a {
-                color: #4ade80;
-            }
-
+            /* ── Address picker labels & inputs ── */
             .address-section-label {
                 color: #e5e7eb;
                 border-bottom-color: #374151;
             }
 
-            .address-field label {
-                color: #e5e7eb;
-            }
+            .address-field label { color: #e5e7eb; }
 
             .address-select {
-                background-color: rgba(255, 255, 255, 0.08);
-                border-color: rgba(255, 255, 255, 0.2);
+                background-color: rgba(255, 255, 255, 0.10);
+                border-color: rgba(255, 255, 255, 0.25);
                 color: #ffffff;
             }
 
@@ -318,6 +297,90 @@
             .address-select:focus {
                 border-color: #4ade80;
                 box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+            }
+
+            /* Native select option bg */
+            select option {
+                background-color: #1f2937;
+                color: #ffffff;
+            }
+
+            /* ── All labels — broad catch-all ── */
+            label,
+            span[class*="label"],
+            .fi-fo-field-wrp label,
+            .fi-label,
+            .fi-fo-field-wrp-label,
+            [class*="fi-fo"] label,
+            [class*="fi-label"],
+            .fi-fo-field-wrp > div > label,
+            form label,
+            .register-container label {
+                color: #e5e7eb !important;
+            }
+
+            /* ── Section headings Filament renders (e.g. "I. Personal Information") ── */
+            .fi-section-header-heading,
+            [class*="fi-section"] h3,
+            [class*="fi-section"] h2,
+            [class*="fi-section"] p,
+            .fi-section-header-heading,
+            .fi-section-header p {
+                color: #e5e7eb !important;
+            }
+
+            /* ── All input / select / textarea fields ── */
+            input,
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="tel"],
+            input[type="number"],
+            input[type="date"],
+            textarea,
+            select {
+                background-color: rgba(255, 255, 255, 0.10) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
+                color: #ffffff !important;
+            }
+
+            input::placeholder,
+            textarea::placeholder {
+                color: rgba(255, 255, 255, 0.4) !important;
+            }
+
+            /* ── Filament input wrappers ── */
+            .fi-input-wrp,
+            .fi-fo-field-wrp-input,
+            [class*="fi-input"] {
+                background-color: rgba(255, 255, 255, 0.10) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
+            }
+
+            /* ── Hint and error text ── */
+            .fi-fo-field-wrp-hint,
+            .fi-hint,
+            [class*="fi-hint"] {
+                color: #9ca3af !important;
+            }
+
+            .fi-fo-field-wrp-error,
+            .fi-error,
+            [class*="fi-error"] {
+                color: #fca5a5 !important;
+            }
+
+            /* ── Eye toggle / suffix icons inside inputs ── */
+            .fi-input-wrp button svg,
+            .fi-fo-password button svg {
+                color: #9ca3af !important;
+            }
+
+            /* ── Required asterisk (*) ── */
+            .fi-fo-field-wrp-label sup,
+            label sup,
+            label span[class*="required"] {
+                color: #f87171 !important;
             }
         }
     </style>
@@ -499,7 +562,6 @@
                 barangay: '',
             },
 
-            // ── Helpers ──────────────────────────────────────────────
             async fetchJSON(url) {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`PSGC API error: ${res.status}`);
@@ -510,8 +572,6 @@
                 return arr.slice().sort((a, b) => a.name.localeCompare(b.name));
             },
 
-            // ── Push all address values to Livewire hidden fields in ONE batch ──
-            // Called only at form submit — avoids re-render white screen
             pushToLivewire() {
                 this.$wire.set('data.region_id',   this.selectedRegion,   false);
                 this.$wire.set('data.province_id', this.selectedProvince, false);
@@ -520,7 +580,6 @@
                 this.$wire.set('data.purok_street',this.purokStreet,      false);
             },
 
-            // ── Lifecycle ─────────────────────────────────────────────
             async init() {
                 this.loadingRegions = true;
                 try {
@@ -532,25 +591,21 @@
                     this.loadingRegions = false;
                 }
 
-                // Intercept the form submit to push values before Livewire fires
                 this.$nextTick(() => {
                     const form = this.$el.closest('form');
                     if (form) {
                         form.addEventListener('submit', (e) => {
-                            // Validate first
                             if (!this.validate()) {
                                 e.preventDefault();
                                 e.stopImmediatePropagation();
                                 return false;
                             }
-                            // Push all values to hidden fields synchronously
                             this.pushToLivewire();
-                        }, true); // capture phase so it runs before Livewire
+                        }, true);
                     }
                 });
             },
 
-            // ── Cascade Handlers (pure Alpine — NO $wire.set calls here) ──────
             async onRegionChange() {
                 this.selectedProvince = '';
                 this.selectedCity     = '';
@@ -567,12 +622,10 @@
                     const data = await this.fetchJSON(`${BASE}/regions/${this.selectedRegion}/provinces/`);
                     this.provinces = this.sortByName(data);
 
-                    // NCR edge case: no provinces, load cities directly
                     if (this.provinces.length === 0) {
                         this.loadingCities = true;
                         const cities = await this.fetchJSON(`${BASE}/regions/${this.selectedRegion}/cities-municipalities/`);
                         this.cities = this.sortByName(cities);
-                        // Set province to region code as fallback so validation passes
                         this.selectedProvince = this.selectedRegion;
                         this.loadingCities = false;
                     }
@@ -625,7 +678,6 @@
                 this.errors.barangay = '';
             },
 
-            // ── Validation ────────────────────────────────────────────
             validate() {
                 let valid = true;
 

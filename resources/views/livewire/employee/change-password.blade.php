@@ -9,6 +9,49 @@
         <span class="font-semibold">Change Your Password</span>
     </x-filament::button>
 
+    {{-- Suppress browser native password eye icon & force toggle to right --}}
+    <style>
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear,
+        input[type="password"]::-webkit-contacts-auto-fill-button,
+        input[type="password"]::-webkit-credentials-auto-fill-button {
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .password-wrapper {
+            position: relative;
+            display: block;
+            width: 100%;
+        }
+        .password-wrapper input {
+            padding-left: 1rem !important;
+            padding-right: 2.75rem !important;
+            padding-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        .password-toggle-btn {
+            position: absolute !important;
+            top: 50% !important;
+            right: 0.75rem !important;
+            left: auto !important;
+            transform: translateY(-50%) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            z-index: 10 !important;
+            width: 1.25rem !important;
+            height: 1.25rem !important;
+        }
+    </style>
+
     {{-- Modal Overlay --}}
     @if ($changingPassword)
         <div
@@ -71,20 +114,30 @@
                             <x-heroicon-o-key class="w-5 h-5 text-amber-600" />
                             Current Password <span class="text-red-600">*</span>
                         </label>
-                        <div class="relative">
+                        <div class="password-wrapper">
                             <input
                                 x-bind:type="showCurrent ? 'text' : 'password'"
                                 wire:model.defer="current_password"
                                 placeholder="Enter your current password"
-                                class="w-full px-4 py-3 pr-12 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
+                                class="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
                                     focus:border-amber-500 dark:focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20
-                                    transition-all placeholder:text-gray-400"
+                                    transition-all placeholder:text-gray-400
+                                    [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
                             />
-                            {{-- <button type="button" @click="showCurrent = !showCurrent"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                <x-heroicon-o-eye x-show="!showCurrent" class="w-5 h-5" />
-                                <x-heroicon-o-eye-slash x-show="showCurrent" class="w-5 h-5" />
-                            </button> --}}
+                            <button
+                                type="button"
+                                @click="showCurrent = !showCurrent"
+                                tabindex="-1"
+                                class="password-toggle-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors focus:outline-none"
+                            >
+                                <svg x-show="!showCurrent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                <svg x-show="showCurrent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5" style="display:none;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                            </button>
                         </div>
                         @error('current_password')
                             <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
@@ -114,13 +167,14 @@
                             </p>
                         </div>
 
-                        <div class="relative">
+                        <div class="password-wrapper">
                             <input
                                 x-bind:type="showNew ? 'text' : 'password'"
                                 wire:model.live="password"
                                 placeholder="Create a strong password"
-                                class="w-full px-4 py-3 pr-12 rounded-lg border-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
+                                class="w-full rounded-lg border-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
                                     focus:ring-4 transition-all placeholder:text-gray-400
+                                    [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden
                                     @if($password)
                                         @if($passwordStrength === 'weak') border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500/20
                                         @elseif($passwordStrength === 'medium') border-yellow-500 dark:border-yellow-500 focus:border-yellow-500 focus:ring-yellow-500/20
@@ -130,11 +184,20 @@
                                         border-gray-300 dark:border-gray-600 focus:border-amber-500 focus:ring-amber-500/20
                                     @endif"
                             />
-                            {{-- <button type="button" @click="showNew = !showNew"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                <x-heroicon-o-eye x-show="!showNew" class="w-5 h-5" />
-                                <x-heroicon-o-eye-slash x-show="showNew" class="w-5 h-5" />
-                            </button> --}}
+                            <button
+                                type="button"
+                                @click="showNew = !showNew"
+                                tabindex="-1"
+                                class="password-toggle-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors focus:outline-none"
+                            >
+                                <svg x-show="!showNew" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                <svg x-show="showNew" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5" style="display:none;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                            </button>
                         </div>
 
                         {{-- Password Strength Indicator --}}
@@ -145,12 +208,10 @@
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">Password Strength</span>
-                                        {{-- FIX: inline style avoids Tailwind JIT purging dynamic color classes --}}
                                         <span class="text-xs font-bold" style="color: {{ $passwordStrength === 'weak' ? '#ef4444' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e') }}">
                                             {{ ucfirst($passwordStrength) }}
                                         </span>
                                     </div>
-                                    {{-- FIX: Segmented bar uses inline style so colors are never purged by Tailwind --}}
                                     @php
                                         $seg1Color = $passwordStrength === 'weak' ? '#ef4444' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e');
                                         $seg2Color = $passwordStrength === 'weak' ? '#e5e7eb' : ($passwordStrength === 'medium' ? '#eab308' : '#22c55e');
@@ -165,7 +226,6 @@
 
                                 {{-- Requirements Checklist --}}
                                 @if($passwordStrength === 'strong')
-                                    {{-- Strong: just show success message --}}
                                     <div class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                                         <x-heroicon-o-check-circle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                                         <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -173,7 +233,6 @@
                                         </span>
                                     </div>
                                 @else
-                                    {{-- Weak or Medium: show only MISSING requirements --}}
                                     <div class="space-y-2">
                                         <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                                             Missing requirements:
@@ -220,7 +279,7 @@
 
                     {{-- Confirm Password --}}
                     <div x-data="{ showConfirm: false }"
-                         class="bg-white dark:bg-gray-800  transition-colors
+                         class="bg-white dark:bg-gray-800 transition-colors
                             @if($password_confirmation)
                                 @if($passwordsMatch === true) border-green-400 dark:border-green-600
                                 @elseif($passwordsMatch === false) border-red-400 dark:border-red-600
@@ -233,13 +292,14 @@
                             <x-heroicon-o-lock-closed class="w-5 h-5 text-amber-600" />
                             Confirm New Password <span class="text-red-600">*</span>
                         </label>
-                        <div class="relative">
+                        <div class="password-wrapper">
                             <input
                                 x-bind:type="showConfirm ? 'text' : 'password'"
                                 wire:model.live="password_confirmation"
                                 placeholder="Re-enter your new password"
-                                class="w-full px-4 py-3 pr-12 rounded-lg border-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
+                                class="w-full rounded-lg border-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-medium
                                     focus:ring-4 transition-all placeholder:text-gray-400
+                                    [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden
                                     @if($password_confirmation)
                                         @if($passwordsMatch === true) border-green-500 dark:border-green-500 focus:border-green-500 focus:ring-green-500/20
                                         @elseif($passwordsMatch === false) border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500/20
@@ -249,11 +309,20 @@
                                         border-gray-300 dark:border-gray-600 focus:border-amber-500 focus:ring-amber-500/20
                                     @endif"
                             />
-                            {{-- <button type="button" @click="showConfirm = !showConfirm"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                                <x-heroicon-o-eye x-show="!showConfirm" class="w-5 h-5" />
-                                <x-heroicon-o-eye-slash x-show="showConfirm" class="w-5 h-5" />
-                            </button> --}}
+                            <button
+                                type="button"
+                                @click="showConfirm = !showConfirm"
+                                tabindex="-1"
+                                class="password-toggle-btn text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors focus:outline-none"
+                            >
+                                <svg x-show="!showConfirm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                <svg x-show="showConfirm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5" style="display:none;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                            </button>
                         </div>
 
                         {{-- Match Indicator --}}

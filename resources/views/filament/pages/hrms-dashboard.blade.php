@@ -1,985 +1,1154 @@
 <x-filament::page>
 
-{{-- Enhanced Compact Styles with ATI Branding --}}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Playfair+Display:wght@700;800;900&display=swap');
+
     :root {
-        --ati-green: #10b981;
-        --ati-green-dark: #059669;
-        --ati-amber: #f59e0b;
-        --ati-amber-dark: #d97706;
+        --g: #059669;
+        --g2: #10b981;
+        --g3: #d1fae5;
+        --a: #d97706;
+        --a2: #f59e0b;
+        --a3: #fef3c7;
+        --ink: #0f1f16;
+        --ink2: #374151;
+        --ink3: #6b7280;
+        --paper: #f9faf7;
+        --card: #ffffff;
+        --border: #e5e7eb;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        --shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+        --radius: 16px;
+        --radius-sm: 10px;
     }
 
-    .dashboard-container {
-        background: linear-gradient(135deg, #f0fdf4 0%, #fef3c7 100%);
+    .dark {
+        --ink: #f0fdf4;
+        --ink2: #d1fae5;
+        --ink3: #6ee7b7;
+        --paper: #0a1612;
+        --card: #0f1f18;
+        --border: #1f3429;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+        --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+    }
+
+    /* ── BASE ── */
+    .hd-root {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;           /* FIX: anchor all rem values to 14px base */
+        background: var(--paper);
         min-height: 100vh;
-        padding: 1.25rem;
+        padding: 1.25rem;          /* FIX: slightly tighter than 1.5rem */
+        color: var(--ink);
     }
 
-    .dark .dashboard-container {
-        background: linear-gradient(135deg, #064e3b 0%, #78350f 100%);
-    }
-
-    /* Compact Hero Section */
-    .hero-section {
-        background: linear-gradient(135deg, #10b981 0%, #059669 50%, #f59e0b 100%);
-        border-radius: 16px;
-        padding: 1.75rem 1.5rem;
-        margin-bottom: 1.25rem;
+    /* ═══════════════════════════════════════
+       HERO BANNER
+    ═══════════════════════════════════════ */
+    .hd-hero {
         position: relative;
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.25);
+        margin-bottom: 1.25rem;
+        background: var(--ink);
+        min-height: 160px;         /* FIX: was unbounded, now capped */
     }
 
-    .hero-section::before {
-        content: '';
+    .hd-hero-bg {
         position: absolute;
-        top: -50%;
-        right: -10%;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
-        animation: float 20s ease-in-out infinite;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 60% 80% at 75% 50%, rgba(5,150,105,0.55) 0%, transparent 65%),
+            radial-gradient(ellipse 40% 60% at 90% 20%, rgba(217,119,6,0.35) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 70% at 10% 80%, rgba(16,185,129,0.2) 0%, transparent 60%),
+            linear-gradient(135deg, #071a10 0%, #0f2d1c 40%, #0a1e12 100%);
     }
 
-    @keyframes float {
-        0%, 100% { transform: translate(0, 0) rotate(0deg); }
-        50% { transform: translate(20px, -20px) rotate(180deg); }
+    .hd-hero-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
     }
 
-    .hero-content { position: relative; z-index: 1; }
-
-    .hero-title {
-        font-size: 1.75rem;
-        font-weight: 900;
-        color: white;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 0.375rem;
-        animation: slideIn 0.6s ease-out;
+    .hd-hero-dots {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        opacity: 0.25;
     }
 
-    .hero-subtitle {
-        font-size: 0.95rem;
-        color: rgba(255,255,255,0.95);
-        margin-bottom: 1rem;
-        animation: slideIn 0.6s ease-out 0.1s backwards;
+    .hd-hero-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #10b981;
     }
 
-    .hero-meta {
+    .hd-hero-content {
+        position: relative;
+        z-index: 2;
+        padding: 1.75rem 2rem;     /* FIX: tighter padding matching old UI */
         display: flex;
-        gap: 0.875rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
         flex-wrap: wrap;
-        animation: slideIn 0.6s ease-out 0.2s backwards;
     }
 
-    .hero-meta-item {
-        display: flex;
+    .hd-hero-eyebrow {
+        display: inline-flex;
         align-items: center;
-        gap: 0.375rem;
-        background: rgba(255,255,255,0.2);
-        backdrop-filter: blur(8px);
-        padding: 0.5rem 0.875rem;
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.25);
-        color: white;
-        font-weight: 600;
-        font-size: 0.875rem;
-        transition: all 0.3s ease;
+        gap: 0.5rem;
+        background: rgba(16,185,129,0.15);
+        border: 1px solid rgba(16,185,129,0.3);
+        color: #6ee7b7;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 0.625rem;
     }
 
-    .hero-meta-item:hover {
-        background: rgba(255,255,255,0.3);
-        transform: translateY(-1px);
-    }
-
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateX(-20px); }
-        to { opacity: 1; transform: translateX(0); }
-    }
-
-    /* Compact Section Headers */
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid transparent;
-        border-image: linear-gradient(90deg, var(--ati-green), var(--ati-amber)) 1;
-    }
-
-    .section-title {
-        font-size: 1.125rem;
+    .hd-hero-name {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.875rem;       /* FIX: was 2.25rem — closer to old UI size */
         font-weight: 800;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-amber));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #ffffff;
+        line-height: 1.15;
+        margin-bottom: 0.375rem;
+        letter-spacing: -0.02em;
     }
 
-    /* Section header link */
-    .section-header-link {
-        margin-left: auto;
-        font-size: 0.75rem;
+    .hd-hero-sub {
+        font-size: 0.875rem;       /* FIX: was 0.9375rem */
+        color: rgba(255,255,255,0.55);
+        font-weight: 400;
+    }
+
+    .hd-hero-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.75rem;
+    }
+
+    .hd-hero-pills {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .hd-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.8);
+        font-family: 'DM Sans', sans-serif;  /* FIX: explicit font */
+        font-size: 0.75rem;        /* FIX: slightly smaller for old-UI match */
         font-weight: 600;
-        color: var(--ati-green);
+        padding: 0.4rem 0.875rem;
+        border-radius: 999px;
+        backdrop-filter: blur(8px);
+        white-space: nowrap;
+    }
+
+    .hd-hero-stripe {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--g), var(--a2), var(--g));
+        background-size: 200% 100%;
+        animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+        0%   { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+    }
+
+    /* ═══════════════════════════════════════
+       SECTION LABEL
+    ═══════════════════════════════════════ */
+    .hd-section-label {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        margin-bottom: 0.75rem;    /* FIX: tighter */
+    }
+
+    .hd-section-icon {
+        width: 28px;               /* FIX: was 32px */
+        height: 28px;
+        border-radius: 7px;
+        background: linear-gradient(135deg, var(--g3), #bbf7d0);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .dark .hd-section-icon {
+        background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.15));
+    }
+
+    .hd-section-title {
+        font-family: 'DM Sans', sans-serif;  /* FIX: was Playfair — match old UI */
+        font-size: 0.9375rem;      /* FIX: consistent with old UI */
+        font-weight: 700;
+        color: var(--g);           /* FIX: green like old UI */
+        letter-spacing: -0.01em;
+    }
+
+    .hd-section-link {
+        margin-left: auto;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--g);
         text-decoration: none;
         display: flex;
         align-items: center;
         gap: 0.25rem;
         padding: 0.25rem 0.625rem;
-        border-radius: 6px;
-        border: 1px solid var(--ati-green);
+        border-radius: 999px;
+        border: 1.5px solid var(--g);
         transition: all 0.2s ease;
         white-space: nowrap;
     }
 
-    .section-header-link:hover {
-        background: var(--ati-green);
+    .hd-section-link:hover {
+        background: var(--g);
         color: white;
     }
 
-    /* Compact Module Cards */
-    .modules-grid {
+    .hd-section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, var(--border), transparent);
+        margin-bottom: 1rem;
+    }
+
+    /* ═══════════════════════════════════════
+       BASE CARD
+    ═══════════════════════════════════════ */
+    .hd-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1.5px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;          /* FIX: was 1.5rem — tighter for old-UI look */
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .hd-card:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+    /* ═══════════════════════════════════════
+       WIDGET GRID (Announcements + Events row)
+    ═══════════════════════════════════════ */
+    .hd-widget-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-template-columns: repeat(2, 1fr);  /* FIX: force 2 equal cols like old UI */
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        align-items: start;        /* FIX: cards don't stretch to match each other */
+    }
+
+    .hd-three-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        align-items: start;
+    }
+
+    /* ═══════════════════════════════════════
+       ADMIN OUTER LAYOUT
+       Left col (Activities + Pending) |
+       Right col (Announcements + Events)
+       Ratio: 3:2 — left gets more space
+    ═══════════════════════════════════════ */
+    .hd-admin-outer {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto auto;
+        grid-template-areas:
+            "activities pending announcements"
+            "activities pending events";
         gap: 1rem;
         margin-bottom: 1.25rem;
     }
 
-    .module-card {
-        background: white;
-        border-radius: 14px;
-        padding: 1.25rem;
-        border: 2px solid #e5e7eb;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .hd-admin-activities    { grid-area: activities; }
+    .hd-admin-pending       { grid-area: pending; }
+    .hd-admin-announcements { grid-area: announcements; }
+    .hd-admin-events        { grid-area: events; }
+
+    /* ═══════════════════════════════════════
+       MODULE CARDS
+    ═══════════════════════════════════════ */
+    .hd-modules-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));  /* FIX: was 240px */
+        gap: 0.875rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .hd-module {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1.5px solid var(--border);
+        padding: 1.125rem;         /* FIX: was 1.375rem */
+        text-decoration: none;
+        display: block;
         position: relative;
         overflow: hidden;
-        animation: fadeInUp 0.5s ease-out backwards;
+        transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+        box-shadow: var(--shadow-sm);
     }
 
-    .dark .module-card {
-        background: #1f2937;
-        border-color: #374151;
-    }
-
-    .module-card::after {
+    .hd-module::before {
         content: '';
         position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 0;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-amber));
-        opacity: 0.08;
-        transition: height 0.3s ease;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--g), var(--a2));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.3s ease;
     }
 
-    .module-card:hover::after { height: 100%; }
+    .hd-module:hover::before { transform: scaleX(1); }
 
-    .module-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 28px rgba(0,0,0,0.12);
-        border-color: var(--ati-green);
+    .hd-module:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        border-color: rgba(5,150,105,0.3);
     }
 
-    .module-header {
+    .hd-module-top {
         display: flex;
         align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        position: relative;
-        z-index: 1;
-    }
-
-    .module-icon-wrapper {
-        flex-shrink: 0;
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .module-card:hover .module-icon-wrapper {
-        transform: scale(1.1) rotate(-8deg);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .module-info { flex: 1; }
-
-    .module-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #1f2937;
-        margin-bottom: 0.375rem;
-    }
-
-    .dark .module-title { color: #f3f4f6; }
-
-    .module-desc {
-        font-size: 0.8125rem;
-        color: #6b7280;
-        line-height: 1.4;
-    }
-
-    .dark .module-desc { color: #9ca3af; }
-
-    .module-footer {
-        display: flex;
-        align-items: center;
         justify-content: space-between;
-        position: relative;
-        z-index: 1;
-        padding-top: 0.875rem;
-        border-top: 1px solid #e5e7eb;
+        margin-bottom: 0.875rem;
     }
 
-    .dark .module-footer { border-color: #374151; }
-
-    .module-stat {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.75rem;
-        background: #f3f4f6;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.8125rem;
-        color: #1f2937;
-    }
-
-    .dark .module-stat {
-        background: #374151;
-        color: #f3f4f6;
-    }
-
-    .module-arrow {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-green-dark));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-    }
-
-    .module-card:hover .module-arrow {
-        transform: translateX(3px);
-        background: linear-gradient(135deg, var(--ati-amber), var(--ati-amber-dark));
-    }
-
-    /* Two-Column Layout for Widgets */
-    .widgets-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.25rem;
-        margin-bottom: 1.25rem;
-    }
-
-    /* Widget Card Base */
-    .widget-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        border: 2px solid #e5e7eb;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        animation: fadeInUp 0.5s ease-out backwards;
-    }
-
-    .dark .widget-card {
-        background: #1f2937;
-        border-color: #374151;
-    }
-
-    /* Activity Feed - Compact */
-    .activity-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.875rem;
-        border-radius: 12px;
-        margin-bottom: 0.75rem;
-        border: 2px solid transparent;
-        transition: all 0.25s ease;
-        animation: fadeInUp 0.5s ease-out backwards;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    .activity-item:last-child { margin-bottom: 0; }
-
-    .activity-item:hover {
-        background: #f9fafb;
-        border-color: var(--ati-green);
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
-    }
-
-    .dark .activity-item:hover { background: #111827; }
-
-    .activity-icon-wrapper {
-        flex-shrink: 0;
-        width: 40px;
+    .hd-module-icon {
+        width: 40px;               /* FIX: was 46px */
         height: 40px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: transform 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .hd-module:hover .hd-module-icon {
+        transform: scale(1.1) rotate(-6deg);
+    }
+
+    .hd-module-stat-badge {
+        font-size: 1.375rem;       /* FIX: was 1.5rem */
+        font-weight: 900;
+        color: var(--ink);
+        font-family: 'DM Sans', sans-serif;  /* FIX: DM Sans matches old UI numbers */
+        line-height: 1;
+    }
+
+    .hd-module-name {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;       /* FIX: was 0.9375rem */
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.01em;
+    }
+
+    .hd-module-desc {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;        /* FIX: was 0.78125rem */
+        color: var(--ink3);
+        line-height: 1.4;
+    }
+
+    .hd-module-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 0.875rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .hd-module-label {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink3);
+    }
+
+    .hd-module-arrow {
+        width: 26px;               /* FIX: was 28px */
+        height: 26px;
+        border-radius: 7px;
+        background: var(--g);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.25s ease;
     }
 
-    .activity-item:hover .activity-icon-wrapper {
-        transform: scale(1.08) rotate(3deg);
+    .hd-module:hover .hd-module-arrow {
+        background: var(--a);
+        transform: translateX(2px);
     }
 
-    .activity-icon-wrapper.blue   { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
-    .activity-icon-wrapper.amber  { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
-    .activity-icon-wrapper.purple { background: linear-gradient(135deg, #e9d5ff, #c084fc); }
-    .activity-icon-wrapper.rose   { background: linear-gradient(135deg, #ffe4e6, #fda4af); }
-    .activity-icon-wrapper.green  { background: linear-gradient(135deg, #d1fae5, #6ee7b7); }
+    /* ═══════════════════════════════════════
+       ACTIVITY LIST
+    ═══════════════════════════════════════ */
+    .hd-activity {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.75rem;  /* FIX: tighter padding */
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1.5px solid transparent;
+        margin-bottom: 0.375rem;
+    }
 
-    .activity-content { flex: 1; min-width: 0; }
+    .hd-activity:last-child { margin-bottom: 0; }
 
-    .activity-title {
+    .hd-activity:hover {
+        background: var(--paper);
+        border-color: rgba(5,150,105,0.2);
+        transform: translateX(3px);
+    }
+
+    .dark .hd-activity:hover { background: rgba(16,185,129,0.05); }
+
+    .hd-activity-ico {
+        width: 34px;               /* FIX: was 38px */
+        height: 34px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .hd-activity-ico.blue   { background: #dbeafe; }
+    .hd-activity-ico.amber  { background: #fef3c7; }
+    .hd-activity-ico.purple { background: #ede9fe; }
+    .hd-activity-ico.rose   { background: #ffe4e6; }
+    .hd-activity-ico.green  { background: #d1fae5; }
+
+    .hd-activity-body { flex: 1; min-width: 0; }
+
+    .hd-activity-name {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8125rem;
         font-weight: 700;
-        font-size: 0.875rem;
-        color: #1f2937;
-        margin-bottom: 0.25rem;
+        color: var(--ink);
+        margin-bottom: 0.15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .dark .activity-title { color: #f3f4f6; }
-
-    .activity-meta {
-        font-size: 0.75rem;
-        color: #6b7280;
+    .hd-activity-meta {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
     }
 
-    .dark .activity-meta { color: #9ca3af; }
-
-    .activity-badge {
+    .hd-chip {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.625rem;
-        border-radius: 6px;
-        font-size: 0.6875rem;
-        font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.625rem;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.06em;
     }
 
-    .activity-badge.blue   { background: #dbeafe; color: #1e40af; }
-    .activity-badge.amber  { background: #fef3c7; color: #92400e; }
-    .activity-badge.purple { background: #e9d5ff; color: #6b21a8; }
-    .activity-badge.rose   { background: #ffe4e6; color: #9f1239; }
-    .activity-badge.green  { background: #d1fae5; color: #065f46; }
+    .hd-chip.blue   { background: #dbeafe; color: #1d4ed8; }
+    .hd-chip.amber  { background: #fef3c7; color: #92400e; }
+    .hd-chip.purple { background: #ede9fe; color: #6d28d9; }
+    .hd-chip.rose   { background: #ffe4e6; color: #9f1239; }
+    .hd-chip.green  { background: #d1fae5; color: #065f46; }
 
-    /* Arrow shown on hover */
-    .activity-arrow {
-        flex-shrink: 0;
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        background: #f3f4f6;
+    .hd-activity-date {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.6875rem;
+        color: var(--ink3);
+    }
+
+    .hd-activity-caret {
+        width: 22px;
+        height: 22px;
+        border-radius: 5px;
+        background: var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
         opacity: 0;
         transform: translateX(-4px);
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
     }
 
-    .dark .activity-arrow { background: #374151; }
-
-    .activity-item:hover .activity-arrow {
+    .hd-activity:hover .hd-activity-caret {
         opacity: 1;
         transform: translateX(0);
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-green-dark));
+        background: var(--g);
     }
 
-    /* Announcements Widget */
-    .announcement-item {
+    /* ═══════════════════════════════════════
+       ANNOUNCEMENT ITEMS
+       FIX: consistent font + compact padding
+    ═══════════════════════════════════════ */
+    .hd-announce {
         display: block;
         text-decoration: none;
-        padding: 1rem;
-        border-left: 3px solid #e5e7eb;
-        margin-bottom: 0.875rem;
-        background: #f9fafb;
-        border-radius: 0 8px 8px 0;
-        transition: all 0.25s ease;
-        cursor: pointer;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        border-left: 3px solid var(--border);
+        background: var(--paper);
+        margin-bottom: 0.375rem;
+        transition: all 0.2s ease;
     }
 
-    .announcement-item:last-child { margin-bottom: 0; }
+    .dark .hd-announce { background: rgba(16,185,129,0.04); }
+    .hd-announce:last-child { margin-bottom: 0; }
 
-    .dark .announcement-item {
-        background: #111827;
-        border-left-color: #374151;
-    }
+    .hd-announce.high   { border-left-color: #dc2626; background: #fef2f2; }
+    .hd-announce.medium { border-left-color: #d97706; background: #fffbeb; }
+    .hd-announce.low    { border-left-color: #059669; }
 
-    .announcement-item.high {
-        border-left-color: #dc2626;
-        background: #fef2f2;
-    }
+    .dark .hd-announce.high   { background: rgba(220,38,38,0.08); }
+    .dark .hd-announce.medium { background: rgba(217,119,6,0.08); }
 
-    .dark .announcement-item.high {
-        background: #7f1d1d;
-        border-left-color: #ef4444;
-    }
-
-    .announcement-item.medium {
-        border-left-color: #f59e0b;
-        background: #fffbeb;
-    }
-
-    .dark .announcement-item.medium {
-        background: #78350f;
-        border-left-color: #fbbf24;
-    }
-
-    .announcement-item:hover {
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    .hd-announce:hover {
+        transform: translateX(3px);
+        box-shadow: var(--shadow-sm);
         border-left-width: 4px;
     }
 
-    .announcement-header {
+    .hd-announce-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.175rem;
+    }
+
+    .hd-announce-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--ink);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hd-announce-date {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.625rem;
+        color: var(--ink3);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .hd-announce-msg {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
+        color: var(--ink2);
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ═══════════════════════════════════════
+       EVENT ITEMS
+    ═══════════════════════════════════════ */
+    .hd-event {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.5rem 0.75rem;   /* FIX: tighter padding */
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.25s ease;
+        background: var(--paper);
+        border: 1.5px solid transparent;
+        margin-bottom: 0.375rem;
+    }
+
+    .dark .hd-event { background: rgba(16,185,129,0.04); }
+    .hd-event:last-child { margin-bottom: 0; }
+
+    .hd-event:hover {
+        background: var(--card);
+        border-color: rgba(5,150,105,0.25);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .hd-event-cal {
+        flex-shrink: 0;
+        width: 38px;               /* FIX: was 42px */
+        border-radius: 7px;
+        background: linear-gradient(160deg, var(--g), #047857);
+        text-align: center;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem 0;
+        transition: background 0.25s ease;
+    }
+
+    .hd-event:hover .hd-event-cal {
+        background: linear-gradient(160deg, var(--a2), var(--a));
+    }
+
+    .hd-event-mon {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.5rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.85;
+    }
+
+    .hd-event-day {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 1rem;           /* FIX: was 1.125rem with Playfair — use DM Sans */
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .hd-event-body { flex: 1; min-width: 0; }
+
+    .hd-event-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 0.175rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hd-event-meta {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.6875rem;
+        color: var(--ink3);
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .announcement-title {
-        font-weight: 700;
-        font-size: 0.875rem;
-        color: #1f2937;
-        flex: 1;
-    }
-
-    .dark .announcement-title { color: #f3f4f6; }
-
-    .announcement-date {
-        font-size: 0.75rem;
-        color: #6b7280;
-    }
-
-    .dark .announcement-date { color: #9ca3af; }
-
-    .announcement-message {
-        font-size: 0.8125rem;
-        color: #4b5563;
-        line-height: 1.5;
-    }
-
-    .dark .announcement-message { color: #d1d5db; }
-
-    /* Events List */
-    .event-item {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem;
-        border-radius: 12px;
-        background: #f9fafb;
-        margin-bottom: 0.75rem;
-        transition: all 0.25s ease;
-        text-decoration: none;
-        cursor: pointer;
-        border: 2px solid transparent;
-    }
-
-    .event-item:last-child { margin-bottom: 0; }
-
-    .dark .event-item { background: #111827; }
-
-    .event-item:hover {
-        background: white;
-        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
-        transform: translateY(-2px);
-        border-color: var(--ati-green);
-    }
-
-    .dark .event-item:hover { background: #1f2937; }
-
-    .event-date-box {
-        flex-shrink: 0;
-        width: 56px;
-        padding: 0.625rem;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-green-dark));
-        border-radius: 10px;
-        text-align: center;
-        color: white;
-        transition: all 0.25s ease;
-    }
-
-    .event-item:hover .event-date-box {
-        background: linear-gradient(135deg, var(--ati-amber), var(--ati-amber-dark));
-    }
-
-    .event-month {
-        font-size: 0.625rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        opacity: 0.9;
-    }
-
-    .event-day {
-        font-size: 1.5rem;
-        font-weight: 900;
-        line-height: 1;
-    }
-
-    .event-details { flex: 1; min-width: 0; }
-
-    .event-title {
-        font-weight: 700;
-        font-size: 0.875rem;
-        color: #1f2937;
-        margin-bottom: 0.375rem;
-    }
-
-    .dark .event-title { color: #f3f4f6; }
-
-    .event-meta {
-        font-size: 0.75rem;
-        color: #6b7280;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
         flex-wrap: wrap;
     }
 
-    .dark .event-meta { color: #9ca3af; }
-
-    /* Birthday Widget */
-    .birthday-item {
+    /* ═══════════════════════════════════════
+       PENDING ACTIONS
+    ═══════════════════════════════════════ */
+    .hd-pending {
         display: flex;
         align-items: center;
         gap: 0.875rem;
-        padding: 0.875rem;
-        border-radius: 10px;
-        background: #f9fafb;
-        margin-bottom: 0.625rem;
-        transition: all 0.25s ease;
-    }
-
-    .birthday-item:last-child { margin-bottom: 0; }
-
-    .dark .birthday-item { background: #111827; }
-
-    .birthday-item:hover {
-        background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        transform: scale(1.02);
-    }
-
-    .dark .birthday-item:hover { background: #1f2937; }
-
-    .birthday-item.today {
-        background: linear-gradient(135deg, #fef3c7, #fde68a);
-        border: 2px solid #f59e0b;
-    }
-
-    .dark .birthday-item.today {
-        background: linear-gradient(135deg, #78350f, #92400e);
-        border-color: #fbbf24;
-    }
-
-    .birthday-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-amber));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-
-    .birthday-info { flex: 1; }
-
-    .birthday-name {
-        font-weight: 700;
-        font-size: 0.875rem;
-        color: #1f2937;
-    }
-
-    .dark .birthday-name { color: #f3f4f6; }
-
-    .birthday-dept {
-        font-size: 0.75rem;
-        color: #6b7280;
-    }
-
-    .dark .birthday-dept { color: #9ca3af; }
-
-    .birthday-date {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--ati-amber);
-    }
-
-    /* Pending Actions */
-    .pending-action-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        border-radius: 12px;
-        background: #f9fafb;
-        margin-bottom: 0.75rem;
-        transition: all 0.25s ease;
-        cursor: pointer;
+        padding: 0.75rem 0.875rem;  /* FIX: tighter */
+        border-radius: var(--radius-sm);
         text-decoration: none;
+        background: var(--paper);
+        transition: all 0.2s ease;
+        margin-bottom: 0.375rem;
+        border: 1.5px solid transparent;
     }
 
-    .pending-action-item:last-child { margin-bottom: 0; }
+    .dark .hd-pending { background: rgba(16,185,129,0.04); }
+    .hd-pending:last-child { margin-bottom: 0; }
 
-    .dark .pending-action-item { background: #111827; }
-
-    .pending-action-item:hover {
-        background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        transform: translateX(4px);
+    .hd-pending:hover {
+        background: var(--card);
+        border-color: rgba(5,150,105,0.2);
+        transform: translateX(3px);
+        box-shadow: var(--shadow-sm);
     }
 
-    .dark .pending-action-item:hover { background: #1f2937; }
-
-    .pending-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+    .hd-pending-ico {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
 
-    .pending-icon.blue   { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
-    .pending-icon.amber  { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
-    .pending-icon.purple { background: linear-gradient(135deg, #e9d5ff, #c084fc); }
-    .pending-icon.green  { background: linear-gradient(135deg, #d1fae5, #6ee7b7); }
-    .pending-icon.rose   { background: linear-gradient(135deg, #ffe4e6, #fda4af); }
+    .hd-pending-ico.blue   { background: #dbeafe; }
+    .hd-pending-ico.amber  { background: #fef3c7; }
+    .hd-pending-ico.purple { background: #ede9fe; }
+    .hd-pending-ico.green  { background: #d1fae5; }
+    .hd-pending-ico.rose   { background: #ffe4e6; }
 
-    .pending-info { flex: 1; }
+    .hd-pending-body { flex: 1; }
 
-    .pending-title {
-        font-weight: 700;
+    .hd-pending-title {
+        font-family: 'DM Sans', sans-serif;
         font-size: 0.875rem;
-        color: #1f2937;
-        margin-bottom: 0.25rem;
+        font-weight: 700;
+        color: var(--ink);
+        margin-bottom: 0.125rem;
     }
 
-    .dark .pending-title { color: #f3f4f6; }
-
-    .pending-subtitle {
+    .hd-pending-sub {
+        font-family: 'DM Sans', sans-serif;
         font-size: 0.75rem;
-        color: #6b7280;
+        color: var(--ink3);
     }
 
-    .dark .pending-subtitle { color: #9ca3af; }
-
-    .pending-count {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--ati-green), var(--ati-green-dark));
+    .hd-pending-num {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--g2), var(--g));
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
+        font-family: 'DM Sans', sans-serif;
         font-weight: 900;
-        font-size: 1.25rem;
-    }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 2.5rem 1.5rem;
-        background: linear-gradient(135deg, #f9fafb, #f3f4f6);
-        border-radius: 14px;
-        border: 2px dashed #d1d5db;
-    }
-
-    .dark .empty-state {
-        background: linear-gradient(135deg, #1f2937, #111827);
-        border-color: #4b5563;
-    }
-
-    .empty-icon {
-        width: 56px;
-        height: 56px;
-        margin: 0 auto 1rem;
-        opacity: 0.25;
-    }
-
-    .empty-title {
         font-size: 1rem;
-        font-weight: 700;
-        color: #6b7280;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(5,150,105,0.35);
+    }
+
+    /* ═══════════════════════════════════════
+       BIRTHDAY
+    ═══════════════════════════════════════ */
+    .hd-bday {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.75rem;  /* FIX: tighter */
+        border-radius: var(--radius-sm);
+        background: var(--paper);
+        transition: all 0.2s ease;
         margin-bottom: 0.375rem;
     }
 
-    .dark .empty-title { color: #9ca3af; }
+    .dark .hd-bday { background: rgba(16,185,129,0.04); }
+    .hd-bday:last-child { margin-bottom: 0; }
 
-    .empty-text {
-        color: #9ca3af;
-        font-size: 0.875rem;
+    .hd-bday:hover {
+        background: var(--card);
+        transform: scale(1.01);
+        box-shadow: var(--shadow-sm);
     }
 
-    .dark .empty-text { color: #6b7280; }
-
-    /* Password Modal */
-    .password-modal {
-        background: white !important;
-        border-radius: 20px;
-        padding: 2.5rem;
-        max-width: 480px;
-        border: 3px solid var(--ati-green);
-        box-shadow: 0 20px 60px rgba(16, 185, 129, 0.35);
-        animation: modalSlideIn 0.4s ease-out;
+    .hd-bday.today {
+        background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        border: 1.5px solid rgba(217,119,6,0.3);
     }
 
-    .dark .password-modal {
-        background: #1f2937 !important;
-        border-color: var(--ati-amber);
-        box-shadow: 0 20px 60px rgba(245, 158, 11, 0.35);
+    .dark .hd-bday.today {
+        background: linear-gradient(135deg, rgba(217,119,6,0.12), rgba(245,158,11,0.08));
+        border-color: rgba(245,158,11,0.3);
     }
 
-    @keyframes modalSlideIn {
-        from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .modal-icon-wrapper {
-        width: 72px;
-        height: 72px;
-        margin: 0 auto 1.25rem;
-        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    .hd-bday-ava {
+        width: 34px;               /* FIX: was 38px */
+        height: 34px;
         border-radius: 50%;
+        background: linear-gradient(135deg, var(--g2), var(--a2));
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: pulse 2s ease-in-out infinite;
+        color: white;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 800;
+        font-size: 0.75rem;
+        flex-shrink: 0;
     }
 
-    .dark .modal-icon-wrapper {
-        background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    .hd-bday-name {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--ink);
     }
 
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-        50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+    .hd-bday-dept {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
+        color: var(--ink3);
     }
 
-    .modal-title {
+    .hd-bday-date {
+        margin-left: auto;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--a);
+        white-space: nowrap;
+    }
+
+    /* ═══════════════════════════════════════
+       EMPTY STATE
+       KEY FIX: shrink padding + icon so cards
+       don't balloon when empty (e.g. Events)
+    ═══════════════════════════════════════ */
+    .hd-empty {
+        text-align: center;
+        padding: 1.5rem 1rem;      /* FIX: was 2.5rem 1.5rem — was doubling card height */
+        border-radius: var(--radius-sm);
+        background: var(--paper);
+        border: 2px dashed var(--border);
+    }
+
+    .dark .hd-empty { background: rgba(16,185,129,0.03); }
+
+    .hd-empty-icon {
+        opacity: 0.2;
+        margin: 0 auto 0.625rem;
+        width: 2rem !important;    /* FIX: was w-12 (3rem) — tiny icon keeps card compact */
+        height: 2rem !important;
+    }
+
+    .hd-empty-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--ink3);
+        margin-bottom: 0.2rem;
+    }
+
+    .hd-empty-text {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
+        color: var(--ink3);
+        opacity: 0.75;
+    }
+
+    /* ═══════════════════════════════════════
+       PASSWORD MODAL
+    ═══════════════════════════════════════ */
+    .hd-pw-modal {
+        background: var(--card);
+        border-radius: 24px;
+        padding: 2.5rem 2.25rem;
+        max-width: 460px;
+        width: 100%;
+        border: 2px solid rgba(220,38,38,0.2);
+        box-shadow: 0 0 0 1px rgba(220,38,38,0.1), 0 24px 80px rgba(0,0,0,0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hd-pw-modal::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #dc2626, #f97316, #dc2626);
+        background-size: 200% 100%;
+        animation: shimmer 2s linear infinite;
+    }
+
+    .hd-pw-icon {
+        width: 68px;
+        height: 68px;
+        margin: 0 auto 1.25rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        border: 2px solid rgba(220,38,38,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: hd-pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes hd-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+        50%       { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+    }
+
+    .hd-pw-title {
+        font-family: 'Playfair Display', serif;
         font-size: 1.75rem;
         font-weight: 900;
-        background: linear-gradient(135deg, #dc2626, #991b1b);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 0.875rem;
+        color: #dc2626;
         text-align: center;
+        margin-bottom: 0.75rem;
     }
 
-    .modal-text {
+    .hd-pw-text {
+        font-family: 'DM Sans', sans-serif;
         text-align: center;
-        color: #6b7280;
         font-size: 0.9375rem;
-        line-height: 1.6;
+        color: var(--ink3);
+        line-height: 1.65;
         margin-bottom: 1.75rem;
     }
 
-    .dark .modal-text { color: #9ca3af; }
-
-    .modal-btn {
+    .hd-pw-btn {
         width: 100%;
-        padding: 0.875rem 1.75rem;
+        padding: 0.9375rem 1.5rem;
         background: linear-gradient(135deg, #dc2626, #991b1b);
         color: white;
         border: none;
         border-radius: 12px;
-        font-weight: 700;
+        font-family: 'DM Sans', sans-serif;
         font-size: 0.9375rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35);
+        font-weight: 700;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.625rem;
+        box-shadow: 0 8px 24px rgba(220,38,38,0.35);
+        transition: all 0.25s ease;
     }
 
-    .modal-btn:hover {
+    .hd-pw-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 28px rgba(220, 38, 38, 0.4);
-        background: linear-gradient(135deg, #991b1b, #7f1d1d);
+        box-shadow: 0 14px 32px rgba(220,38,38,0.4);
     }
 
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
+    /* ═══════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════ */
+    @keyframes hd-fadein {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* Responsive */
+    .hd-in { animation: hd-fadein 0.4s ease-out backwards; }
+    .hd-d1 { animation-delay: 0.05s; }
+    .hd-d2 { animation-delay: 0.10s; }
+    .hd-d3 { animation-delay: 0.15s; }
+    .hd-d4 { animation-delay: 0.20s; }
+    .hd-d5 { animation-delay: 0.25s; }
+    .hd-d6 { animation-delay: 0.30s; }
+
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════ */
     @media (max-width: 1024px) {
-        .admin-grid-3col { grid-template-columns: 1fr 1fr !important; }
+        .hd-three-grid { grid-template-columns: 1fr 1fr !important; }
+        .hd-admin-outer {
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-areas:
+                "activities pending"
+                "announcements events" !important;
+        }
     }
 
     @media (max-width: 768px) {
-        .dashboard-container { padding: 0.875rem; }
-        .hero-section { padding: 1.25rem 1rem; }
-        .hero-title { font-size: 1.5rem; }
-        .hero-subtitle { font-size: 0.875rem; }
-        .modules-grid { grid-template-columns: 1fr; }
-        .widgets-grid { grid-template-columns: 1fr; }
-        .admin-grid-3col { grid-template-columns: 1fr !important; }
+        .hd-root { padding: 0.875rem; }
+        .hd-hero-content { padding: 1.25rem 1.5rem; }
+        .hd-hero-name { font-size: 1.5rem; }
+        .hd-hero-right { align-items: flex-start; }
+        .hd-widget-grid { grid-template-columns: 1fr !important; }
+        .hd-three-grid  { grid-template-columns: 1fr !important; }
+        .hd-admin-outer {
+            grid-template-columns: 1fr !important;
+            grid-template-areas:
+                "activities"
+                "pending"
+                "announcements"
+                "events" !important;
+        }
+        .hd-modules-grid { grid-template-columns: 1fr 1fr; }
     }
 
-    /* Stagger Animations */
-    .stagger-1 { animation-delay: 0.05s; }
-    .stagger-2 { animation-delay: 0.1s; }
-    .stagger-3 { animation-delay: 0.15s; }
-    .stagger-4 { animation-delay: 0.2s; }
-    .stagger-5 { animation-delay: 0.25s; }
-    .stagger-6 { animation-delay: 0.3s; }
+    @media (max-width: 480px) {
+        .hd-modules-grid { grid-template-columns: 1fr; }
+        .hd-hero-name { font-size: 1.25rem; }
+    }
 </style>
 
-{{-- Password Change Modal --}}
+{{-- ════════════════════════════════
+     PASSWORD CHANGE MODAL
+════════════════════════════════ --}}
 @if($mustChangePassword)
     <div x-data="{ open: true }" x-show="open" x-trap="open"
          class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100">
-        <div x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-90"
-             x-transition:enter-end="opacity-100 scale-100"
-             class="password-modal w-full">
-            <div class="modal-icon-wrapper">
-                <x-heroicon-o-shield-exclamation class="w-9 h-9 text-red-600 dark:text-red-400" />
+        <div class="hd-pw-modal"
+             x-transition:enter="transition ease-out duration-350"
+             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+            <div class="hd-pw-icon">
+                <x-heroicon-o-shield-exclamation class="w-8 h-8 text-red-600" />
             </div>
-            <h2 class="modal-title">Security Alert!</h2>
-            <p class="modal-text">
-                You are currently using a temporary password. For your account security, please update your password immediately to continue using the system.
+            <h2 class="hd-pw-title">Security Alert</h2>
+            <p class="hd-pw-text">
+                You are using a temporary password. Please update your password immediately to secure your account and continue using the system.
             </p>
             <button @click="window.location.href='{{ route('filament.hrms.pages.profile') }}'"
-                    class="modal-btn">
-                <x-heroicon-o-lock-closed class="w-5 h-5" />
-                <span>Update Password Now</span>
+                    class="hd-pw-btn">
+                <x-heroicon-o-lock-closed class="w-4 h-4" />
+                Update Password Now
             </button>
         </div>
     </div>
 @endif
 
-{{-- Dashboard Container --}}
-<div class="dashboard-container">
+{{-- ════════════════════════════════
+     MAIN DASHBOARD
+════════════════════════════════ --}}
+<div class="hd-root">
 
-    {{-- HERO / GREETING SECTION --}}
-    <div class="hero-section">
-        <div class="hero-content">
-            <h1 class="hero-title">{{ $this->getGreeting() }}</h1>
-            <p class="hero-subtitle">Welcome back to ATI-HRMS. Here's your overview for today.</p>
-            <div class="hero-meta">
-                <div class="hero-meta-item">
-                    <x-heroicon-o-calendar class="w-4 h-4" />
-                    <span>{{ $this->getCurrentDate() }}</span>
+    {{-- ── HERO ── --}}
+    <div class="hd-hero hd-in">
+        <div class="hd-hero-bg"></div>
+        <div class="hd-hero-grid"></div>
+
+        <div class="hd-hero-dots">
+            @for($i = 0; $i < 25; $i++)
+                <div class="hd-hero-dot"></div>
+            @endfor
+        </div>
+
+        <div class="hd-hero-content">
+            <div class="hd-hero-left">
+                <div class="hd-hero-eyebrow">
+                    <x-heroicon-o-building-office-2 class="w-3 h-3" />
+                    ATI Human Resource Management System
                 </div>
-                <div class="hero-meta-item">
-                    <x-heroicon-o-clock class="w-4 h-4" />
-                    <span>{{ $this->getCurrentTime() }}</span>
+                <h1 class="hd-hero-name">{{ $this->getGreeting() }}</h1>
+                <p class="hd-hero-sub">Here's your workspace overview for today.</p>
+            </div>
+            <div class="hd-hero-right">
+                <div class="hd-hero-pills">
+                    <div class="hd-pill">
+                        <x-heroicon-o-calendar class="w-3.5 h-3.5" />
+                        {{ $this->getCurrentDate() }}
+                    </div>
+                    <div class="hd-pill">
+                        <x-heroicon-o-clock class="w-3.5 h-3.5" />
+                        {{ $this->getCurrentTime() }}
+                    </div>
+                    <div class="hd-pill" style="border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.12); color: #6ee7b7;">
+                        @if($user->isAdmin())
+                            <x-heroicon-o-shield-check class="w-3.5 h-3.5" />
+                            Administrator
+                        @else
+                            <x-heroicon-o-user class="w-3.5 h-3.5" />
+                            Employee
+                        @endif
+                    </div>
                 </div>
-                @if($user->isAdmin())
-                    <div class="hero-meta-item">
-                        <x-heroicon-o-shield-check class="w-4 h-4" />
-                        <span>Administrator</span>
-                    </div>
-                @else
-                    <div class="hero-meta-item">
-                        <x-heroicon-o-user class="w-4 h-4" />
-                        <span>Employee</span>
-                    </div>
-                @endif
             </div>
         </div>
+
+        <div class="hd-hero-stripe"></div>
     </div>
 
-    {{-- EMPLOYEE VIEW --}}
+    {{-- ════════════════════════════════
+         EMPLOYEE VIEW
+    ════════════════════════════════ --}}
     @if(!$user->isAdmin())
-        <div class="widgets-grid" style="margin-bottom: 1.25rem;">
+        <div class="hd-widget-grid hd-in hd-d1">
 
             {{-- Announcements --}}
-            <div class="widget-card stagger-1">
-                <div class="section-header">
-                    <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    <h3 class="section-title">Announcements</h3>
-                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="section-header-link">
-                        View All
-                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+            <div class="hd-card">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-megaphone class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Announcements</span>
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="hd-section-link">
+                        View All <x-heroicon-o-arrow-right class="w-3 h-3" />
                     </a>
                 </div>
+                <div class="hd-section-divider"></div>
                 @forelse($announcements as $announcement)
                     <a href="{{ route('filament.hrms.resources.announcements.index') }}"
-                       class="announcement-item {{ $announcement['priority'] }}">
-                        <div class="announcement-header">
-                            <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
-                            <div class="announcement-title">{{ $announcement['title'] }}</div>
-                            <div class="announcement-date">{{ $announcement['date'] }}</div>
+                       class="hd-announce {{ $announcement['priority'] }}">
+                        <div class="hd-announce-top">
+                            <div class="hd-announce-title">{{ $announcement['title'] }}</div>
+                            <div class="hd-announce-date">{{ $announcement['date'] }}</div>
                         </div>
-                        <div class="announcement-message">{{ $announcement['message'] }}</div>
+                        <div class="hd-announce-msg">{{ Str::limit($announcement['message'], 100) }}</div>
                     </a>
                 @empty
-                    <div class="empty-state">
-                        <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
-                        <h4 class="empty-title">No Announcements</h4>
-                        <p class="empty-text">Check back later for updates.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-bell-slash class="hd-empty-icon text-gray-400" />
+                        <div class="hd-empty-title">No Announcements</div>
+                        <div class="hd-empty-text">Check back later for updates.</div>
                     </div>
                 @endforelse
             </div>
 
             {{-- Upcoming Events --}}
-            <div class="widget-card stagger-2">
-                <div class="section-header">
-                    <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    <h3 class="section-title">Upcoming Events</h3>
-                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="section-header-link">
-                        View All
-                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+            <div class="hd-card">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-calendar-days class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Upcoming Events</span>
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="hd-section-link">
+                        View All <x-heroicon-o-arrow-right class="w-3 h-3" />
                     </a>
                 </div>
+                <div class="hd-section-divider"></div>
                 @forelse($upcomingEvents as $event)
-                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="event-item">
-                        <div class="event-date-box">
-                            <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
-                            <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="hd-event">
+                        <div class="hd-event-cal">
+                            <div class="hd-event-mon">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
+                            <div class="hd-event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
                         </div>
-                        <div class="event-details">
-                            <div class="event-title">{{ $event['title'] }}</div>
-                            <div class="event-meta">
+                        <div class="hd-event-body">
+                            <div class="hd-event-title">{{ $event['title'] }}</div>
+                            <div class="hd-event-meta">
                                 <span class="flex items-center gap-1">
-                                    <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                                    {{ $event['time'] }}
+                                    <x-heroicon-o-clock class="w-3 h-3" /> {{ $event['time'] }}
                                 </span>
                                 <span class="flex items-center gap-1">
-                                    <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
-                                    {{ $event['location'] }}
+                                    <x-heroicon-o-map-pin class="w-3 h-3" /> {{ $event['location'] }}
                                 </span>
                             </div>
                         </div>
                     </a>
                 @empty
-                    <div class="empty-state">
-                        <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
-                        <h4 class="empty-title">No Upcoming Events</h4>
-                        <p class="empty-text">Stay tuned for future events.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-calendar-days class="hd-empty-icon text-gray-400" />
+                        <div class="hd-empty-title">No Upcoming Events</div>
+                        <div class="hd-empty-text">Stay tuned for future events.</div>
                     </div>
                 @endforelse
             </div>
@@ -987,176 +1156,184 @@
         </div>
     @endif
 
-    {{-- ADMIN VIEW --}}
+    {{-- ════════════════════════════════
+         ADMIN VIEW
+         Layout: [Recent Activities] [Pending Actions] | [Announcements + Events stacked]
+    ════════════════════════════════ --}}
     @if($user->isAdmin())
-        {{-- Row 1: Three columns --}}
-        <div class="admin-grid-3col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+
+        {{-- 3-col grid: activities | pending | [announcements / events] --}}
+        <div class="hd-admin-outer hd-in hd-d1">
 
             {{-- Col 1: Recent Activities --}}
-            <div class="widget-card stagger-1">
-                <div class="section-header">
-                    <x-heroicon-o-clock class="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    <h3 class="section-title">Recent Activities</h3>
+            <div class="hd-card hd-admin-activities">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-clock class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Recent Activities</span>
                 </div>
-                @forelse($recentActivities as $index => $activity)
-                    <a href="{{ $activity['url'] }}"
-                       class="activity-item"
-                       style="animation-delay: {{ $index * 0.05 }}s">
-                        <div class="activity-icon-wrapper {{ $activity['color'] }}">
-                            <x-dynamic-component
-                                :component="$activity['icon']"
-                                class="w-5 h-5 text-{{ $activity['color'] }}-600" />
+                <div class="hd-section-divider"></div>
+                @forelse($recentActivities as $activity)
+                    <a href="{{ $activity['url'] }}" class="hd-activity">
+                        <div class="hd-activity-ico {{ $activity['color'] }}">
+                            <x-dynamic-component :component="$activity['icon']"
+                                class="w-4 h-4 text-{{ $activity['color'] }}-600" />
                         </div>
-                        <div class="activity-content">
-                            <div class="activity-title">{{ $activity['employee'] }}</div>
-                            <div class="activity-meta">
-                                <span class="activity-badge {{ $activity['color'] }}">{{ $activity['type'] }}</span>
-                                <span>{{ $activity['status'] }}</span>
-                                <span>•</span>
-                                <span>{{ $activity['date'] }}</span>
+                        <div class="hd-activity-body">
+                            <div class="hd-activity-name">{{ $activity['employee'] }}</div>
+                            <div class="hd-activity-meta">
+                                <span class="hd-chip {{ $activity['color'] }}">{{ $activity['type'] }}</span>
+                                <span class="hd-activity-date">{{ $activity['date'] }}</span>
                             </div>
                         </div>
-                        <div class="activity-arrow">
-                            <x-heroicon-o-arrow-right class="w-3.5 h-3.5 text-white" />
+                        <div class="hd-activity-caret">
+                            <x-heroicon-o-arrow-right class="w-3 h-3 text-white" />
                         </div>
                     </a>
                 @empty
-                    <div class="empty-state">
-                        <x-heroicon-o-inbox class="empty-icon text-gray-400" />
-                        <h4 class="empty-title">No Recent Activities</h4>
-                        <p class="empty-text">Activities will appear here.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-inbox class="hd-empty-icon text-gray-400" />
+                        <div class="hd-empty-title">No Recent Activities</div>
+                        <div class="hd-empty-text">Activities will appear here.</div>
                     </div>
                 @endforelse
             </div>
 
             {{-- Col 2: Pending Actions --}}
-            <div class="widget-card stagger-2">
-                <div class="section-header">
-                    <x-heroicon-o-bell-alert class="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    <h3 class="section-title">Pending Actions</h3>
+            <div class="hd-card hd-admin-pending">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-bell-alert class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Pending Actions</span>
                 </div>
+                <div class="hd-section-divider"></div>
                 @forelse($pendingActions as $action)
-                    <a href="{{ route($action['route']) }}" class="pending-action-item">
-                        <div class="pending-icon {{ $action['color'] }}">
-                            <x-dynamic-component :component="$action['icon']" class="w-6 h-6 text-{{ $action['color'] }}-600" />
+                    <a href="{{ route($action['route']) }}" class="hd-pending">
+                        <div class="hd-pending-ico {{ $action['color'] }}">
+                            <x-dynamic-component :component="$action['icon']"
+                                class="w-5 h-5 text-{{ $action['color'] }}-600" />
                         </div>
-                        <div class="pending-info">
-                            <div class="pending-title">{{ $action['title'] }}</div>
-                            <div class="pending-subtitle">Requires your attention</div>
+                        <div class="hd-pending-body">
+                            <div class="hd-pending-title">{{ $action['title'] }}</div>
+                            <div class="hd-pending-sub">Requires attention</div>
                         </div>
-                        <div class="pending-count">{{ $action['count'] }}</div>
+                        <div class="hd-pending-num">{{ $action['count'] }}</div>
                     </a>
                 @empty
-                    <div class="empty-state">
-                        <x-heroicon-o-check-circle class="empty-icon text-green-400" />
-                        <h4 class="empty-title">All Caught Up!</h4>
-                        <p class="empty-text">No pending actions at this time.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-check-circle class="hd-empty-icon text-green-400" />
+                        <div class="hd-empty-title">All Caught Up!</div>
+                        <div class="hd-empty-text">No pending actions right now.</div>
                     </div>
                 @endforelse
             </div>
 
-            {{-- Col 3: Announcements --}}
-            <div class="widget-card stagger-3">
-                <div class="section-header">
-                    <x-heroicon-o-megaphone class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    <h3 class="section-title">Announcements</h3>
-                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="section-header-link">
-                        View All
-                        <x-heroicon-o-arrow-right class="w-3 h-3" />
+            {{-- Col 3 Row 1: Announcements --}}
+            <div class="hd-card hd-admin-announcements">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-megaphone class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Announcements</span>
+                    <a href="{{ route('filament.hrms.resources.announcements.index') }}" class="hd-section-link">
+                        View All <x-heroicon-o-arrow-right class="w-3 h-3" />
                     </a>
                 </div>
+                <div class="hd-section-divider"></div>
                 @forelse($announcements as $announcement)
                     <a href="{{ route('filament.hrms.resources.announcements.index') }}"
-                       class="announcement-item {{ $announcement['priority'] }}">
-                        <div class="announcement-header">
-                            <x-dynamic-component :component="$announcement['icon']" class="w-4 h-4 flex-shrink-0" />
-                            <div class="announcement-title">{{ $announcement['title'] }}</div>
-                            <div class="announcement-date">{{ $announcement['date'] }}</div>
+                       class="hd-announce {{ $announcement['priority'] }}">
+                        <div class="hd-announce-top">
+                            <div class="hd-announce-title">{{ $announcement['title'] }}</div>
+                            <div class="hd-announce-date">{{ $announcement['date'] }}</div>
                         </div>
-                        <div class="announcement-message">{{ $announcement['message'] }}</div>
+                        <div class="hd-announce-msg">{{ Str::limit($announcement['message'], 90) }}</div>
                     </a>
                 @empty
-                    <div class="empty-state">
-                        <x-heroicon-o-bell-slash class="empty-icon text-gray-400" />
-                        <h4 class="empty-title">No Announcements</h4>
-                        <p class="empty-text">Check back later for updates.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-bell-slash class="hd-empty-icon text-gray-400" />
+                        <div class="hd-empty-title">No Announcements</div>
+                        <div class="hd-empty-text">Nothing new at the moment.</div>
                     </div>
                 @endforelse
             </div>
 
-        </div>
-
-        {{-- Row 2: Upcoming Events full-width --}}
-        <div class="widget-card stagger-4" style="margin-bottom: 1.25rem;">
-            <div class="section-header">
-                <x-heroicon-o-calendar-days class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                <h3 class="section-title">Upcoming Events</h3>
-                <a href="{{ route('filament.hrms.resources.events.index') }}" class="section-header-link">
-                    View All
-                    <x-heroicon-o-arrow-right class="w-3 h-3" />
-                </a>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem;">
+            {{-- Col 3 Row 2: Upcoming Events --}}
+            <div class="hd-card hd-admin-events">
+                <div class="hd-section-label">
+                    <div class="hd-section-icon">
+                        <x-heroicon-o-calendar-days class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <span class="hd-section-title">Upcoming Events</span>
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="hd-section-link">
+                        View All <x-heroicon-o-arrow-right class="w-3 h-3" />
+                    </a>
+                </div>
+                <div class="hd-section-divider"></div>
                 @forelse($upcomingEvents as $event)
-                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="event-item" style="margin-bottom: 0;">
-                        <div class="event-date-box">
-                            <div class="event-month">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
-                            <div class="event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
+                    <a href="{{ route('filament.hrms.resources.events.index') }}" class="hd-event">
+                        <div class="hd-event-cal">
+                            <div class="hd-event-mon">{{ \Carbon\Carbon::parse($event['date'])->format('M') }}</div>
+                            <div class="hd-event-day">{{ \Carbon\Carbon::parse($event['date'])->format('d') }}</div>
                         </div>
-                        <div class="event-details">
-                            <div class="event-title">{{ $event['title'] }}</div>
-                            <div class="event-meta">
+                        <div class="hd-event-body">
+                            <div class="hd-event-title">{{ $event['title'] }}</div>
+                            <div class="hd-event-meta">
                                 <span class="flex items-center gap-1">
-                                    <x-heroicon-o-clock class="w-3.5 h-3.5" />
-                                    {{ $event['time'] }}
+                                    <x-heroicon-o-clock class="w-3 h-3" /> {{ $event['time'] }}
                                 </span>
                                 <span class="flex items-center gap-1">
-                                    <x-heroicon-o-map-pin class="w-3.5 h-3.5" />
-                                    {{ $event['location'] }}
+                                    <x-heroicon-o-map-pin class="w-3 h-3" /> {{ $event['location'] }}
                                 </span>
                             </div>
                         </div>
                     </a>
                 @empty
-                    <div class="empty-state" style="grid-column: 1 / -1;">
-                        <x-heroicon-o-calendar-days class="empty-icon text-gray-400" />
-                        <h4 class="empty-title">No Upcoming Events</h4>
-                        <p class="empty-text">Stay tuned for future events.</p>
+                    <div class="hd-empty">
+                        <x-heroicon-o-calendar-days class="hd-empty-icon text-gray-400" />
+                        <div class="hd-empty-title">No Upcoming Events</div>
+                        <div class="hd-empty-text">Stay tuned for future events.</div>
                     </div>
                 @endforelse
             </div>
-        </div>
+
+        </div>{{-- /hd-admin-outer --}}
+
     @endif
 
-    {{-- QUICK ACCESS MODULES --}}
-    <div>
-        <div class="section-header">
-            <x-heroicon-o-squares-2x2 class="w-6 h-6 text-green-600 dark:text-green-400" />
-            <h2 class="section-title">Quick Access Modules</h2>
+    {{-- ════════════════════════════════
+         QUICK ACCESS MODULES
+    ════════════════════════════════ --}}
+    <div class="hd-in hd-d3" style="margin-bottom: 1.25rem;">
+        <div class="hd-section-label" style="margin-bottom: 1rem;">
+            <div class="hd-section-icon">
+                <x-heroicon-o-squares-2x2 class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+            <span class="hd-section-title">Quick Access Modules</span>
         </div>
 
-        <div class="modules-grid">
+        <div class="hd-modules-grid">
             @foreach($modules as $index => $module)
-                <a href="{{ route($module['route']) }}" class="module-card stagger-{{ $index + 1 }}">
-                    <div class="module-header">
-                        <div class="module-icon-wrapper {{ $module['icon_bg'] }}">
+                <a href="{{ route($module['route']) }}"
+                   class="hd-module hd-in"
+                   style="animation-delay: {{ 0.05 * ($index + 1) }}s;">
+                    <div class="hd-module-top">
+                        <div class="hd-module-icon {{ $module['icon_bg'] }}">
                             <x-dynamic-component :component="$module['icon']"
-                                class="w-6 h-6 {{ $module['icon_color'] }}" />
+                                class="w-5 h-5 {{ $module['icon_color'] }}" />
                         </div>
-                        <div class="module-info">
-                            <h3 class="module-title">{{ $module['title'] }}</h3>
-                            <p class="module-desc">
-                                {{ $user->isAdmin() ? $module['admin_text'] : $module['employee_text'] }}
-                            </p>
-                        </div>
+                        <div class="hd-module-stat-badge">{{ $module['stat'] }}</div>
                     </div>
-                    <div class="module-footer">
-                        <div class="module-stat">
-                            <x-heroicon-o-document-text class="w-4 h-4 {{ $module['icon_color'] }}" />
-                            <span>{{ $module['stat'] }}</span>
-                        </div>
-                        <div class="module-arrow">
-                            <x-heroicon-o-arrow-right class="w-4 h-4 text-white" />
+                    <div class="hd-module-name">{{ $module['title'] }}</div>
+                    <div class="hd-module-desc">
+                        {{ $user->isAdmin() ? $module['admin_text'] : $module['employee_text'] }}
+                    </div>
+                    <div class="hd-module-footer">
+                        <span class="hd-module-label">Total Records</span>
+                        <div class="hd-module-arrow">
+                            <x-heroicon-o-arrow-right class="w-3 h-3 text-white" />
                         </div>
                     </div>
                 </a>
@@ -1164,33 +1341,38 @@
         </div>
     </div>
 
-    {{-- BIRTHDAY CELEBRANTS --}}
-    <div class="widget-card stagger-1" style="margin-bottom: 1.25rem;">
-        <div class="section-header">
-            <x-heroicon-o-cake class="w-6 h-6 text-pink-600 dark:text-pink-400" />
-            <h3 class="section-title">Birthday Celebrants This Month</h3>
+    {{-- ════════════════════════════════
+         BIRTHDAY CELEBRANTS
+    ════════════════════════════════ --}}
+    <div class="hd-card hd-in hd-d4">
+        <div class="hd-section-label">
+            <div class="hd-section-icon">
+                <x-heroicon-o-cake class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+            <span class="hd-section-title">Birthday Celebrants This Month</span>
         </div>
+        <div class="hd-section-divider"></div>
         @forelse($birthdayCelebrants as $celebrant)
-            <div class="birthday-item {{ $celebrant['is_today'] ? 'today' : '' }}">
-                <div class="birthday-avatar">
+            <div class="hd-bday {{ $celebrant['is_today'] ? 'today' : '' }}">
+                <div class="hd-bday-ava">
                     {{ strtoupper(substr($celebrant['name'], 0, 2)) }}
                 </div>
-                <div class="birthday-info">
-                    <div class="birthday-name">
+                <div style="flex:1; min-width:0;">
+                    <div class="hd-bday-name">
                         {{ $celebrant['name'] }}
                         @if($celebrant['is_today'])
                             <span class="ml-1">🎉</span>
                         @endif
                     </div>
-                    <div class="birthday-dept">{{ $celebrant['department'] }}</div>
+                    <div class="hd-bday-dept">{{ $celebrant['department'] }}</div>
                 </div>
-                <div class="birthday-date">{{ $celebrant['date'] }}</div>
+                <div class="hd-bday-date">{{ $celebrant['date'] }}</div>
             </div>
         @empty
-            <div class="empty-state">
-                <x-heroicon-o-face-smile class="empty-icon text-gray-400" />
-                <h4 class="empty-title">No Birthdays This Month</h4>
-                <p class="empty-text">We'll celebrate next month!</p>
+            <div class="hd-empty">
+                <x-heroicon-o-face-smile class="hd-empty-icon text-gray-400" />
+                <div class="hd-empty-title">No Birthdays This Month</div>
+                <div class="hd-empty-text">We'll celebrate next month!</div>
             </div>
         @endforelse
     </div>

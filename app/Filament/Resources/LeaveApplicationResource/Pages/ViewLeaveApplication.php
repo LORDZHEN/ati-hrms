@@ -16,7 +16,7 @@ class ViewLeaveApplication extends ViewRecord
     {
         return [
 
-            // 🔹 ADMIN ONLY — APPROVE
+            // ADMIN ONLY — APPROVE
             Actions\Action::make('approve')
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
@@ -27,6 +27,8 @@ class ViewLeaveApplication extends ViewRecord
                     && $this->record->status === 'pending'
                 )
                 ->requiresConfirmation()
+                ->modalHeading('Approve Leave Application')
+                ->modalDescription('Are you sure you want to approve this leave application?')
                 ->action(function () {
                     $this->record->update([
                         'status' => 'approved',
@@ -39,14 +41,14 @@ class ViewLeaveApplication extends ViewRecord
                         new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
                     );
 
-                    // Flash notification only for the currently logged-in admin
                     Notification::make()
-                        ->title('Leave Approved')
+                        ->title('Leave Application Approved')
+                        ->body('The leave application has been approved successfully.')
                         ->success()
                         ->send();
                 }),
 
-            // 🔹 ADMIN ONLY — DISAPPROVE
+            // ADMIN ONLY — DISAPPROVE
             Actions\Action::make('disapprove')
                 ->label('Disapprove')
                 ->icon('heroicon-o-x-circle')
@@ -59,9 +61,13 @@ class ViewLeaveApplication extends ViewRecord
                 ->form([
                     \Filament\Forms\Components\Textarea::make('disapproval_reason')
                         ->label('Reason for Disapproval')
-                        ->required(),
+                        ->required()
+                        ->rows(4)
+                        ->placeholder('Please provide a clear reason for disapproving this leave application...'),
                 ])
                 ->requiresConfirmation()
+                ->modalHeading('Disapprove Leave Application')
+                ->modalDescription('Please provide a reason for disapproving this leave application.')
                 ->action(function (array $data) {
                     $this->record->update([
                         'status' => 'disapproved',
@@ -75,10 +81,27 @@ class ViewLeaveApplication extends ViewRecord
                     );
 
                     Notification::make()
-                        ->title('Leave Disapproved')
+                        ->title('Leave Application Disapproved')
+                        ->body('The leave application has been disapproved.')
                         ->danger()
                         ->send();
                 }),
+
+            // PRINT ACTION
+            Actions\Action::make('print')
+                ->label('Print Leave Form')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->url(fn() => route('leave_application.print', $this->record))
+                ->openUrlInNewTab(),
+
+            // EDIT ACTION (Employee only, pending status only)
+            Actions\EditAction::make()
+                ->visible(
+                    fn() =>
+                    auth()->user()->role === 'employee'
+                    && $this->record->status === 'pending'
+                ),
         ];
     }
 }

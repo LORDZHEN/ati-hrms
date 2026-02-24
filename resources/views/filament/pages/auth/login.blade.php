@@ -148,15 +148,14 @@
             .login-container {
                 background: rgba(17, 24, 39, 0.92);
                 box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+                color: #e5e7eb;
             }
 
-            .login-title {
-                color: #86efac;
-            }
-
-            .login-subtitle {
-                color: #6ee7b7;
-            }
+            .login-title      { color: #86efac; }
+            .login-subtitle   { color: #6ee7b7; }
+            .register-link    { color: #6ee7b7; }
+            .register-link a  { color: #4ade80; }
+            .toast            { background: #15803d; }
 
             .error-message {
                 background: #3b0f0f;
@@ -164,16 +163,78 @@
                 color: #fca5a5;
             }
 
-            .register-link {
-                color: #6ee7b7;
+            /* ── All labels — broad catch-all ── */
+            label,
+            span[class*="label"],
+            .fi-fo-field-wrp label,
+            .fi-label,
+            .fi-fo-field-wrp-label,
+            [class*="fi-fo"] label,
+            [class*="fi-label"],
+            .fi-fo-field-wrp > div > label,
+            form label,
+            .login-container label {
+                color: #e5e7eb !important;
             }
 
-            .register-link a {
-                color: #4ade80;
+            /* ── All input fields ── */
+            input,
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="tel"],
+            input[type="number"],
+            input[type="date"],
+            textarea,
+            select {
+                background-color: rgba(255, 255, 255, 0.10) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
+                color: #ffffff !important;
             }
 
-            .toast {
-                background: #15803d;
+            input::placeholder,
+            textarea::placeholder {
+                color: rgba(255, 255, 255, 0.4) !important;
+            }
+
+            /* ── Filament input wrappers ── */
+            .fi-input-wrp,
+            .fi-fo-field-wrp-input,
+            [class*="fi-input"] {
+                background-color: rgba(255, 255, 255, 0.10) !important;
+                border-color: rgba(255, 255, 255, 0.25) !important;
+            }
+
+            /* ── Checkbox label ── */
+            .fi-fo-checkbox label,
+            .fi-checkbox-label {
+                color: #d1d5db !important;
+            }
+
+            /* ── Hint and error text ── */
+            .fi-fo-field-wrp-hint,
+            .fi-hint,
+            [class*="fi-hint"] {
+                color: #9ca3af !important;
+            }
+
+            .fi-fo-field-wrp-error,
+            .fi-error,
+            [class*="fi-error"] {
+                color: #fca5a5 !important;
+            }
+
+            /* ── Eye toggle icon inside password field ── */
+            .fi-input-wrp button svg,
+            .fi-fo-password button svg {
+                color: #9ca3af !important;
+            }
+
+            /* ── Required asterisk (*) ── */
+            .fi-fo-field-wrp-label sup,
+            label sup,
+            label span[class*="required"] {
+                color: #f87171 !important;
             }
         }
     </style>

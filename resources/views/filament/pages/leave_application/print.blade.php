@@ -269,8 +269,8 @@
                 <div class="agency-text">
                     Republic of the Philippines<br>
                     <strong>AGRICULTURAL TRAINING INSTITUTE</strong><br>
-                    Elliptical Road, Diliman, Quezon City 1101<br>
-                    Email Address: ati@ati.da.gov.ph | Fax No. 927-6373 | www.ati.da.gov.ph
+                    Datu Abdul Dadia, Panabo City, Davao Del Norte, Philippines 8105<br>
+                    Email Address: atixI.davao@gmail.com | Tel No. (084) 823-0557 | www.ati.da.gov.ph
                 </div>
                 <div class="form-title">APPLICATION FOR LEAVE</div>
             </div>
