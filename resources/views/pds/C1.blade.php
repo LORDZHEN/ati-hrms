@@ -1,484 +1,408 @@
-{{-- resources/views/pds/C1.blade.php --}}
-<style>
-    .pds-container {
-        font-family: Arial, sans-serif;
-        font-size: 9pt;
-        line-height: 1.2;
-        color: #000;
-        max-width: 8.5in;
-        margin: 0 auto;
-        padding: 0.5in;
-    }
+{{-- resources/views/pds/C1.blade.php | Page 1 of 4 --}}
+@php
+  function chk(bool $checked, string $label): string {
+      $mark = $checked ? '&#10003;' : '&nbsp;';
+      return '<span class="ci"><span class="chkbox">'.$mark.'</span> '.$label.'</span>';
+  }
+@endphp
 
-    .pds-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 0;
-    }
+<div class="page">
 
-    .pds-table td,
-    .pds-table th {
-        border: 1px solid #000;
-        padding: 2px 4px;
-        vertical-align: top;
-        font-size: 8pt;
-    }
+{{-- ── HEADER ── --}}
+<table style="margin-bottom:2px;">
+  <tr>
+    <td class="nb cs-label" style="width:14%; vertical-align:top;">CS Form No. 212<br>Revised 2017</td>
+    <td class="nb" style="width:58%;"><div class="title">PERSONAL DATA SHEET</div></td>
+    <td class="nb cs-label" style="width:14%; text-align:right; vertical-align:top;">Page 1 of 4</td>
+    <td class="nb cs-label" style="width:14%; text-align:right; vertical-align:top; font-size:6pt;">
+      1. CS ID No.<br><span style="font-size:5.5pt;">(Do not fill up. For CSC use only)</span>
+    </td>
+  </tr>
+</table>
 
-    .pds-table th {
-        background-color: #d9d9d9;
-        font-weight: bold;
-        text-align: center;
-    }
+{{-- ── WARNINGS ── --}}
+<div class="warn"><strong>WARNING:</strong> Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.</div>
+<div class="warn"><strong>READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.</strong></div>
+<div class="warn">Print legibly. Tick appropriate boxes ( &#x2713; ) and use separate sheet if necessary. Indicate N/A if not applicable. <strong>DO NOT ABBREVIATE.</strong></div>
 
-    .label-cell {
-        background-color: #d9d9d9;
-        font-weight: normal;
-        font-size: 7pt;
-        width: 25%;
-    }
+{{-- ════════════════════════════════════════════
+     SECTION I — PERSONAL INFORMATION
+     ════════════════════════════════════════════ --}}
+<div class="sec">I. &nbsp; PERSONAL INFORMATION</div>
 
-    .data-cell {
-        font-size: 8pt;
-        min-height: 18px;
-    }
+<table>
+  <colgroup>
+    <col style="width:2.5%">
+    <col style="width:14%">
+    <col style="width:12%">
+    <col style="width:11%">
+    <col style="width:16%">
+    <col style="width:30%">
+    <col style="width:14.5%">
+  </colgroup>
 
-    .header-row {
-        background-color: #d9d9d9;
-        font-weight: bold;
-        text-align: center;
-        font-size: 9pt;
-        padding: 4px;
-    }
+  {{-- SURNAME --}}
+  <tr style="height:14px;">
+    <td class="num">2.</td>
+    <td class="lc">SURNAME</td>
+    <td class="dc" colspan="3" style="font-weight:bold;">{{ strtoupper($pds->surname ?? '') }}</td>
+    <td class="dc">&nbsp;</td>
+    <td class="dc" rowspan="6" style="text-align:center; vertical-align:top; padding:3px;">
+      <div style="border:1px solid #888; width:68px; height:78px; margin:0 auto; font-size:5.5pt; line-height:1.4; display:flex; align-items:center; justify-content:center; text-align:center; color:#555;">
+        Attach recent<br>passport-size<br>picture with<br>white background<br>and complete<br>name tag
+      </div>
+    </td>
+  </tr>
 
-    .checkbox-group {
-        display: inline-block;
-        margin-right: 10px;
-    }
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">FIRST NAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->first_name ?? '') }}</td>
+    <td class="dc"><span class="sub">NAME EXTENSION (JR., SR)</span>{{ strtoupper($pds->name_extension ?? '') }}</td>
+    <td class="dc">&nbsp;</td>
+  </tr>
 
-    .checkbox {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border: 1px solid #000;
-        text-align: center;
-        line-height: 12px;
-        margin-right: 3px;
-        vertical-align: middle;
-    }
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">MIDDLE NAME</td>
+    <td class="dc" colspan="3" style="font-weight:bold;">{{ strtoupper($pds->middle_name ?? '') }}</td>
+    <td class="dc">&nbsp;</td>
+  </tr>
 
-    .page-break {
-        page-break-after: always;
-    }
+  <tr style="height:14px;">
+    <td class="num">3.</td>
+    <td class="lc">DATE OF BIRTH<br><span class="sub">(mm/dd/yyyy)</span></td>
+    <td class="dc" colspan="2">{{ optional($pds->date_of_birth)->format('m/d/Y') }}</td>
+    <td class="lc">16. PLACE OF BIRTH</td>
+    <td class="dc">{{ strtoupper($pds->place_of_birth ?? '') }}</td>
+  </tr>
 
-    .warning-text {
-        font-size: 8pt;
-        text-align: justify;
-        margin: 5px 0;
-        line-height: 1.3;
-    }
+  <tr style="height:18px;">
+    <td class="num">4.</td>
+    <td class="lc">SEX</td>
+    <td class="dc" colspan="2">
+      {!! '<span class="ci"><span class="chkbox">'.($pds->sex==='Male'?'&#10003;':'&nbsp;').'</span> Male</span>' !!}
+      {!! '<span class="ci"><span class="chkbox">'.($pds->sex==='Female'?'&#10003;':'&nbsp;').'</span> Female</span>' !!}
+    </td>
+    <td class="lc">17. CIVIL STATUS</td>
+    <td class="dc">
+      @foreach(['Single','Married','Widowed','Separated','Others'] as $cs)
+        {!! '<span class="ci"><span class="chkbox">'.( ($pds->civil_status??'')===$cs ? '&#10003;' : '&nbsp;' ).'</span> '.$cs.'</span>' !!}
+      @endforeach
+    </td>
+  </tr>
 
-    .section-title {
-        background-color: #969696;
-        color: #fff;
-        font-weight: bold;
-        font-size: 9pt;
-        padding: 3px 5px;
-        margin: 8px 0 2px 0;
-    }
+  <tr style="height:18px;">
+    <td class="num">5.</td>
+    <td class="lc">HEIGHT (m)</td>
+    <td class="dc" colspan="2">{{ $pds->height ?? '' }}</td>
+    <td class="lc">18. CITIZENSHIP</td>
+    <td class="dc">
+      {!! '<span class="ci"><span class="chkbox">'.( ($pds->filipino??false) ? '&#10003;' : '&nbsp;' ).'</span> Filipino</span>' !!}
+      {!! '<span class="ci"><span class="chkbox">'.( ($pds->dual_citizenship??false) ? '&#10003;' : '&nbsp;' ).'</span> Dual Citizenship</span>' !!}
+      @if($pds->dual_citizenship ?? false)
+        <span style="font-size:6pt; display:block;">Country: <strong>{{ $pds->dual_citizenship_country ?? '' }}</strong></span>
+      @endif
+    </td>
+  </tr>
+</table>
 
-    .note-text {
-        font-size: 7pt;
-        font-style: italic;
-        text-align: center;
-        margin: 3px 0;
-    }
-</style>
+{{-- WEIGHT onward --}}
+<table>
+  <colgroup>
+    <col style="width:2.5%">
+    <col style="width:14%">
+    <col style="width:18.5%">
+    <col style="width:3%">
+    <col style="width:21%">
+    <col style="width:41%">
+  </colgroup>
 
-<div class="pds-container page-break">
-    {{-- HEADER --}}
-    <table style="width:100%; margin-bottom: 5px; border: none;">
-        <tr>
-            <td style="width:20%; font-size:8pt; border: none;">
-                <em>CS Form No. 212</em><br>
-                <em>Revised 2017</em>
-            </td>
-            <td style="width:60%; text-align:center; border: none;">
-                <div style="font-size:11pt; font-weight:bold;">PERSONAL DATA SHEET</div>
-            </td>
-            <td style="width:20%; text-align:right; font-size:8pt; border: none;">
-                <em>Page 1 of 4</em>
-            </td>
-        </tr>
-    </table>
+  <tr style="height:14px;">
+    <td class="num">6.</td>
+    <td class="lc">WEIGHT (kg)</td>
+    <td class="dc">{{ $pds->weight ?? '' }}</td>
+    <td class="lc" colspan="2">19. RESIDENTIAL ADDRESS</td>
+    <td class="dc">&nbsp;</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">7.</td>
+    <td class="lc">BLOOD TYPE</td>
+    <td class="dc">{{ $pds->blood_type ?? '' }}</td>
+    <td class="lc" colspan="2" style="font-size:6pt;">House/Block/Lot No.</td>
+    <td class="dc">{{ $pds->res_house_block_lot_no ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">8.</td>
+    <td class="lc">GSIS ID NO.</td>
+    <td class="dc">{{ $pds->gsis_id_no ?? '' }}</td>
+    <td class="lc" colspan="2">Street</td>
+    <td class="dc">{{ $pds->res_street ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">9.</td>
+    <td class="lc">PAG-IBIG ID NO.</td>
+    <td class="dc">{{ $pds->pag_ibig_id_no ?? '' }}</td>
+    <td class="lc" colspan="2">Subdivision/Village</td>
+    <td class="dc">{{ $pds->res_subdivision_village ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">10.</td>
+    <td class="lc">PHILHEALTH NO.</td>
+    <td class="dc">{{ $pds->philhealth_no ?? '' }}</td>
+    <td class="lc" colspan="2">Barangay</td>
+    <td class="dc">{{ $pds->res_barangay ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">11.</td>
+    <td class="lc">SSS NO.</td>
+    <td class="dc">{{ $pds->sss_no ?? '' }}</td>
+    <td class="lc" colspan="2">City/Municipality</td>
+    <td class="dc">{{ $pds->res_city_municipality ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">12.</td>
+    <td class="lc">TIN NO.</td>
+    <td class="dc">{{ $pds->tin_no ?? '' }}</td>
+    <td class="lc" colspan="2">Province</td>
+    <td class="dc">{{ $pds->res_province ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">13.</td>
+    <td class="lc">AGENCY EMPLOYEE NO.</td>
+    <td class="dc">{{ $pds->agency_employee_no ?? '' }}</td>
+    <td class="lc" colspan="2"><strong>ZIP CODE</strong></td>
+    <td class="dc">{{ $pds->res_zip_code ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">14.</td>
+    <td class="lc">TELEPHONE NO.</td>
+    <td class="dc">{{ $pds->telephone_no ?? '' }}</td>
+    <td class="lc" colspan="2">20. PERMANENT ADDRESS</td>
+    <td class="dc">&nbsp;</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">15.</td>
+    <td class="lc">MOBILE NO.</td>
+    <td class="dc">{{ $pds->mobile ?? '' }}</td>
+    <td class="lc" colspan="2" style="font-size:6pt;">House/Block/Lot No.</td>
+    <td class="dc">{{ $pds->perm_house_block_lot_no ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">16.</td>
+    <td class="lc">E-MAIL ADDRESS<span class="sub">(if any)</span></td>
+    <td class="dc">{{ $pds->email ?? '' }}</td>
+    <td class="lc" colspan="2">Street</td>
+    <td class="dc">{{ $pds->perm_street ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td><td class="lc">&nbsp;</td><td class="dc">&nbsp;</td>
+    <td class="lc" colspan="2">Subdivision/Village</td>
+    <td class="dc">{{ $pds->perm_subdivision_village ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td><td class="lc">&nbsp;</td><td class="dc">&nbsp;</td>
+    <td class="lc" colspan="2">Barangay</td>
+    <td class="dc">{{ $pds->perm_barangay ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td><td class="lc">&nbsp;</td><td class="dc">&nbsp;</td>
+    <td class="lc" colspan="2">City/Municipality</td>
+    <td class="dc">{{ $pds->perm_city_municipality ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td><td class="lc">&nbsp;</td><td class="dc">&nbsp;</td>
+    <td class="lc" colspan="2">Province</td>
+    <td class="dc">{{ $pds->perm_province ?? '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td><td class="lc">&nbsp;</td><td class="dc">&nbsp;</td>
+    <td class="lc" colspan="2"><strong>ZIP CODE</strong></td>
+    <td class="dc">{{ $pds->perm_zip_code ?? '' }}</td>
+  </tr>
+</table>
 
-    {{-- WARNING --}}
-    <div class="warning-text">
-        <strong>WARNING:</strong> Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.
-    </div>
+{{-- ════════════════════════════════════════════
+     SECTION II — FAMILY BACKGROUND
+     ════════════════════════════════════════════ --}}
+<div class="sec">II. &nbsp; FAMILY BACKGROUND</div>
 
-    <div class="warning-text">
-        <strong>READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.</strong>
-    </div>
+@php $children = $pds->children ?? []; @endphp
 
-    <div class="warning-text">
-        Print legibly. Tick appropriate boxes (☑) and use separate sheet if necessary. Indicate N/A if not applicable. <strong>DO NOT ABBREVIATE.</strong>
-    </div>
+<table>
+  <colgroup>
+    <col style="width:2.5%">
+    <col style="width:13.5%">
+    <col style="width:17%">
+    <col style="width:12%">
+    <col style="width:3.5%">
+    <col style="width:34%">
+    <col style="width:17.5%">
+  </colgroup>
 
-    {{-- SECTION HEADER --}}
-    <div class="section-title">I. PERSONAL INFORMATION</div>
+  <tr style="height:14px;">
+    <td class="num">22.</td>
+    <td class="lc">SPOUSE'S SURNAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->spouse_surname ?? '') }}</td>
+    <td class="hc" colspan="2">23. NAME OF CHILDREN (Write full name and list all)</td>
+    <td class="hc">DATE OF BIRTH<br><span style="font-weight:normal; font-size:5.5pt;">(mm/dd/yyyy)</span></td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">FIRST NAME</td>
+    <td class="dc" style="font-weight:bold;">{{ strtoupper($pds->spouse_first_name ?? '') }}</td>
+    <td class="dc"><span class="sub">NAME EXTENSION (JR., SR)</span>{{ strtoupper($pds->spouse_name_extension ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">1.</td>
+    <td class="dc">{{ strtoupper($children[0]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[0]['birthdate']??null) ? \Carbon\Carbon::parse($children[0]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">MIDDLE NAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->spouse_middle_name ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">2.</td>
+    <td class="dc">{{ strtoupper($children[1]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[1]['birthdate']??null) ? \Carbon\Carbon::parse($children[1]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">OCCUPATION</td>
+    <td class="dc" colspan="2">{{ $pds->spouse_occupation ?? '' }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">3.</td>
+    <td class="dc">{{ strtoupper($children[2]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[2]['birthdate']??null) ? \Carbon\Carbon::parse($children[2]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">EMPLOYER/BUSINESS NAME</td>
+    <td class="dc" colspan="2">{{ $pds->spouse_employer_business_name ?? '' }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">4.</td>
+    <td class="dc">{{ strtoupper($children[3]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[3]['birthdate']??null) ? \Carbon\Carbon::parse($children[3]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">BUSINESS ADDRESS</td>
+    <td class="dc" colspan="2">{{ $pds->spouse_business_address ?? '' }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">5.</td>
+    <td class="dc">{{ strtoupper($children[4]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[4]['birthdate']??null) ? \Carbon\Carbon::parse($children[4]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">TELEPHONE NO.</td>
+    <td class="dc" colspan="2">{{ $pds->spouse_telephone_no ?? '' }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">6.</td>
+    <td class="dc">{{ strtoupper($children[5]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[5]['birthdate']??null) ? \Carbon\Carbon::parse($children[5]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
 
-    {{-- PERSONAL INFORMATION TABLE --}}
-    <table class="pds-table">
-        <tr>
-            <td class="label-cell">2. SURNAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->surname ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">FIRST NAME</td>
-            <td class="data-cell" colspan="2">{{ strtoupper($pds->first_name ?? '') }}</td>
-            <td class="data-cell" style="text-align:right; font-size:7pt; background-color:#d9d9d9;">
-                NAME EXTENSION (JR., SR)<br>
-                <span style="font-size:8pt; background-color:#fff; display:block; margin-top:2px;">
-                    {{ strtoupper($pds->name_extension ?? '') }}
-                </span>
-            </td>
-        </tr>
-        <tr>
-            <td class="label-cell">MIDDLE NAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->middle_name ?? '') }}</td>
-        </tr>
+  <tr style="height:14px;">
+    <td class="num">24.</td>
+    <td class="lc">FATHER'S SURNAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->father_surname ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">7.</td>
+    <td class="dc">{{ strtoupper($children[6]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[6]['birthdate']??null) ? \Carbon\Carbon::parse($children[6]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">FIRST NAME</td>
+    <td class="dc" style="font-weight:bold;">{{ strtoupper($pds->father_first_name ?? '') }}</td>
+    <td class="dc"><span class="sub">NAME EXTENSION (JR., SR)</span>{{ strtoupper($pds->father_name_extension ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">8.</td>
+    <td class="dc">{{ strtoupper($children[7]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[7]['birthdate']??null) ? \Carbon\Carbon::parse($children[7]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">MIDDLE NAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->father_middle_name ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">9.</td>
+    <td class="dc">{{ strtoupper($children[8]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[8]['birthdate']??null) ? \Carbon\Carbon::parse($children[8]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
 
-        <tr>
-            <td class="label-cell">3. DATE OF BIRTH<br><span style="font-size:6pt;">(mm/dd/yyyy)</span></td>
-            <td class="data-cell">{{ optional($pds->date_of_birth)->format('m/d/Y') }}</td>
-            <td class="label-cell">16. PLACE OF BIRTH</td>
-            <td class="data-cell">{{ strtoupper($pds->place_of_birth ?? '') }}</td>
-        </tr>
+  <tr style="height:14px;">
+    <td class="num">25.</td>
+    <td class="lc">MOTHER'S MAIDEN NAME</td>
+    <td class="dc" colspan="2">&nbsp;</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">10.</td>
+    <td class="dc">{{ strtoupper($children[9]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[9]['birthdate']??null) ? \Carbon\Carbon::parse($children[9]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">SURNAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->mother_surname ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">11.</td>
+    <td class="dc">{{ strtoupper($children[10]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[10]['birthdate']??null) ? \Carbon\Carbon::parse($children[10]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">FIRST NAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->mother_first_name ?? '') }}</td>
+    <td class="dc" style="text-align:center; font-size:6.5pt;">12.</td>
+    <td class="dc">{{ strtoupper($children[11]['name'] ?? '') }}</td>
+    <td class="dc" style="text-align:center;">{{ !empty($children[11]['birthdate']??null) ? \Carbon\Carbon::parse($children[11]['birthdate'])->format('m/d/Y') : '' }}</td>
+  </tr>
+  <tr style="height:14px;">
+    <td class="num">&nbsp;</td>
+    <td class="lc">MIDDLE NAME</td>
+    <td class="dc" colspan="2" style="font-weight:bold;">{{ strtoupper($pds->mother_middle_name ?? '') }}</td>
+    <td class="dc" colspan="3" style="font-style:italic; font-size:6pt; text-align:center;">(Continue on separate sheet if necessary)</td>
+  </tr>
+</table>
 
-        <tr>
-            <td class="label-cell">4. SEX</td>
-            <td class="data-cell">
-                <div class="checkbox-group">
-                    <span class="checkbox">{{ $pds->sex === 'Male' ? '✓' : '' }}</span> Male
-                </div>
-                <div class="checkbox-group">
-                    <span class="checkbox">{{ $pds->sex === 'Female' ? '✓' : '' }}</span> Female
-                </div>
-            </td>
-            <td class="label-cell">17. CIVIL STATUS</td>
-            <td class="data-cell">
-                @foreach(['Single','Married','Widowed','Separated','Other/s'] as $status)
-                    <div class="checkbox-group">
-                        <span class="checkbox">{{ $pds->civil_status === $status ? '✓' : '' }}</span>
-                        {{ $status }}
-                    </div>
-                @endforeach
-            </td>
-        </tr>
+{{-- ════════════════════════════════════════════
+     SECTION III — EDUCATIONAL BACKGROUND
+     ════════════════════════════════════════════ --}}
+<div class="sec">III. &nbsp; EDUCATIONAL BACKGROUND</div>
 
-        <tr>
-            <td class="label-cell">5. HEIGHT (m)</td>
-            <td class="data-cell">{{ $pds->height ?? '' }}</td>
-            <td class="label-cell">18. CITIZENSHIP</td>
-            <td class="data-cell" rowspan="2">
-                <div class="checkbox-group">
-                    <span class="checkbox">{{ ($pds->filipino ?? false) ? '✓' : '' }}</span> Filipino
-                </div>
-                <div class="checkbox-group">
-                    <span class="checkbox">{{ ($pds->dual_citizenship ?? false) ? '✓' : '' }}</span> Dual Citizenship
-                </div>
-                @if($pds->dual_citizenship ?? false)
-                <div style="font-size:7pt; margin-top:2px;">
-                    Pls. indicate country: <strong>{{ $pds->dual_citizenship_country ?? '' }}</strong>
-                </div>
-                @endif
-            </td>
-        </tr>
+<table>
+  <tr>
+    <th class="hc" rowspan="2" style="width:11%;">26. LEVEL</th>
+    <th class="hc" rowspan="2" style="width:22%;">NAME OF SCHOOL<br><span style="font-weight:normal; font-size:5.5pt;">(Write in full)</span></th>
+    <th class="hc" rowspan="2" style="width:22%;">BASIC EDUCATION/DEGREE/COURSE<br><span style="font-weight:normal; font-size:5.5pt;">(Write in full)</span></th>
+    <th class="hc" colspan="2" style="width:14%;">PERIOD OF ATTENDANCE</th>
+    <th class="hc" rowspan="2" style="width:12%;">HIGHEST LEVEL/<br>UNITS EARNED<br><span style="font-weight:normal; font-size:5.5pt;">(if not graduated)</span></th>
+    <th class="hc" rowspan="2" style="width:10%;">YEAR<br>GRADUATED</th>
+    <th class="hc" rowspan="2" style="width:9%;">SCHOLARSHIP/<br>ACADEMIC<br>HONORS RECEIVED</th>
+  </tr>
+  <tr>
+    <th class="hc" style="width:7%; font-size:6pt;">From</th>
+    <th class="hc" style="width:7%; font-size:6pt;">To</th>
+  </tr>
+  @php
+    $education = $pds->education ?? [];
+    $eduLevels = ['ELEMENTARY','SECONDARY','VOCATIONAL / TRADE COURSE','COLLEGE','GRADUATE STUDIES'];
+  @endphp
+  @foreach($eduLevels as $lvl)
+    @php $e = collect($education)->firstWhere('level', $lvl); @endphp
+    <tr style="height:18px;">
+      <td class="lc" style="font-size:6.5pt; text-align:center; white-space:normal; line-height:1.2;">{{ $lvl }}</td>
+      <td class="dc">{{ $e['school_name'] ?? '' }}</td>
+      <td class="dc">{{ $e['degree'] ?? '' }}</td>
+      <td class="dc" style="text-align:center;">{{ $e['from_year'] ?? '' }}</td>
+      <td class="dc" style="text-align:center;">{{ $e['to_year'] ?? '' }}</td>
+      <td class="dc" style="text-align:center;">{{ $e['units_earned'] ?? '' }}</td>
+      <td class="dc" style="text-align:center;">{{ $e['year_graduated'] ?? '' }}</td>
+      <td class="dc">{{ $e['honors'] ?? '' }}</td>
+    </tr>
+  @endforeach
+</table>
+<div class="note">(Continue on separate sheet if necessary)</div>
 
-        <tr>
-            <td class="label-cell">6. WEIGHT (kg)</td>
-            <td class="data-cell">{{ $pds->weight ?? '' }}</td>
-            <td class="label-cell"></td>
-        </tr>
+{{-- SIGNATURE ROW --}}
+<table style="margin-top:3px;">
+  <tr style="height:16px;">
+    <td class="lc" style="width:28%; font-size:7pt; font-weight:bold; padding-left:6px;">SIGNATURE</td>
+    <td class="dc" style="width:40%;">&nbsp;</td>
+    <td class="lc" style="width:10%; font-weight:bold; text-align:center;">DATE</td>
+    <td class="dc" style="width:22%;">&nbsp;</td>
+  </tr>
+</table>
 
-        <tr>
-            <td class="label-cell">7. BLOOD TYPE</td>
-            <td class="data-cell">{{ $pds->blood_type ?? '' }}</td>
-            <td class="label-cell">19. RESIDENTIAL ADDRESS</td>
-            <td class="data-cell">{{ $pds->residential_address ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">8. GSIS ID NO.</td>
-            <td class="data-cell">{{ $pds->gsis_id_no ?? '' }}</td>
-            <td class="label-cell" style="font-size:7pt;">House/Block/Lot No.</td>
-            <td class="data-cell">{{ $pds->res_house_block_lot_no ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">9. PAG-IBIG ID NO.</td>
-            <td class="data-cell">{{ $pds->pag_ibig_id_no ?? '' }}</td>
-            <td class="label-cell">Street</td>
-            <td class="data-cell">{{ $pds->res_street ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">10. PHILHEALTH NO.</td>
-            <td class="data-cell">{{ $pds->philhealth_no ?? '' }}</td>
-            <td class="label-cell">Subdivision/Village</td>
-            <td class="data-cell">{{ $pds->res_subdivision_village ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">11. SSS NO.</td>
-            <td class="data-cell">{{ $pds->sss_no ?? '' }}</td>
-            <td class="label-cell">Barangay</td>
-            <td class="data-cell">{{ $pds->res_barangay ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">12. TIN NO.</td>
-            <td class="data-cell">{{ $pds->tin_no ?? '' }}</td>
-            <td class="label-cell">City/Municipality</td>
-            <td class="data-cell">{{ $pds->res_city_municipality ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">13. AGENCY EMPLOYEE NO.</td>
-            <td class="data-cell">{{ $pds->agency_employee_no ?? '' }}</td>
-            <td class="label-cell">Province</td>
-            <td class="data-cell">{{ $pds->res_province ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">14. TELEPHONE NO.</td>
-            <td class="data-cell">{{ $pds->telephone_no ?? '' }}</td>
-            <td class="label-cell">ZIP CODE</td>
-            <td class="data-cell">{{ $pds->res_zip_code ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">15. MOBILE NO.</td>
-            <td class="data-cell">{{ $pds->mobile ?? '' }}</td>
-            <td class="label-cell">20. PERMANENT ADDRESS</td>
-            <td class="data-cell">{{ $pds->permanent_address ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">16. E-MAIL ADDRESS (if any)</td>
-            <td class="data-cell">{{ $pds->email ?? '' }}</td>
-            <td class="label-cell" style="font-size:7pt;">House/Block/Lot No.</td>
-            <td class="data-cell">{{ $pds->perm_house_block_lot_no ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">Street</td>
-            <td class="data-cell">{{ $pds->perm_street ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">Subdivision/Village</td>
-            <td class="data-cell">{{ $pds->perm_subdivision_village ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">Barangay</td>
-            <td class="data-cell">{{ $pds->perm_barangay ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">City/Municipality</td>
-            <td class="data-cell">{{ $pds->perm_city_municipality ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">Province</td>
-            <td class="data-cell">{{ $pds->perm_province ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell"></td>
-            <td class="data-cell"></td>
-            <td class="label-cell">ZIP CODE</td>
-            <td class="data-cell">{{ $pds->perm_zip_code ?? '' }}</td>
-        </tr>
-    </table>
-
-    {{-- FAMILY BACKGROUND --}}
-    <div class="section-title">II. FAMILY BACKGROUND</div>
-
-    <table class="pds-table">
-        <tr>
-            <td class="label-cell" style="width:25%;">21. SPOUSE'S SURNAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->spouse_surname ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">FIRST NAME</td>
-            <td class="data-cell" colspan="2">{{ strtoupper($pds->spouse_first_name ?? '') }}</td>
-            <td class="data-cell" style="text-align:right; font-size:7pt; background-color:#d9d9d9;">
-                NAME EXTENSION (JR., SR)<br>
-                <span style="font-size:8pt; background-color:#fff; display:block; margin-top:2px;">
-                    {{ strtoupper($pds->spouse_name_extension ?? '') }}
-                </span>
-            </td>
-        </tr>
-        <tr>
-            <td class="label-cell">MIDDLE NAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->spouse_middle_name ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">OCCUPATION</td>
-            <td class="data-cell">{{ $pds->spouse_occupation ?? '' }}</td>
-            <td class="label-cell" style="width:25%;">EMPLOYER/BUSINESS NAME</td>
-            <td class="data-cell">{{ $pds->spouse_employer_business_name ?? '' }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">BUSINESS ADDRESS</td>
-            <td class="data-cell" colspan="3">{{ $pds->spouse_business_address ?? '' }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">TELEPHONE NO.</td>
-            <td class="data-cell" colspan="3">{{ $pds->spouse_telephone_no ?? '' }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">22. FATHER'S SURNAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->father_surname ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">FIRST NAME</td>
-            <td class="data-cell" colspan="2">{{ strtoupper($pds->father_first_name ?? '') }}</td>
-            <td class="data-cell" style="text-align:right; font-size:7pt; background-color:#d9d9d9;">
-                NAME EXTENSION (JR., SR)<br>
-                <span style="font-size:8pt; background-color:#fff; display:block; margin-top:2px;">
-                    {{ strtoupper($pds->father_name_extension ?? '') }}
-                </span>
-            </td>
-        </tr>
-        <tr>
-            <td class="label-cell">MIDDLE NAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->father_middle_name ?? '') }}</td>
-        </tr>
-
-        <tr>
-            <td class="label-cell">23. MOTHER'S MAIDEN NAME</td>
-            <td class="data-cell" colspan="3"></td>
-        </tr>
-        <tr>
-            <td class="label-cell">SURNAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->mother_surname ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">FIRST NAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->mother_first_name ?? '') }}</td>
-        </tr>
-        <tr>
-            <td class="label-cell">MIDDLE NAME</td>
-            <td class="data-cell" colspan="3">{{ strtoupper($pds->mother_middle_name ?? '') }}</td>
-        </tr>
-    </table>
-
-    {{-- CHILDREN --}}
-    <table class="pds-table" style="margin-top:2px;">
-        <tr>
-            <th colspan="2" class="header-row">
-                24. NAME of CHILDREN (Write full name and list all)
-            </th>
-            <th class="header-row">DATE OF BIRTH (mm/dd/yyyy)</th>
-        </tr>
-        @php
-            $children = $pds->children ?? [];
-            $maxChildren = 12; // Standard PDS shows 12 rows
-        @endphp
-        @for($i = 0; $i < $maxChildren; $i++)
-            <tr>
-                <td style="width:5%; text-align:center; font-size:7pt;">{{ $i + 1 }}.</td>
-                <td class="data-cell" style="width:60%;">
-                    {{ isset($children[$i]) ? strtoupper($children[$i]['name'] ?? '') : '' }}
-                </td>
-                <td class="data-cell" style="width:35%; text-align:center;">
-                    @if(isset($children[$i]) && !empty($children[$i]['birthdate']))
-                        {{ \Carbon\Carbon::parse($children[$i]['birthdate'])->format('m/d/Y') }}
-                    @endif
-                </td>
-            </tr>
-        @endfor
-    </table>
-
-    <div class="note-text">(Continue on separate sheet if necessary)</div>
-
-    {{-- EDUCATIONAL BACKGROUND --}}
-    <div class="section-title">III. EDUCATIONAL BACKGROUND</div>
-
-    <table class="pds-table">
-        <tr>
-            <th class="header-row" rowspan="2" style="width:12%;">25. LEVEL</th>
-            <th class="header-row" rowspan="2" style="width:28%;">
-                NAME OF SCHOOL<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-            <th class="header-row" rowspan="2" style="width:20%;">
-                BASIC EDUCATION/DEGREE/COURSE<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-            <th class="header-row" colspan="2" style="width:15%;">
-                PERIOD OF ATTENDANCE
-            </th>
-            <th class="header-row" rowspan="2" style="width:10%;">
-                HIGHEST LEVEL/<br>UNITS EARNED<br>
-                <span style="font-size:6pt; font-weight:normal;">(if not graduated)</span>
-            </th>
-            <th class="header-row" rowspan="2" style="width:10%;">
-                YEAR<br>GRADUATED
-            </th>
-            <th class="header-row" rowspan="2" style="width:15%;">
-                SCHOLARSHIP/<br>ACADEMIC<br>HONORS<br>RECEIVED
-            </th>
-        </tr>
-        <tr>
-            <th class="header-row" style="font-size:7pt;">From</th>
-            <th class="header-row" style="font-size:7pt;">To</th>
-        </tr>
-
-        @php
-            $education = $pds->education ?? [];
-            $eduLevels = ['ELEMENTARY', 'SECONDARY', 'VOCATIONAL / TRADE COURSE', 'COLLEGE', 'GRADUATE STUDIES'];
-        @endphp
-
-        @foreach($eduLevels as $level)
-            @php
-                $eduData = collect($education)->firstWhere('level', $level);
-            @endphp
-            <tr>
-                <td class="label-cell" style="text-align:center; font-size:7pt;">{{ $level }}</td>
-                <td class="data-cell">{{ $eduData['school_name'] ?? '' }}</td>
-                <td class="data-cell">{{ $eduData['degree'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">{{ $eduData['from_year'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">{{ $eduData['to_year'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">{{ $eduData['units_earned'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">{{ $eduData['year_graduated'] ?? '' }}</td>
-                <td class="data-cell">{{ $eduData['honors'] ?? '' }}</td>
-            </tr>
-        @endforeach
-    </table>
-
-    <div class="note-text">(Continue on separate sheet if necessary)</div>
-
-    <div style="text-align:right; font-size:7pt; font-style:italic; margin-top:10px;">
-        <em>(Continue on separate sheet if necessary)</em>
-    </div>
-
-    <div style="text-align:center; font-size:7pt; margin-top:15px;">
-        <em>CS FORM 212 (Revised 2017), Page 1 of 4</em>
-    </div>
+<div class="footer">CS FORM 212 (Revised 2017), Page 1 of 4</div>
 </div>

@@ -44,8 +44,9 @@ class HrmsDashboard extends Page
 
             $this->buildPendingActions();
         } else {
-            $this->stats['my_leaves'] = LeaveApplication::where('employee_id', $this->user->id)->count();
+            $this->stats['my_leaves']        = LeaveApplication::where('employee_id', $this->user->id)->count();
             $this->stats['my_travel_orders'] = TravelOrder::whereJsonContains('employee_ids', ['id' => $this->user->id])->count();
+            $this->stats['my_pds']           = \App\Models\PersonalDataSheet::where('user_id', $this->user->id)->count();
         }
 
         $this->buildModules();
@@ -65,35 +66,35 @@ class HrmsDashboard extends Page
             [
                 'title' => 'Leave Approvals',
                 'count' => LeaveApplication::where('status', 'pending')->count(),
-                'icon' => 'heroicon-o-calendar',
+                'icon'  => 'heroicon-o-calendar',
                 'color' => 'blue',
                 'route' => 'filament.hrms.resources.leave-applications.index',
             ],
             [
                 'title' => 'Travel Orders',
                 'count' => TravelOrder::where('status', 'pending')->count(),
-                'icon' => 'heroicon-o-briefcase',
+                'icon'  => 'heroicon-o-briefcase',
                 'color' => 'amber',
                 'route' => 'filament.hrms.resources.travel-orders.index',
             ],
             [
                 'title' => 'Locator Slips',
                 'count' => LocatorSlip::where('status', 'pending')->count(),
-                'icon' => 'heroicon-o-map-pin',
+                'icon'  => 'heroicon-o-map-pin',
                 'color' => 'purple',
                 'route' => 'filament.hrms.resources.locator-slips.index',
             ],
             [
                 'title' => 'PDS for Review',
                 'count' => \App\Models\PersonalDataSheet::where('status', 'submitted')->count(),
-                'icon' => 'heroicon-o-identification',
+                'icon'  => 'heroicon-o-identification',
                 'color' => 'green',
                 'route' => 'filament.hrms.resources.pds.index',
             ],
             [
                 'title' => 'SALN Unreviewed',
                 'count' => \App\Models\Saln::whereNull('remarks')->count(),
-                'icon' => 'heroicon-o-document-text',
+                'icon'  => 'heroicon-o-document-text',
                 'color' => 'rose',
                 'route' => 'filament.hrms.resources.salns.index',
             ],
@@ -109,11 +110,11 @@ class HrmsDashboard extends Page
             ->take(5)
             ->get()
             ->map(fn($a) => [
-                'title' => $a->title,
-                'message' => $a->message,
-                'date' => $a->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
+                'title'    => $a->title,
+                'message'  => $a->message,
+                'date'     => $a->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
                 'priority' => $a->priority,
-                'icon' => $a->icon,
+                'icon'     => $a->icon,
             ])
             ->toArray();
     }
@@ -125,12 +126,12 @@ class HrmsDashboard extends Page
             ->take(5)
             ->get()
             ->map(fn($e) => [
-                'title' => $e->title,
-                'date' => $e->event_date->format('M d, Y'),
-                'time' => Carbon::parse($e->event_time)->setTimezone('Asia/Manila')->format('g:i A'),
+                'title'    => $e->title,
+                'date'     => $e->event_date->format('M d, Y'),
+                'time'     => Carbon::parse($e->event_time)->setTimezone('Asia/Manila')->format('g:i A'),
                 'location' => $e->location,
-                'type' => $e->type,
-                'color' => $e->color,
+                'type'     => $e->type,
+                'color'    => $e->color,
             ])
             ->toArray();
     }
@@ -146,82 +147,96 @@ class HrmsDashboard extends Page
             ->take(5)
             ->get()
             ->map(fn($u) => [
-                'name' => $u->full_name ?? $u->name,
-                'date' => $u->birthday ? Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->format('M d') : 'N/A',
+                'name'       => $u->full_name ?? $u->name,
+                'date'       => $u->birthday ? Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->format('M d') : 'N/A',
                 'department' => $u->department ?? 'N/A',
-                'photo' => $u->profile_photo_url ?? null,
-                'is_today' => $u->birthday && Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->isSameDay(now('Asia/Manila')),
+                'photo'      => $u->profile_photo_url ?? null,
+                'is_today'   => $u->birthday && Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->isSameDay(now('Asia/Manila')),
             ])
             ->toArray();
     }
 
     protected function buildModules(): void
     {
+        // ── Modules visible to both admin and employee ──────────────
         $baseModules = [
             [
-                'title' => 'Daily Time Record',
-                'route' => 'filament.hrms.resources.daily-time-records.index',
-                'icon' => 'heroicon-o-clock',
-                'icon_bg' => 'bg-emerald-100 dark:bg-emerald-900/40',
-                'icon_color' => 'text-emerald-600 dark:text-emerald-400',
-                'admin_text' => 'View and manage all employee DTRs',
+                'title'         => 'Daily Time Record',
+                'route'         => 'filament.hrms.resources.daily-time-records.index',
+                'icon'          => 'heroicon-o-clock',
+                'icon_bg'       => 'bg-emerald-100 dark:bg-emerald-900/40',
+                'icon_color'    => 'text-emerald-600 dark:text-emerald-400',
+                'admin_text'    => 'View and manage all employee DTRs',
                 'employee_text' => 'Track your daily time records',
-                'stat_key' => 'dtr_count',
+                'stat_key'      => 'dtr_count',
             ],
             [
-                'title' => 'Leave Application',
-                'route' => 'filament.hrms.resources.leave-applications.index',
-                'icon' => 'heroicon-o-calendar',
-                'icon_bg' => 'bg-blue-100 dark:bg-blue-900/40',
-                'icon_color' => 'text-blue-600 dark:text-blue-400',
-                'admin_text' => 'Review & approve leave requests',
+                'title'         => 'Leave Application',
+                'route'         => 'filament.hrms.resources.leave-applications.index',
+                'icon'          => 'heroicon-o-calendar',
+                'icon_bg'       => 'bg-blue-100 dark:bg-blue-900/40',
+                'icon_color'    => 'text-blue-600 dark:text-blue-400',
+                'admin_text'    => 'Review & approve leave requests',
                 'employee_text' => 'File or view your leave requests',
-                'stat_key' => 'leave_count',
+                'stat_key'      => 'leave_count',
             ],
             [
-                'title' => 'Locator Slip',
-                'route' => 'filament.hrms.resources.locator-slips.index',
-                'icon' => 'heroicon-o-map-pin',
-                'icon_bg' => 'bg-purple-100 dark:bg-purple-900/40',
-                'icon_color' => 'text-purple-600 dark:text-purple-400',
-                'admin_text' => 'Manage employee whereabouts',
+                'title'         => 'Locator Slip',
+                'route'         => 'filament.hrms.resources.locator-slips.index',
+                'icon'          => 'heroicon-o-map-pin',
+                'icon_bg'       => 'bg-purple-100 dark:bg-purple-900/40',
+                'icon_color'    => 'text-purple-600 dark:text-purple-400',
+                'admin_text'    => 'Manage employee whereabouts',
                 'employee_text' => 'Submit your location slips',
-                'stat_key' => 'locator_count',
+                'stat_key'      => 'locator_count',
             ],
             [
-                'title' => 'Travel Order',
-                'route' => 'filament.hrms.resources.travel-orders.index',
-                'icon' => 'heroicon-o-briefcase',
-                'icon_bg' => 'bg-amber-100 dark:bg-amber-900/40',
-                'icon_color' => 'text-amber-600 dark:text-amber-400',
-                'admin_text' => 'Process travel authorizations',
+                'title'         => 'Travel Order',
+                'route'         => 'filament.hrms.resources.travel-orders.index',
+                'icon'          => 'heroicon-o-briefcase',
+                'icon_bg'       => 'bg-amber-100 dark:bg-amber-900/40',
+                'icon_color'    => 'text-amber-600 dark:text-amber-400',
+                'admin_text'    => 'Process travel authorizations',
                 'employee_text' => 'View your travel orders',
-                'stat_key' => 'travel_count',
+                'stat_key'      => 'travel_count',
             ],
+            // ── Personal Data Sheet (NEW) ────────────────────────────
             [
-                'title' => 'SALN',
-                'route' => 'filament.hrms.resources.salns.index',
-                'icon' => 'heroicon-o-document-text',
-                'icon_bg' => 'bg-rose-100 dark:bg-rose-900/40',
-                'icon_color' => 'text-rose-600 dark:text-rose-400',
-                'admin_text' => 'Review & manage SALNs',
+                'title'         => 'Personal Data Sheet',
+                'route'         => 'filament.hrms.resources.pds.index',
+                'icon'          => 'heroicon-o-identification',
+                'icon_bg'       => 'bg-teal-100 dark:bg-teal-900/40',
+                'icon_color'    => 'text-teal-600 dark:text-teal-400',
+                'admin_text'    => 'Review & manage employee PDS',
+                'employee_text' => 'View or submit your PDS',
+                'stat_key'      => 'pds_count',
+            ],
+            // ─────────────────────────────────────────────────────────
+            [
+                'title'         => 'SALN',
+                'route'         => 'filament.hrms.resources.salns.index',
+                'icon'          => 'heroicon-o-document-text',
+                'icon_bg'       => 'bg-rose-100 dark:bg-rose-900/40',
+                'icon_color'    => 'text-rose-600 dark:text-rose-400',
+                'admin_text'    => 'Review & manage SALNs',
                 'employee_text' => 'File your annual SALN',
-                'stat_key' => 'saln_count',
+                'stat_key'      => 'saln_count',
             ],
         ];
 
         if ($this->user->isAdmin()) {
+            // Admin gets an Employees card prepended before the shared modules
             $this->modules = array_merge([
                 [
-                    'title' => 'Employees',
-                    'route' => 'filament.hrms.resources.employees.index',
-                    'icon' => 'heroicon-o-users',
-                    'icon_bg' => 'bg-green-100 dark:bg-green-900/40',
-                    'icon_color' => 'text-green-600 dark:text-green-400',
-                    'admin_text' => 'Manage employee records',
+                    'title'         => 'Employees',
+                    'route'         => 'filament.hrms.resources.employees.index',
+                    'icon'          => 'heroicon-o-users',
+                    'icon_bg'       => 'bg-green-100 dark:bg-green-900/40',
+                    'icon_color'    => 'text-green-600 dark:text-green-400',
+                    'admin_text'    => 'Manage employee records',
                     'employee_text' => '',
-                    'stat_key' => 'employee_count',
-                ]
+                    'stat_key'      => 'employee_count',
+                ],
             ], $baseModules);
         } else {
             $this->modules = $baseModules;
@@ -232,17 +247,22 @@ class HrmsDashboard extends Page
     {
         $statCounts = [
             'employee_count' => $this->stats['active_employees'] ?? 0,
-            'dtr_count' => 0,
-            'leave_count' => $this->user->isAdmin()
+            'dtr_count'      => 0,
+            'leave_count'    => $this->user->isAdmin()
                 ? LeaveApplication::count()
-                : $this->stats['my_leaves'],
-            'locator_count' => $this->user->isAdmin()
+                : ($this->stats['my_leaves'] ?? 0),
+            'locator_count'  => $this->user->isAdmin()
                 ? LocatorSlip::count()
                 : LocatorSlip::where('user_id', $this->user->id)->count(),
-            'travel_count' => $this->user->isAdmin()
+            'travel_count'   => $this->user->isAdmin()
                 ? TravelOrder::count()
-                : $this->stats['my_travel_orders'],
-            'saln_count' => $this->user->isAdmin()
+                : ($this->stats['my_travel_orders'] ?? 0),
+            // ── PDS stat (NEW) ───────────────────────────────────────
+            'pds_count'      => $this->user->isAdmin()
+                ? \App\Models\PersonalDataSheet::count()
+                : ($this->stats['my_pds'] ?? 0),
+            // ─────────────────────────────────────────────────────────
+            'saln_count'     => $this->user->isAdmin()
                 ? Saln::count()
                 : Saln::where('user_id', $this->user->id)->count(),
         ];
@@ -256,22 +276,22 @@ class HrmsDashboard extends Page
     {
         $this->recentActivities = collect();
 
-        $leaves = LeaveApplication::latest()->take(6)->get();
+        $leaves       = LeaveApplication::latest()->take(6)->get();
         $travelOrders = TravelOrder::with('creator')->latest()->take(6)->get();
         $locatorSlips = LocatorSlip::latest()->take(6)->get();
-        $salns = Saln::latest()->take(6)->get();
+        $salns        = Saln::latest()->take(6)->get();
         $newEmployees = User::where('role', 'employee')->latest()->take(6)->get();
 
         $addActivity = function ($type, $employee, $status, $date, $icon, $color, $timestamp, $url) {
             $this->recentActivities->push([
-                'type' => $type,
-                'employee' => $employee,
-                'status' => $status,
-                'date' => $date,
-                'icon' => $icon,
-                'color' => $color,
+                'type'      => $type,
+                'employee'  => $employee,
+                'status'    => $status,
+                'date'      => $date,
+                'icon'      => $icon,
+                'color'     => $color,
                 'timestamp' => $timestamp,
-                'url' => $url,
+                'url'       => $url,
             ]);
         };
 
@@ -336,10 +356,10 @@ class HrmsDashboard extends Page
                 'New Registration',
                 $employee->full_name ?? $employee->name,
                 match ($employee->status) {
-                    'pending' => 'Pending Approval',
-                    'active' => 'Active',
+                    'pending'  => 'Pending Approval',
+                    'active'   => 'Active',
                     'inactive' => 'Inactive',
-                    default => ucfirst($employee->status),
+                    default    => ucfirst($employee->status),
                 },
                 $employee->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
                 'heroicon-o-user-plus',

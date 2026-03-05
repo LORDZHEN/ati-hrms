@@ -95,7 +95,7 @@ class Register extends BaseRegister
             Forms\Components\Hidden::make('province_id'),
             Forms\Components\Hidden::make('city_id'),
             Forms\Components\Hidden::make('barangay_id'),
-            Forms\Components\Hidden::make('purok_street'),
+            // Forms\Components\Hidden::make('purok_street'),
 
             Section::make('II. Employment Information')
                 ->extraAttributes(['class' => 'fi-section-transparent'])
@@ -174,7 +174,7 @@ class Register extends BaseRegister
             'province_id'          => $data['province_id'],
             'city_id'              => $data['city_id'],
             'barangay_id'          => $data['barangay_id'],
-            'purok_street'         => $data['purok_street'] ?? null,
+            // 'purok_street'         => $data['purok_street'] ?? null,
             'position'             => $data['position'],
             'department'           => $data['department'],
             'employment_status'    => $data['employment_status'],

@@ -1,252 +1,131 @@
-{{-- resources/views/pds/C3.blade.php --}}
-<style>
-    .pds-container {
-        font-family: Arial, sans-serif;
-        font-size: 9pt;
-        line-height: 1.2;
-        color: #000;
-        max-width: 8.5in;
-        margin: 0 auto;
-        padding: 0.5in;
-    }
+{{-- resources/views/pds/C3.blade.php | Page 3 of 4 --}}
+{{--
+    ROW HEIGHT RATIONALE (empirically derived):
+    CONFIRMED SAFE (no overflow):  VW=19, LD=16, Other=19 → 602px rows
+    CONFIRMED OVERFLOW:            VW=26, LD=25, Other=26 → 889px rows
+    TRUE MAX rows ≈ 700px
+    CHOSEN VALUES: VW=20, LD=19, Other=20 → 679px rows (safely between bounds)
+--}}
+<div class="page" style="overflow:hidden; max-height:calc(13in - 16mm);">
 
-    .pds-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 0;
-    }
+{{-- ── HEADER ── --}}
+<table style="margin-bottom:2px;">
+  <tr>
+    <td class="nb cs-label" style="width:14%; vertical-align:top;">CS Form No. 212<br>Revised 2017</td>
+    <td class="nb" style="width:72%;"><div class="title">PERSONAL DATA SHEET</div></td>
+    <td class="nb cs-label" style="width:14%; text-align:right; vertical-align:top;">Page 3 of 4</td>
+  </tr>
+</table>
 
-    .pds-table td,
-    .pds-table th {
-        border: 1px solid #000;
-        padding: 2px 4px;
-        vertical-align: top;
-        font-size: 8pt;
-    }
+{{-- ════════════════════════════════════════════
+     SECTION VI — VOLUNTARY WORK
+     ════════════════════════════════════════════ --}}
+<div class="sec" style="margin-top:0;">VI. &nbsp; VOLUNTARY WORK OR INVOLVEMENT IN CIVIC / NON-GOVERNMENT / PEOPLE / VOLUNTARY ORGANIZATION/S</div>
 
-    .pds-table th {
-        background-color: #d9d9d9;
-        font-weight: bold;
-        text-align: center;
-    }
+<table style="table-layout:fixed; width:100%;">
+  <colgroup>
+    <col style="width:38%">
+    <col style="width:12%">
+    <col style="width:12%">
+    <col style="width:11%">
+    <col style="width:27%">
+  </colgroup>
+  <tr>
+    <th class="hc" rowspan="2" style="text-align:left; padding:2px 4px; font-size:7.5pt;">
+      29. NAME &amp; ADDRESS OF ORGANIZATION <span style="font-weight:normal;">(Write in full)</span>
+    </th>
+    <th class="hc" colspan="2" style="font-size:7.5pt; padding:2px;">INCLUSIVE DATES<br><span style="font-weight:normal; font-size:6.5pt;">(mm/dd/yyyy)</span></th>
+    <th class="hc" rowspan="2" style="font-size:7.5pt; padding:2px;">NUMBER<br>OF HOURS</th>
+    <th class="hc" rowspan="2" style="font-size:7.5pt; padding:2px;">POSITION / NATURE OF WORK</th>
+  </tr>
+  <tr>
+    <th class="hc" style="font-size:7.5pt; padding:2px;">From</th>
+    <th class="hc" style="font-size:7.5pt; padding:2px;">To</th>
+  </tr>
+  @php $vw_list = $pds->voluntary_work ?? []; @endphp
+  @for($i = 0; $i < 7; $i++)
+    @php $vw = $vw_list[$i] ?? null; @endphp
+    <tr style="height:20px;">
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $vw['organization_name'] ?? '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ !empty($vw['from_date']??null) ? \Carbon\Carbon::parse($vw['from_date'])->format('m/d/Y') : '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ !empty($vw['to_date']??null) ? \Carbon\Carbon::parse($vw['to_date'])->format('m/d/Y') : '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ $vw['hours'] ?? '' }}</td>
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $vw['position'] ?? '' }}</td>
+    </tr>
+  @endfor
+</table>
+<div class="note" style="font-size:6.5pt; padding:1px 0;">(Continue on separate sheet if necessary)</div>
 
-    .label-cell {
-        background-color: #d9d9d9;
-        font-weight: normal;
-        font-size: 7pt;
-    }
+{{-- ════════════════════════════════════════════
+     SECTION VII — LEARNING AND DEVELOPMENT
+     ════════════════════════════════════════════ --}}
+<div class="sec" style="margin-top:2px;">VII. &nbsp; LEARNING AND DEVELOPMENT (L&amp;D) INTERVENTIONS/TRAINING PROGRAMS ATTENDED</div>
+<div style="font-size:6.5pt; font-style:italic; margin:1px 0;">(Start from the most recent L&amp;D/training program and include only the relevant L&amp;D/training taken for the last five (5) years for Division Chief/Executive/Managerial positions)</div>
 
-    .data-cell {
-        font-size: 7pt;
-        min-height: 18px;
-    }
+<table style="table-layout:fixed; width:100%;">
+  <colgroup>
+    <col style="width:35%">
+    <col style="width:11%">
+    <col style="width:11%">
+    <col style="width:10%">
+    <col style="width:13%">
+    <col style="width:20%">
+  </colgroup>
+  <tr>
+    <th class="hc" rowspan="2" style="text-align:left; padding:2px 4px; font-size:7.5pt;">
+      30. TITLE OF LEARNING AND DEVELOPMENT INTERVENTIONS/TRAINING PROGRAMS<br>
+      <span style="font-weight:normal; font-size:6.5pt;">(Write in full)</span>
+    </th>
+    <th class="hc" colspan="2" style="font-size:7.5pt; padding:2px;">INCLUSIVE DATES<br><span style="font-weight:normal; font-size:6.5pt;">(mm/dd/yyyy)</span></th>
+    <th class="hc" rowspan="2" style="font-size:7.5pt; padding:2px;">NUMBER<br>OF HOURS</th>
+    <th class="hc" rowspan="2" style="font-size:7.5pt; padding:2px;">Type of LD<br><span style="font-weight:normal; font-size:6.5pt;">(Managerial/<br>Supervisory/<br>Technical/etc)</span></th>
+    <th class="hc" rowspan="2" style="font-size:7.5pt; padding:2px;">CONDUCTED/<br>SPONSORED BY<br><span style="font-weight:normal; font-size:6.5pt;">(Write in full)</span></th>
+  </tr>
+  <tr>
+    <th class="hc" style="font-size:7.5pt; padding:2px;">From</th>
+    <th class="hc" style="font-size:7.5pt; padding:2px;">To</th>
+  </tr>
+  @php $ld_list = $pds->learning_development ?? []; @endphp
+  @for($i = 0; $i < 21; $i++)
+    @php $ld = $ld_list[$i] ?? null; @endphp
+    <tr style="height:19px;">
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $ld['training_title'] ?? '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ !empty($ld['from_date']??null) ? \Carbon\Carbon::parse($ld['from_date'])->format('m/d/Y') : '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ !empty($ld['to_date']??null) ? \Carbon\Carbon::parse($ld['to_date'])->format('m/d/Y') : '' }}</td>
+      <td class="dc" style="text-align:center; font-size:7.5pt; padding:1px 3px;">{{ $ld['hours'] ?? '' }}</td>
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $ld['type'] ?? '' }}</td>
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $ld['conducted_by'] ?? '' }}</td>
+    </tr>
+  @endfor
+</table>
+<div class="note" style="font-size:6.5pt; padding:1px 0;">(Continue on separate sheet if necessary)</div>
 
-    .header-row {
-        background-color: #d9d9d9;
-        font-weight: bold;
-        text-align: center;
-        font-size: 7pt;
-        padding: 4px;
-    }
+{{-- ════════════════════════════════════════════
+     SECTION VIII — OTHER INFORMATION
+     ════════════════════════════════════════════ --}}
+<div class="sec" style="margin-top:2px;">VIII. &nbsp; OTHER INFORMATION</div>
 
-    .section-title {
-        background-color: #969696;
-        color: #fff;
-        font-weight: bold;
-        font-size: 9pt;
-        padding: 3px 5px;
-        margin: 8px 0 2px 0;
-    }
+<table style="table-layout:fixed; width:100%;">
+  <tr>
+    <th class="hc" style="width:33.33%; font-size:7.5pt; padding:2px;">31. SPECIAL SKILLS and HOBBIES</th>
+    <th class="hc" style="width:33.33%; font-size:7.5pt; padding:2px;">32. NON-ACADEMIC DISTINCTIONS / RECOGNITION<br><span style="font-weight:normal; font-size:6.5pt;">(Write in full)</span></th>
+    <th class="hc" style="width:33.33%; font-size:7.5pt; padding:2px;">33. MEMBERSHIP IN ASSOCIATION/ORGANIZATION<br><span style="font-weight:normal; font-size:6.5pt;">(Write in full)</span></th>
+  </tr>
+  @php
+    $skills       = $pds->special_skills ?? [];
+    $distinctions = $pds->non_academic_distinctions ?? [];
+    $memberships  = $pds->membership_association ?? [];
+    $maxRows      = max(count($skills), count($distinctions), count($memberships), 7);
+  @endphp
+  @for($i = 0; $i < $maxRows; $i++)
+    <tr style="height:20px;">
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $skills[$i]['skill'] ?? '' }}</td>
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $distinctions[$i]['distinction'] ?? '' }}</td>
+      <td class="dc" style="font-size:7.5pt; padding:1px 3px; overflow:hidden;">{{ $memberships[$i]['organization'] ?? '' }}</td>
+    </tr>
+  @endfor
+</table>
+<div class="note" style="font-size:6.5pt; padding:1px 0;">(Continue on separate sheet if necessary)</div>
 
-    .note-text {
-        font-size: 7pt;
-        font-style: italic;
-        text-align: center;
-        margin: 3px 0;
-    }
-
-    .page-break {
-        page-break-after: always;
-    }
-</style>
-
-<div class="pds-container page-break">
-    {{-- PAGE HEADER --}}
-    <table style="width:100%; margin-bottom: 5px; border: none;">
-        <tr>
-            <td style="width:20%; font-size:8pt; border: none;">
-                <em>CS Form No. 212</em><br>
-                <em>Revised 2017</em>
-            </td>
-            <td style="width:60%; text-align:center; border: none;">
-                <div style="font-size:11pt; font-weight:bold;">PERSONAL DATA SHEET</div>
-            </td>
-            <td style="width:20%; text-align:right; font-size:8pt; border: none;">
-                <em>Page 3 of 4</em>
-            </td>
-        </tr>
-    </table>
-
-    {{-- VOLUNTARY WORK --}}
-    <div class="section-title">VI. VOLUNTARY WORK OR INVOLVEMENT IN CIVIC / NON-GOVERNMENT / PEOPLE / VOLUNTARY ORGANIZATION/S</div>
-
-    <table class="pds-table">
-        <tr>
-            <th class="header-row" rowspan="2" style="width:38%;">
-                29. NAME & ADDRESS OF ORGANIZATION<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-            <th class="header-row" colspan="2" style="width:24%;">
-                INCLUSIVE DATES<br>
-                <span style="font-size:6pt; font-weight:normal;">(mm/dd/yyyy)</span>
-            </th>
-            <th class="header-row" rowspan="2" style="width:12%;">
-                NUMBER OF<br>HOURS
-            </th>
-            <th class="header-row" rowspan="2" style="width:26%;">
-                POSITION / NATURE OF WORK
-            </th>
-        </tr>
-        <tr>
-            <th class="header-row" style="font-size:6pt; width:12%;">From</th>
-            <th class="header-row" style="font-size:6pt; width:12%;">To</th>
-        </tr>
-
-        @php
-            $voluntaryWork = $pds->voluntary_work ?? [];
-            $maxVoluntary = 7; // Standard PDS shows 7 rows
-        @endphp
-
-        @for($i = 0; $i < $maxVoluntary; $i++)
-            @php
-                $work = $voluntaryWork[$i] ?? null;
-            @endphp
-            <tr>
-                <td class="data-cell">{{ $work['organization_name'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">
-                    @if(isset($work['from_date']) && !empty($work['from_date']))
-                        {{ \Carbon\Carbon::parse($work['from_date'])->format('m/d/Y') }}
-                    @endif
-                </td>
-                <td class="data-cell" style="text-align:center;">
-                    @if(isset($work['to_date']) && !empty($work['to_date']))
-                        {{ \Carbon\Carbon::parse($work['to_date'])->format('m/d/Y') }}
-                    @endif
-                </td>
-                <td class="data-cell" style="text-align:center;">{{ $work['hours'] ?? '' }}</td>
-                <td class="data-cell">{{ $work['position'] ?? '' }}</td>
-            </tr>
-        @endfor
-    </table>
-
-    <div class="note-text">(Continue on separate sheet if necessary)</div>
-
-    {{-- LEARNING AND DEVELOPMENT --}}
-    <div class="section-title" style="margin-top:8px;">VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS/TRAINING PROGRAMS ATTENDED</div>
-
-    <div style="font-size:6pt; font-style:italic; margin:2px 0;">
-        (Start from the most recent L&D/training program and include only the relevant L&D/training taken for the last five (5) years for Division Chief/Executive/Managerial positions)
-    </div>
-
-    <table class="pds-table">
-        <tr>
-            <th class="header-row" rowspan="2" style="width:35%;">
-                30. TITLE OF LEARNING AND DEVELOPMENT<br>INTERVENTIONS/TRAINING PROGRAMS<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-            <th class="header-row" colspan="2" style="width:22%;">
-                INCLUSIVE DATES<br>
-                <span style="font-size:6pt; font-weight:normal;">(mm/dd/yyyy)</span>
-            </th>
-            <th class="header-row" rowspan="2" style="width:10%;">
-                NUMBER OF<br>HOURS
-            </th>
-            <th class="header-row" rowspan="2" style="width:12%;">
-                Type of LD<br>
-                <span style="font-size:6pt; font-weight:normal;">(Managerial/<br>Supervisory/<br>Technical/etc)</span>
-            </th>
-            <th class="header-row" rowspan="2" style="width:21%;">
-                CONDUCTED/ SPONSORED BY<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-        </tr>
-        <tr>
-            <th class="header-row" style="font-size:6pt; width:11%;">From</th>
-            <th class="header-row" style="font-size:6pt; width:11%;">To</th>
-        </tr>
-
-        @php
-            $learningDevelopment = $pds->learning_development ?? [];
-            $maxLD = 21; // Standard PDS shows 21 rows
-        @endphp
-
-        @for($i = 0; $i < $maxLD; $i++)
-            @php
-                $ld = $learningDevelopment[$i] ?? null;
-            @endphp
-            <tr>
-                <td class="data-cell">{{ $ld['training_title'] ?? '' }}</td>
-                <td class="data-cell" style="text-align:center;">
-                    @if(isset($ld['from_date']) && !empty($ld['from_date']))
-                        {{ \Carbon\Carbon::parse($ld['from_date'])->format('m/d/Y') }}
-                    @endif
-                </td>
-                <td class="data-cell" style="text-align:center;">
-                    @if(isset($ld['to_date']) && !empty($ld['to_date']))
-                        {{ \Carbon\Carbon::parse($ld['to_date'])->format('m/d/Y') }}
-                    @endif
-                </td>
-                <td class="data-cell" style="text-align:center;">{{ $ld['hours'] ?? '' }}</td>
-                <td class="data-cell">{{ $ld['type'] ?? '' }}</td>
-                <td class="data-cell">{{ $ld['conducted_by'] ?? '' }}</td>
-            </tr>
-        @endfor
-    </table>
-
-    <div class="note-text">(Continue on separate sheet if necessary)</div>
-
-    {{-- OTHER INFORMATION --}}
-    <div class="section-title" style="margin-top:8px;">VIII. OTHER INFORMATION</div>
-
-    <table class="pds-table">
-        <tr>
-            <th class="header-row" style="width:33.33%;">
-                31. SPECIAL SKILLS and HOBBIES
-            </th>
-            <th class="header-row" style="width:33.33%;">
-                32. NON-ACADEMIC DISTINCTIONS / RECOGNITION<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-            <th class="header-row" style="width:33.33%;">
-                33. MEMBERSHIP IN ASSOCIATION/ORGANIZATION<br>
-                <span style="font-size:6pt; font-weight:normal;">(Write in full)</span>
-            </th>
-        </tr>
-
-        @php
-            $specialSkills = $pds->special_skills ?? [];
-            $distinctions = $pds->non_academic_distinctions ?? [];
-            $memberships = $pds->membership_association ?? [];
-            $maxOtherInfo = max(count($specialSkills), count($distinctions), count($memberships), 7); // Minimum 7 rows
-        @endphp
-
-        @for($i = 0; $i < $maxOtherInfo; $i++)
-            <tr>
-                <td class="data-cell">{{ $specialSkills[$i]['skill'] ?? '' }}</td>
-                <td class="data-cell">{{ $distinctions[$i]['distinction'] ?? '' }}</td>
-                <td class="data-cell">{{ $memberships[$i]['organization'] ?? '' }}</td>
-            </tr>
-        @endfor
-    </table>
-
-    <div class="note-text">(Continue on separate sheet if necessary)</div>
-
-    <div style="text-align:right; font-size:7pt; font-style:italic; margin-top:5px;">
-        SIGNATURE <span style="display:inline-block; width:150px; border-bottom:1px solid #000;"></span>
-        DATE <span style="display:inline-block; width:100px; border-bottom:1px solid #000;"></span>
-    </div>
-
-    <div style="text-align:center; font-size:7pt; margin-top:15px;">
-        <em>CS FORM 212 (Revised 2017), Page 3 of 4</em>
-    </div>
+<div class="footer">CS FORM 212 (Revised 2017), Page 3 of 4</div>
 </div>

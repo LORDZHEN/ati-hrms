@@ -33,8 +33,6 @@ class HrmsPanelProvider extends PanelProvider
             ->login(\App\Filament\Pages\Auth\Login::class)
             ->registration(\App\Filament\Pages\Auth\Register::class)
             ->favicon(asset('images/Main_Logo-removebg-preview.png'))
-            ->brandLogoHeight('80px')
-            ->brandLogo(asset('images/ati_logo.png'))
             ->colors([
                 'primary' => Color::Emerald,
                 'secondary' => Color::Amber,
@@ -47,38 +45,73 @@ class HrmsPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
 
+            // ── Inject CSS for user info dark/light mode ──
+            // ── Inject CSS for user info dark/light mode ──
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn(): HtmlString => new HtmlString('
+                <style>
+                    .hrms-user-info {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-end;
+                        justify-content: center;
+                        padding-right: 0.5rem;
+                        line-height: 1.3;
+                    }
+
+                    /* Force override everything Filament sets */
+                    span.hrms-user-name,
+                    div.hrms-user-info span.hrms-user-name {
+                        font-size: 0.875rem !important;
+                        font-weight: 700 !important;
+                        white-space: nowrap !important;
+                        color: #111827 !important;
+                        opacity: 1 !important;
+                        text-shadow: none !important;
+                        -webkit-text-fill-color: #111827 !important;
+                    }
+
+                    span.hrms-user-role,
+                    div.hrms-user-info span.hrms-user-role {
+                        font-size: 0.6875rem !important;
+                        font-weight: 600 !important;
+                        white-space: nowrap !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.07em !important;
+                        color: #16a34a !important;
+                        opacity: 1 !important;
+                        -webkit-text-fill-color: #16a34a !important;
+                    }
+
+                    html.dark span.hrms-user-name,
+                    html.dark div.hrms-user-info span.hrms-user-name {
+                        color: #f1f5f9 !important;
+                        -webkit-text-fill-color: #f1f5f9 !important;
+                    }
+
+                    html.dark span.hrms-user-role,
+                    html.dark div.hrms-user-info span.hrms-user-role {
+                        color: #4ade80 !important;
+                        -webkit-text-fill-color: #4ade80 !important;
+                    }
+                </style>
+            ')
+            )
+
             // ── User name stacked over role, displayed beside the avatar ──
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn(): HtmlString => new HtmlString(
                     Auth::check()
-                    ? '<div style="
-                                display: flex;
-                                flex-direction: column;
-                                align-items: flex-end;
-                                justify-content: center;
-                                padding-right: 0.5rem;
-                                line-height: 1.3;
-                           ">
-                               <span style="
-                                   font-size: 0.875rem;
-                                   font-weight: 700;
-                                   color: #1f2937;
-                                   white-space: nowrap;
-                               ">'
+                    ? '<div class="hrms-user-info">
+               <span class="hrms-user-name" style="color:#111827;-webkit-text-fill-color:#111827;font-weight:700;font-size:0.875rem;opacity:1;">'
                     . e(Auth::user()->full_name ?: Auth::user()->name)
                     . '</span>
-                               <span style="
-                                   font-size: 0.6875rem;
-                                   font-weight: 500;
-                                   color: #9ca3af;
-                                   white-space: nowrap;
-                                   text-transform: uppercase;
-                                   letter-spacing: 0.06em;
-                               ">'
+               <span class="hrms-user-role" style="color:#16a34a;-webkit-text-fill-color:#16a34a;font-weight:600;font-size:0.6875rem;text-transform:uppercase;opacity:1;">'
                     . e(Auth::user()->getRoleDisplayName())
                     . '</span>
-                           </div>'
+           </div>'
                     : ''
                 )
             )
