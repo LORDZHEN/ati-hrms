@@ -33,7 +33,8 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         // Seed admin user
-        $this->call(AdminUserSeeder::class);
+        // $this->call(AdminUserSeeder::class);
+        $this->call(LeaveCreditSeeder::class);
         //$this->call(EmployeeUserSeeder::class);
     }
 }

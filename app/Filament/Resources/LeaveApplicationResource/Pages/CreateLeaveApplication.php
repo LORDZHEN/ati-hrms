@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
 use App\Filament\Resources\LeaveApplicationResource;
+use App\Filament\Widgets\LeaveCreditWidget;
 use App\Models\User;
 use App\Notifications\LeaveApplicationSubmitted;
 use Filament\Resources\Pages\CreateRecord;
@@ -11,6 +12,17 @@ use Filament\Actions;
 class CreateLeaveApplication extends CreateRecord
 {
     protected static string $resource = LeaveApplicationResource::class;
+
+    // ----------------------------------------------------------------
+    // Show leave credit balances above the create form so the employee
+    // can see how many days are left before filing.
+    // ----------------------------------------------------------------
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            LeaveCreditWidget::class,
+        ];
+    }
 
     protected function getFormActions(): array
     {
@@ -47,10 +59,4 @@ class CreateLeaveApplication extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
-
-    // ============================================================
-    // NOTE: Leave Application has NO repeaters
-    // Unlike PDS/SALN, no add/remove methods needed here
-    // All fields are simple inputs without dynamic add/remove
-    // ============================================================
 }

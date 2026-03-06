@@ -635,7 +635,7 @@
 
         {{-- ── RIGHT PANEL ── --}}
         <div class="panel-right">
-            <span class="welcome-eyebrow">Employee Portal</span>
+            <span class="welcome-eyebrow">HRMS Portal</span>
             <h1 class="welcome-heading">Welcome Back</h1>
             <p class="welcome-sub">Sign in to access your dashboard</p>
 

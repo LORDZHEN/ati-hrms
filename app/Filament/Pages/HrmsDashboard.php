@@ -11,8 +11,17 @@ use App\Models\LocatorSlip;
 use App\Models\Saln;
 use App\Models\Announcement;
 use App\Models\Event;
+use App\Models\TransactionHistory;  // ← NEW
 use Carbon\Carbon;
 
+/**
+ * HrmsDashboard
+ *
+ * MODIFIED: buildRecentActivities() now queries the TransactionHistory
+ * table instead of manually aggregating records from multiple tables.
+ *
+ * All other logic is unchanged.
+ */
 class HrmsDashboard extends Page
 {
     protected static string $view = 'filament.pages.hrms-dashboard';
@@ -59,6 +68,41 @@ class HrmsDashboard extends Page
             $this->buildRecentActivities();
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MODIFIED: Recent Activities now sourced from TransactionHistory table
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Populate $this->recentActivities from the transaction_histories table.
+     *
+     * Replaces the previous ad-hoc implementation that queried 5 separate
+     * tables and merged the results in PHP. This is a single indexed query.
+     */
+    protected function buildRecentActivities(): void
+    {
+        $this->recentActivities = TransactionHistory::with('user')  // eager-load to avoid N+1
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn (TransactionHistory $tx) => [
+                'type'      => $tx->transaction_type,
+                'employee'  => $tx->employee_name,
+                'status'    => ucfirst($tx->status),
+                'date'      => $tx->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
+                'icon'      => $tx->resolved_icon,
+                'color'     => $tx->color ?? 'gray',
+                'timestamp' => $tx->created_at,
+                'url'       => $tx->record_url
+                    ?? route('filament.hrms.resources.transaction-histories.view', $tx->id),
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // All methods below are UNCHANGED from the original HrmsDashboard
+    // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildPendingActions(): void
     {
@@ -158,7 +202,6 @@ class HrmsDashboard extends Page
 
     protected function buildModules(): void
     {
-        // ── Modules visible to both admin and employee ──────────────
         $baseModules = [
             [
                 'title'         => 'Daily Time Record',
@@ -200,7 +243,6 @@ class HrmsDashboard extends Page
                 'employee_text' => 'View your travel orders',
                 'stat_key'      => 'travel_count',
             ],
-            // ── Personal Data Sheet (NEW) ────────────────────────────
             [
                 'title'         => 'Personal Data Sheet',
                 'route'         => 'filament.hrms.resources.pds.index',
@@ -211,7 +253,6 @@ class HrmsDashboard extends Page
                 'employee_text' => 'View or submit your PDS',
                 'stat_key'      => 'pds_count',
             ],
-            // ─────────────────────────────────────────────────────────
             [
                 'title'         => 'SALN',
                 'route'         => 'filament.hrms.resources.salns.index',
@@ -225,7 +266,6 @@ class HrmsDashboard extends Page
         ];
 
         if ($this->user->isAdmin()) {
-            // Admin gets an Employees card prepended before the shared modules
             $this->modules = array_merge([
                 [
                     'title'         => 'Employees',
@@ -257,11 +297,9 @@ class HrmsDashboard extends Page
             'travel_count'   => $this->user->isAdmin()
                 ? TravelOrder::count()
                 : ($this->stats['my_travel_orders'] ?? 0),
-            // ── PDS stat (NEW) ───────────────────────────────────────
             'pds_count'      => $this->user->isAdmin()
                 ? \App\Models\PersonalDataSheet::count()
                 : ($this->stats['my_pds'] ?? 0),
-            // ─────────────────────────────────────────────────────────
             'saln_count'     => $this->user->isAdmin()
                 ? Saln::count()
                 : Saln::where('user_id', $this->user->id)->count(),
@@ -272,120 +310,14 @@ class HrmsDashboard extends Page
         }
     }
 
-    protected function buildRecentActivities(): void
-    {
-        $this->recentActivities = collect();
-
-        $leaves       = LeaveApplication::latest()->take(6)->get();
-        $travelOrders = TravelOrder::with('creator')->latest()->take(6)->get();
-        $locatorSlips = LocatorSlip::latest()->take(6)->get();
-        $salns        = Saln::latest()->take(6)->get();
-        $newEmployees = User::where('role', 'employee')->latest()->take(6)->get();
-
-        $addActivity = function ($type, $employee, $status, $date, $icon, $color, $timestamp, $url) {
-            $this->recentActivities->push([
-                'type'      => $type,
-                'employee'  => $employee,
-                'status'    => $status,
-                'date'      => $date,
-                'icon'      => $icon,
-                'color'     => $color,
-                'timestamp' => $timestamp,
-                'url'       => $url,
-            ]);
-        };
-
-        foreach ($leaves as $leave) {
-            $addActivity(
-                'Leave Application',
-                $leave->employee?->full_name ?? ($leave->full_name ?? 'Unknown'),
-                ucfirst($leave->status),
-                $leave->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
-                'heroicon-o-calendar',
-                'blue',
-                $leave->created_at,
-                route('filament.hrms.resources.leave-applications.view', $leave->id)
-            );
-        }
-
-        foreach ($travelOrders as $order) {
-            $addActivity(
-                'Travel Order',
-                $order->name ?? $order->creator?->full_name ?? $order->creator?->name ?? 'Unknown',
-                $order->status_label ?? ucfirst($order->status),
-                $order->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
-                'heroicon-o-briefcase',
-                'amber',
-                $order->created_at,
-                route('filament.hrms.resources.travel-orders.view', $order->id)
-            );
-        }
-
-        foreach ($locatorSlips as $slip) {
-            $addActivity(
-                'Locator Slip',
-                $slip->user?->full_name ?? $slip->employee_name ?? 'Unknown',
-                $slip->status_label ?? ucfirst($slip->status),
-                $slip->created_at?->setTimezone('Asia/Manila')->format('M d, Y') ?? 'N/A',
-                'heroicon-o-map-pin',
-                'purple',
-                $slip->created_at,
-                route('filament.hrms.resources.locator-slips.view', $slip->id)
-            );
-        }
-
-        foreach ($salns as $saln) {
-            $employeeName = $saln->user?->full_name
-                ?? trim("{$saln->declarant_first_name} {$saln->declarant_middle_initial} {$saln->declarant_family_name}")
-                ?: 'Unknown';
-
-            $addActivity(
-                'SALN Upload',
-                $employeeName,
-                'Filed',
-                $saln->created_at?->setTimezone('Asia/Manila')->format('M d, Y') ?? 'N/A',
-                'heroicon-o-document-text',
-                'rose',
-                $saln->created_at,
-                route('filament.hrms.resources.salns.view', $saln->id)
-            );
-        }
-
-        foreach ($newEmployees as $employee) {
-            $addActivity(
-                'New Registration',
-                $employee->full_name ?? $employee->name,
-                match ($employee->status) {
-                    'pending'  => 'Pending Approval',
-                    'active'   => 'Active',
-                    'inactive' => 'Inactive',
-                    default    => ucfirst($employee->status),
-                },
-                $employee->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
-                'heroicon-o-user-plus',
-                'green',
-                $employee->created_at,
-                route('filament.hrms.resources.employees.view', $employee->id)
-            );
-        }
-
-        $this->recentActivities = $this->recentActivities
-            ->sortByDesc('timestamp')
-            ->take(5)
-            ->values();
-    }
-
     public function getGreeting(): string
     {
         $hour = now('Asia/Manila')->hour;
-
-        if ($hour < 12)
-            $timeGreeting = 'Good morning';
-        elseif ($hour < 18)
-            $timeGreeting = 'Good afternoon';
-        else
-            $timeGreeting = 'Good evening';
-
+        $timeGreeting = match(true) {
+            $hour < 12  => 'Good morning',
+            $hour < 18  => 'Good afternoon',
+            default     => 'Good evening',
+        };
         return $timeGreeting . ', ' . $this->user->full_name . '!';
     }
 

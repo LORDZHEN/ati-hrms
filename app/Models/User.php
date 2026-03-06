@@ -9,6 +9,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
@@ -132,6 +133,24 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function locatorSlips(): HasMany
     {
         return $this->hasMany(LocatorSlip::class, 'user_id');
+    }
+
+    /**
+     * The employee's current leave credit balances.
+     * One row in leave_credits per employee.
+     */
+    public function leaveCredits(): HasOne
+    {
+        return $this->hasOne(LeaveCredit::class);
+    }
+
+    /**
+     * Full audit trail of every leave credit change for this employee
+     * (accruals, deductions, reversals, adjustments, annual resets).
+     */
+    public function leaveCreditLogs(): HasMany
+    {
+        return $this->hasMany(LeaveCreditLog::class);
     }
 
     /* ============================================================

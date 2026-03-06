@@ -16,6 +16,7 @@
         @keyframes cp-fadein   { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes cp-pulse-am { 0%,100% { box-shadow:0 0 0 0 rgba(245,158,11,.5); } 50% { box-shadow:0 0 0 8px rgba(245,158,11,0); } }
         @keyframes cp-dot-pu   { 0%,100% { box-shadow:0 0 0 0 rgba(245,158,11,.5); } 50% { box-shadow:0 0 0 4px rgba(245,158,11,0); } }
+        @keyframes cp-shimmer-green { 0% { background-position:0% 50%; } 100% { background-position:200% 50%; } }
         @endverbatim
 
         .cp-modal{font-family:'DM Sans',sans-serif;position:relative;background:#fff;border-radius:20px;overflow:hidden;border:1.5px solid #e5e7eb;box-shadow:0 24px 80px rgba(0,0,0,.18),0 8px 24px rgba(0,0,0,.10);display:flex;flex-direction:column;max-height:90vh;min-height:0;}
@@ -65,13 +66,60 @@
         .cp-eye{position:absolute !important;top:50% !important;right:.75rem !important;transform:translateY(-50%) !important;display:flex !important;align-items:center !important;background:none !important;border:none !important;padding:0 !important;cursor:pointer !important;z-index:10 !important;width:1.25rem !important;height:1.25rem !important;color:#9ca3af;transition:color .18s;}
         .cp-eye:hover{color:#d97706;}
         .dark .cp-eye:hover{color:#fbbf24;}
-        .cp-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:700;padding:.2rem .625rem;border-radius:999px;letter-spacing:.04em;text-transform:uppercase;}
-        .cp-badge-weak  {background:rgba(220,38,38,.1); color:#dc2626;border:1px solid rgba(220,38,38,.25);}
-        .cp-badge-medium{background:rgba(234,179,8,.1); color:#ca8a04;border:1px solid rgba(234,179,8,.25);}
-        .cp-badge-strong{background:rgba(5,150,105,.1); color:#059669;border:1px solid rgba(5,150,105,.25);}
+
+        /* ═══════════════════════════════════════════
+           MODERN STRENGTH METER
+        ═══════════════════════════════════════════ */
+        .cp-strength-wrap{margin-top:1rem;display:flex;flex-direction:column;gap:.8rem;}
+
+        /* Top row */
+        .cp-strength-top{display:flex;align-items:center;justify-content:space-between;}
+        .cp-strength-lbl{font-size:.6rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9ca3af;}
+        .dark .cp-strength-lbl{color:#5a4428;}
+
+        /* Badge */
+        .cp-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:700;padding:.2rem .675rem;border-radius:999px;letter-spacing:.04em;text-transform:uppercase;transition:all .3s ease;}
+        .cp-badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+        .cp-badge-weak  {background:rgba(220,38,38,.1); color:#dc2626;border:1px solid rgba(220,38,38,.2);}
+        .cp-badge-medium{background:rgba(234,179,8,.1); color:#b45309;border:1px solid rgba(234,179,8,.2);}
+        .cp-badge-strong{background:rgba(5,150,105,.1); color:#059669;border:1px solid rgba(5,150,105,.2);}
         .dark .cp-badge-weak  {background:rgba(220,38,38,.18); color:#f87171;}
         .dark .cp-badge-medium{background:rgba(234,179,8,.18); color:#fbbf24;}
         .dark .cp-badge-strong{background:rgba(16,185,129,.18);color:#34d399;}
+
+        /* ── Segmented bar: 5 individual capsules ── */
+        .cp-seg-bar{display:flex;gap:5px;align-items:center;}
+        .cp-seg{
+            flex:1; height:7px; border-radius:999px;
+            background:#f0ede8;
+            transition: background .4s cubic-bezier(.34,1.56,.64,1),
+                        box-shadow .4s ease,
+                        transform .3s cubic-bezier(.34,1.56,.64,1);
+            transform-origin: left center;
+        }
+        .dark .cp-seg{background:#2a1c08;}
+
+        /* Lit states */
+        .cp-seg.lit-red   { background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,.55), 0 0 16px rgba(239,68,68,.2); transform:scaleY(1.2); }
+        .cp-seg.lit-amber { background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,.55), 0 0 16px rgba(245,158,11,.2); transform:scaleY(1.2); }
+        .cp-seg.lit-green {
+            background:linear-gradient(90deg,#10b981,#34d399);
+            background-size:200% 100%;
+            animation:cp-shimmer-green 2s linear infinite;
+            box-shadow:0 0 10px rgba(16,185,129,.6), 0 0 20px rgba(16,185,129,.25);
+            transform:scaleY(1.3);
+        }
+
+        /* ── Requirements checklist ── */
+        .cp-req-list{display:flex;flex-direction:column;gap:.275rem;}
+        .cp-req-row{display:flex;align-items:center;gap:.45rem;font-size:.72rem;font-weight:600;padding:.3rem .5rem;border-radius:7px;transition:background .2s,color .2s;}
+        .cp-req-row.met  {color:#059669;background:rgba(5,150,105,.07);}
+        .cp-req-row.unmet{color:#dc2626;background:rgba(220,38,38,.06);}
+        .dark .cp-req-row.met  {color:#34d399;background:rgba(16,185,129,.1);}
+        .dark .cp-req-row.unmet{color:#f87171;background:rgba(220,38,38,.1);}
+        .cp-req-icon{flex-shrink:0;width:13px;height:13px;}
+        /* ═══ end strength meter ═══ */
+
         .cp-banner{display:flex;align-items:flex-start;gap:.5rem;padding:.625rem .875rem;border-radius:10px;font-size:.75rem;font-weight:600;}
         .cp-info {background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2); color:#2563eb;}
         .cp-red  {background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.2);  color:#dc2626;}
@@ -197,37 +245,30 @@
                             </div>
 
                             {{-- ── NEW PASSWORD ── --}}
-                            {{-- Compute strength class BEFORE the section markup --}}
-                            @if ($password && $passwordStrength === 'weak')
-                                @php $strengthClass = 'cp-border-red'; @endphp
-                            @elseif ($password && $passwordStrength === 'medium')
-                                @php $strengthClass = 'cp-border-yellow'; @endphp
-                            @elseif ($password && $passwordStrength === 'strong')
-                                @php $strengthClass = 'cp-border-green'; @endphp
-                            @else
-                                @php $strengthClass = ''; @endphp
-                            @endif
+                            @php
+                                $strengthClass = '';
+                                if ($password && $passwordStrength === 'weak')   $strengthClass = 'cp-border-red';
+                                if ($password && $passwordStrength === 'medium') $strengthClass = 'cp-border-yellow';
+                                if ($password && $passwordStrength === 'strong') $strengthClass = 'cp-border-green';
 
-                            {{-- Compute bar colours BEFORE the section markup --}}
-                            @if ($passwordStrength === 'medium')
-                                @php
-                                    $bar1 = 'background:#eab308';
-                                    $bar2 = 'background:#eab308';
-                                    $bar3 = 'background:#e5e7eb';
-                                @endphp
-                            @elseif ($passwordStrength === 'strong')
-                                @php
-                                    $bar1 = 'background:#10b981';
-                                    $bar2 = 'background:#10b981';
-                                    $bar3 = 'background:#10b981';
-                                @endphp
-                            @else
-                                @php
-                                    $bar1 = 'background:#ef4444';
-                                    $bar2 = 'background:#e5e7eb';
-                                    $bar3 = 'background:#e5e7eb';
-                                @endphp
-                            @endif
+                                // Count how many of the 5 criteria are met
+                                $score = 0;
+                                if ($password) {
+                                    $score = (int)$hasMinLength
+                                           + (int)$hasUppercase
+                                           + (int)$hasLowercase
+                                           + (int)$hasNumber
+                                           + (int)$hasSpecial;
+                                }
+
+                                // Determine the lit class for each segment
+                                $litClass = '';
+                                if ($password) {
+                                    if ($passwordStrength === 'weak')   $litClass = 'lit-red';
+                                    elseif ($passwordStrength === 'medium') $litClass = 'lit-amber';
+                                    else $litClass = 'lit-green';
+                                }
+                            @endphp
 
                             <div class="cp-section" x-data="{ showNew: false }">
                                 <div class="cp-section-hdr">
@@ -264,70 +305,94 @@
                                     </div>
 
                                     @if ($password)
-                                        <div style="margin-top:.875rem;display:flex;flex-direction:column;gap:.625rem;">
+                                        {{-- ════ MODERN STRENGTH METER ════ --}}
+                                        <div class="cp-strength-wrap">
+
+                                            {{-- Top row: label + badge --}}
+                                            <div class="cp-strength-top">
+                                                <span class="cp-strength-lbl">Password Strength</span>
+                                                @if ($passwordStrength === 'weak')
+                                                    <span class="cp-badge cp-badge-weak">
+                                                        <span class="cp-badge-dot" style="background:#ef4444;"></span>
+                                                        Weak
+                                                    </span>
+                                                @elseif ($passwordStrength === 'medium')
+                                                    <span class="cp-badge cp-badge-medium">
+                                                        <span class="cp-badge-dot" style="background:#f59e0b;"></span>
+                                                        Medium
+                                                    </span>
+                                                @else
+                                                    <span class="cp-badge cp-badge-strong">
+                                                        <span class="cp-badge-dot" style="background:#10b981;"></span>
+                                                        Strong
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            {{-- Segmented bar: 5 capsules, one per requirement --}}
+                                            <div class="cp-seg-bar">
+                                                @for ($seg = 1; $seg <= 5; $seg++)
+                                                    <div class="cp-seg {{ $seg <= $score ? $litClass : '' }}"></div>
+                                                @endfor
+                                            </div>
+
+                                            {{-- Requirements checklist --}}
                                             <div>
-                                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
-                                                    <span style="font-size:.65rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;">Password Strength</span>
-                                                    @if ($passwordStrength === 'weak')
-                                                        <span class="cp-badge cp-badge-weak">Weak</span>
-                                                    @elseif ($passwordStrength === 'medium')
-                                                        <span class="cp-badge cp-badge-medium">Medium</span>
-                                                    @else
-                                                        <span class="cp-badge cp-badge-strong">Strong</span>
-                                                    @endif
-                                                </div>
-                                                <div style="display:flex;gap:6px;height:8px;">
-                                                    <div style="flex:1;border-radius:999px;{{ $bar1 }};"></div>
-                                                    <div style="flex:1;border-radius:999px;{{ $bar2 }};"></div>
-                                                    <div style="flex:1;border-radius:999px;{{ $bar3 }};"></div>
+                                                <span style="font-size:.6rem;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.4rem;">
+                                                    {{ $passwordStrength === 'strong' ? '✓ All requirements met' : 'Requirements' }}
+                                                </span>
+                                                <div class="cp-req-list">
+
+                                                    <div class="cp-req-row {{ $hasMinLength ? 'met' : 'unmet' }}">
+                                                        @if ($hasMinLength)
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                        @else
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        @endif
+                                                        At least 8 characters
+                                                    </div>
+
+                                                    <div class="cp-req-row {{ $hasUppercase ? 'met' : 'unmet' }}">
+                                                        @if ($hasUppercase)
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                        @else
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        @endif
+                                                        At least one uppercase letter (A–Z)
+                                                    </div>
+
+                                                    <div class="cp-req-row {{ $hasLowercase ? 'met' : 'unmet' }}">
+                                                        @if ($hasLowercase)
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                        @else
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        @endif
+                                                        At least one lowercase letter (a–z)
+                                                    </div>
+
+                                                    <div class="cp-req-row {{ $hasNumber ? 'met' : 'unmet' }}">
+                                                        @if ($hasNumber)
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                        @else
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        @endif
+                                                        At least one number (0–9)
+                                                    </div>
+
+                                                    <div class="cp-req-row {{ $hasSpecial ? 'met' : 'unmet' }}">
+                                                        @if ($hasSpecial)
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                                        @else
+                                                            <svg class="cp-req-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                        @endif
+                                                        At least one special character (!@#$%^&amp;*)
+                                                    </div>
+
                                                 </div>
                                             </div>
 
-                                            @if ($passwordStrength === 'strong')
-                                                <div class="cp-banner cp-green">
-                                                    <x-heroicon-o-check-circle style="width:14px;height:14px;flex-shrink:0;" />
-                                                    <span>Password is <strong>Strong</strong> — all requirements met!</span>
-                                                </div>
-                                            @else
-                                                <div style="display:flex;flex-direction:column;gap:.4rem;">
-                                                    <span style="font-size:.6rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.09em;">Missing requirements:</span>
-                                                    @if (!$hasMinLength)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>At least 8 characters</span>
-                                                        </div>
-                                                    @endif
-                                                    @if (!$hasUppercase && !$hasLowercase)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>Uppercase and lowercase letters</span>
-                                                        </div>
-                                                    @elseif (!$hasUppercase)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>At least one uppercase letter</span>
-                                                        </div>
-                                                    @elseif (!$hasLowercase)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>At least one lowercase letter</span>
-                                                        </div>
-                                                    @endif
-                                                    @if (!$hasNumber)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>At least one number</span>
-                                                        </div>
-                                                    @endif
-                                                    @if (!$hasSpecial)
-                                                        <div class="cp-banner cp-red">
-                                                            <x-heroicon-o-x-circle style="width:13px;height:13px;flex-shrink:0;" />
-                                                            <span>At least one special character (!@#$%^&amp;*)</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @endif
                                         </div>
+                                        {{-- ════ END STRENGTH METER ════ --}}
                                     @endif
 
                                     @error('password')
@@ -340,14 +405,11 @@
                             </div>
 
                             {{-- ── CONFIRM PASSWORD ── --}}
-                            {{-- Compute confirm border class BEFORE the section markup --}}
-                            @if ($password_confirmation && $passwordsMatch === true)
-                                @php $confirmClass = 'cp-border-green'; @endphp
-                            @elseif ($password_confirmation && $passwordsMatch === false)
-                                @php $confirmClass = 'cp-border-red'; @endphp
-                            @else
-                                @php $confirmClass = ''; @endphp
-                            @endif
+                            @php
+                                $confirmClass = '';
+                                if ($password_confirmation && $passwordsMatch === true)  $confirmClass = 'cp-border-green';
+                                if ($password_confirmation && $passwordsMatch === false) $confirmClass = 'cp-border-red';
+                            @endphp
 
                             <div class="cp-section" x-data="{ showConfirm: false }">
                                 <div class="cp-section-hdr">

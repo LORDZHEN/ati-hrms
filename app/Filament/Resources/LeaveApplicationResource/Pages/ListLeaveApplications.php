@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
 use App\Filament\Resources\LeaveApplicationResource;
+use App\Filament\Widgets\LeaveCreditWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
@@ -13,6 +14,17 @@ use Carbon\Carbon;
 class ListLeaveApplications extends ListRecords
 {
     protected static string $resource = LeaveApplicationResource::class;
+
+    // ----------------------------------------------------------------
+    // Register the LeaveCreditWidget above the table.
+    // canView() inside the widget already restricts it to employees.
+    // ----------------------------------------------------------------
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            LeaveCreditWidget::class,
+        ];
+    }
 
     protected function getHeaderActions(): array
     {
@@ -34,10 +46,10 @@ class ListLeaveApplications extends ListRecords
                         Select::make('status')
                             ->label('Leave Status')
                             ->options([
-                                'all' => 'All Applications',
-                                'approved' => 'Approved',
-                                'disapproved' => 'Disapproved',
-                                'pending' => 'Pending',
+                                'all'          => 'All Applications',
+                                'approved'     => 'Approved',
+                                'disapproved'  => 'Disapproved',
+                                'pending'      => 'Pending',
                             ])
                             ->default('all')
                             ->required()
@@ -46,11 +58,11 @@ class ListLeaveApplications extends ListRecords
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly' => 'This Week',
-                                'monthly' => 'This Month',
+                                'weekly'    => 'This Week',
+                                'monthly'   => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly' => 'This Year',
-                                'custom' => 'Custom Date Range',
+                                'yearly'    => 'This Year',
+                                'custom'    => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -60,11 +72,11 @@ class ListLeaveApplications extends ListRecords
                                 $now = Carbon::now();
 
                                 match ($state) {
-                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
                                     'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default => null,
+                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default     => null,
                                 };
                             }),
                     ]),
@@ -88,11 +100,10 @@ class ListLeaveApplications extends ListRecords
                     $url = route('leave-applications.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'] ?? 'monthly',
-                        'from' => $data['from'],
-                        'to' => $data['to'],
+                        'from'   => $data['from'],
+                        'to'     => $data['to'],
                     ]);
 
-                    // Full page navigation so the browser receives the PDF stream
                     $this->redirect($url, navigate: false);
                 });
         }

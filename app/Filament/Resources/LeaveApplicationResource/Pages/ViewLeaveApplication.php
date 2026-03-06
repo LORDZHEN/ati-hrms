@@ -3,7 +3,8 @@
 namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
 use App\Filament\Resources\LeaveApplicationResource;
-use App\Models\LeaveApplication;
+use App\Filament\Widgets\LeaveCreditWidget;
+use App\Services\LeaveCreditService;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Actions;
 use Filament\Notifications\Notification;
@@ -12,23 +13,31 @@ class ViewLeaveApplication extends ViewRecord
 {
     protected static string $resource = LeaveApplicationResource::class;
 
+    // ── Show leave balance widget to employees viewing their own application ──
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            LeaveCreditWidget::class,
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [
 
-            // ADMIN ONLY — APPROVE
+            // ── APPROVE ──────────────────────────────────────────────
             Actions\Action::make('approve')
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->visible(
                     fn() =>
-                    auth()->user()->role === 'admin'
-                    && $this->record->status === 'pending'
+                    auth()->user()->role === 'admin' &&
+                    $this->record->status === 'pending'
                 )
                 ->requiresConfirmation()
                 ->modalHeading('Approve Leave Application')
-                ->modalDescription('Are you sure you want to approve this leave application?')
+                ->modalDescription('Approving will deduct the corresponding leave credits from the employee\'s balance.')
                 ->action(function () {
                     $this->record->update([
                         'status' => 'approved',
@@ -36,27 +45,30 @@ class ViewLeaveApplication extends ViewRecord
                         'date_approved_disapproved' => now(),
                     ]);
 
-                    // Notify the employee who filed the leave
+                    // ── Deduct leave credits ──────────────────────────
+                    app(LeaveCreditService::class)->deductForApplication($this->record);
+
+                    // Notify employee
                     $this->record->employee->notify(
                         new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
                     );
 
                     Notification::make()
                         ->title('Leave Application Approved')
-                        ->body('The leave application has been approved successfully.')
+                        ->body('Leave credits have been deducted from the employee\'s balance.')
                         ->success()
                         ->send();
                 }),
 
-            // ADMIN ONLY — DISAPPROVE
+            // ── DISAPPROVE ───────────────────────────────────────────
             Actions\Action::make('disapprove')
                 ->label('Disapprove')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->visible(
                     fn() =>
-                    auth()->user()->role === 'admin'
-                    && $this->record->status === 'pending'
+                    auth()->user()->role === 'admin' &&
+                    $this->record->status === 'pending'
                 )
                 ->form([
                     \Filament\Forms\Components\Textarea::make('disapproval_reason')
@@ -67,8 +79,9 @@ class ViewLeaveApplication extends ViewRecord
                 ])
                 ->requiresConfirmation()
                 ->modalHeading('Disapprove Leave Application')
-                ->modalDescription('Please provide a reason for disapproving this leave application.')
                 ->action(function (array $data) {
+                    $wasApproved = $this->record->status === 'approved';
+
                     $this->record->update([
                         'status' => 'disapproved',
                         'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
@@ -76,18 +89,23 @@ class ViewLeaveApplication extends ViewRecord
                         'date_approved_disapproved' => now(),
                     ]);
 
+                    // ── Reverse credits only if the leave was previously approved ──
+                    if ($wasApproved) {
+                        app(LeaveCreditService::class)->reverseDeduction($this->record);
+                    }
+
                     $this->record->employee->notify(
                         new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
                     );
 
                     Notification::make()
                         ->title('Leave Application Disapproved')
-                        ->body('The leave application has been disapproved.')
+                        ->body($wasApproved ? 'Leave credits have been restored.' : 'Application has been disapproved.')
                         ->danger()
                         ->send();
                 }),
 
-            // PRINT ACTION
+            // ── PRINT ────────────────────────────────────────────────
             Actions\Action::make('print')
                 ->label('Print Leave Form')
                 ->icon('heroicon-o-printer')
@@ -95,12 +113,12 @@ class ViewLeaveApplication extends ViewRecord
                 ->url(fn() => route('leave_application.print', $this->record))
                 ->openUrlInNewTab(),
 
-            // EDIT ACTION (Employee only, pending status only)
+            // ── EDIT (employee, pending only) ────────────────────────
             Actions\EditAction::make()
                 ->visible(
                     fn() =>
-                    auth()->user()->role === 'employee'
-                    && $this->record->status === 'pending'
+                    auth()->user()->role === 'employee' &&
+                    $this->record->status === 'pending'
                 ),
         ];
     }
