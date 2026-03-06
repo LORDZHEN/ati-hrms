@@ -34,8 +34,9 @@ class HrmsPanelProvider extends PanelProvider
             ->registration(\App\Filament\Pages\Auth\Register::class)
             ->favicon(asset('images/Main_Logo-removebg-preview.png'))
             ->colors([
-                'primary' => Color::Emerald,
-                'secondary' => Color::Amber,
+                'primary' => Color::hex('#1a6b3c'),   // ATI deep forest green
+                'secondary' => Color::hex('#f5a800'), // ATI institutional gold
+                'gray' => Color::hex('#4a5568'),
             ])
             ->navigationGroups([
                 NavigationGroup::make()

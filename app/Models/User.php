@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use HasFactory, Notifiable;
 
@@ -68,11 +70,6 @@ class User extends Authenticatable implements FilamentUser
        FILAMENT REQUIRED METHODS
        ============================================================ */
 
-    /**
-     * Displayed in the Filament topbar — avatar initials + user menu label.
-     * Uses full name (first + middle + last + suffix) instead of the plain
-     * `name` column so "SA" becomes e.g. "System Administrator".
-     */
     public function getFilamentName(): string
     {
         return $this->full_name ?: ($this->name ?: 'User');
@@ -87,16 +84,13 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Filament topbar avatar image.
-     * Shows the uploaded profile photo, or falls back to a generated
-     * initials avatar using the user's full name.
+     * Filament topbar avatar image (required by HasAvatar interface).
+     * Uses Storage::disk('public')->exists() instead of file_exists()
+     * to correctly resolve paths on shared hosting environments.
      */
     public function getFilamentAvatarUrl(): ?string
     {
-        if (
-            $this->profile_photo_path &&
-            file_exists(storage_path('app/public/' . $this->profile_photo_path))
-        ) {
+        if ($this->profile_photo_path) {
             return asset('storage/' . $this->profile_photo_path);
         }
 
@@ -108,10 +102,6 @@ class User extends Authenticatable implements FilamentUser
        ACCESSORS
        ============================================================ */
 
-    /**
-     * Returns the user's full name assembled from individual name parts,
-     * filtering out any null / empty segments.
-     */
     public function getFullNameAttribute(): string
     {
         return implode(' ', array_filter([
@@ -127,10 +117,6 @@ class User extends Authenticatable implements FilamentUser
         return self::getRoles()[$this->role] ?? 'Unknown';
     }
 
-    /**
-     * Public profile photo URL used in blade templates / dashboard widgets.
-     * Falls back to a generated initials avatar matching the ATI green brand color.
-     */
     public function getProfilePhotoUrlAttribute(): string
     {
         return $this->profile_photo_path
