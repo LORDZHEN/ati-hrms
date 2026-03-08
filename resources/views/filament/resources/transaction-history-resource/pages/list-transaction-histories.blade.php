@@ -3,15 +3,12 @@
 {{--
     Transaction History — Modern Activity Timeline
     ===============================================
-    Features:
-    • Date-grouped entries with dividers
-    • Colored status badges (pending→amber, approved→green, rejected→red, filed→blue)
-    • Module icons
-    • Employee initials avatar with color-coded background
-    • Clickable "View Record" link to the source module
-    • Stats bar showing counts per module
-    • Paginated (50 per page)
-    • Responsive two-column layout on wide screens
+    Fixed: entry card layout — name/description no longer wrapping to a
+    separate row. Root cause was flex items not being constrained properly
+    on narrow containers. Fixed by:
+      • Removing flex-wrap from .th-entry
+      • Ensuring .th-body has min-width:0 AND flex:1 with overflow hidden
+      • Avatar and icon are flex-shrink:0 with explicit dimensions
 --}}
 
 <style>
@@ -44,7 +41,6 @@
 
     .th-stat-pill:hover { transform: translateY(-1px); }
 
-    /* Module colour map */
     .th-stat-leave    { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
     .th-stat-travel   { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
     .th-stat-locator  { background: #f5f3ff; border-color: #c4b5fd; color: #5b21b6; }
@@ -117,9 +113,12 @@
     /* ── Entry card ───────────────────────────────────────────── */
     .th-entry {
         position: relative;
+        /* FIX: no flex-wrap — all children must stay on one row */
         display: flex;
-        gap: .875rem;
-        padding: 1rem 1.125rem;
+        flex-wrap: nowrap;
+        align-items: center;       /* vertically center avatar, icon, body, arrow */
+        gap: .75rem;
+        padding: .875rem 1rem;
         margin-bottom: .625rem;
         border-radius: 14px;
         border: 1.5px solid #e5e7eb;
@@ -127,6 +126,9 @@
         text-decoration: none;
         transition: all .2s cubic-bezier(.4,0,.2,1);
         box-shadow: 0 1px 4px rgba(0,0,0,.04);
+        /* FIX: prevent card itself from overflowing its container */
+        min-width: 0;
+        overflow: hidden;
     }
 
     .dark .th-entry {
@@ -145,7 +147,8 @@
         content: '';
         position: absolute;
         left: -1.5rem;
-        top: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
         width: 10px;
         height: 10px;
         border-radius: 50%;
@@ -161,8 +164,10 @@
 
     /* ── Avatar ───────────────────────────────────────────────── */
     .th-avatar {
+        /* FIX: explicit size + no shrink so it never collapses */
         width: 40px;
         height: 40px;
+        min-width: 40px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -172,14 +177,15 @@
         color: #fff;
         flex-shrink: 0;
         box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        overflow: hidden;
     }
 
     .th-avatar img {
-        width: 40px; height: 40px;
-        border-radius: 50%; object-fit: cover;
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
     }
 
-    /* Avatar background colours cycle through 8 greens/blues */
     .th-av-0 { background: linear-gradient(135deg,#059669,#047857); }
     .th-av-1 { background: linear-gradient(135deg,#2563eb,#1d4ed8); }
     .th-av-2 { background: linear-gradient(135deg,#7c3aed,#6d28d9); }
@@ -191,8 +197,10 @@
 
     /* ── Module icon badge ────────────────────────────────────── */
     .th-mod-icon {
+        /* FIX: explicit size + no shrink */
         width: 34px;
         height: 34px;
+        min-width: 34px;
         border-radius: 9px;
         display: flex;
         align-items: center;
@@ -218,29 +226,36 @@
     .dark .th-mod-dtr      { background: rgba(51,65,85,.25);   color: #94a3b8; }
 
     /* ── Entry body text ──────────────────────────────────────── */
-    .th-body { flex: 1; min-width: 0; }
+    .th-body {
+        /* FIX: flex:1 + min-width:0 is the critical combo for text truncation
+           inside flex children — without min-width:0 the child doesn't shrink
+           below its content size and causes wrapping/overflow */
+        flex: 1 1 0%;
+        min-width: 0;
+        overflow: hidden;
+    }
 
     .th-employee-name {
         font-size: .875rem;
         font-weight: 700;
         color: #111827;
-        margin-bottom: .2rem;
+        margin-bottom: .15rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.3;
     }
 
     .dark .th-employee-name { color: #f9fafb; }
 
     .th-description {
-        font-size: .8rem;
+        font-size: .775rem;
         color: #6b7280;
         line-height: 1.4;
-        margin-bottom: .45rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+        margin-bottom: .35rem;
+        white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .dark .th-description { color: #9ca3af; }
@@ -249,19 +264,20 @@
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: .4rem;
+        gap: .35rem;
     }
 
     /* ── Status badge ─────────────────────────────────────────── */
     .th-badge {
         display: inline-flex;
         align-items: center;
-        padding: .15rem .6rem;
+        padding: .15rem .55rem;
         border-radius: 999px;
-        font-size: .625rem;
+        font-size: .6rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: .06em;
+        white-space: nowrap;
     }
 
     .th-badge-pending    { background: #fef3c7; color: #92400e; }
@@ -285,7 +301,7 @@
 
     /* ── Module chip ──────────────────────────────────────────── */
     .th-module-chip {
-        font-size: .625rem;
+        font-size: .6rem;
         font-weight: 700;
         color: #6b7280;
         padding: .15rem .5rem;
@@ -294,6 +310,7 @@
         border: 1px solid #e5e7eb;
         text-transform: uppercase;
         letter-spacing: .05em;
+        white-space: nowrap;
     }
 
     .dark .th-module-chip {
@@ -316,11 +333,11 @@
         justify-content: center;
         width: 28px;
         height: 28px;
+        min-width: 28px;
         border-radius: 7px;
         background: #f3f4f6;
         color: #9ca3af;
         flex-shrink: 0;
-        align-self: center;
         transition: all .2s;
     }
 
@@ -351,9 +368,11 @@
 
     .th-in { animation: th-in .3s ease-out backwards; }
 
+    /* ── Responsive ───────────────────────────────────────────── */
     @media (max-width: 640px) {
         .th-timeline { padding-left: 1.5rem; }
-        .th-entry { flex-wrap: wrap; }
+        /* On very small screens hide the module icon to save space */
+        .th-mod-icon { display: none; }
     }
 </style>
 
@@ -362,7 +381,6 @@
     {{-- ── Stats bar ─────────────────────────────────────────────────── --}}
     <div class="th-stats th-in">
 
-        {{-- Today's total --}}
         <span class="th-stat-pill th-stat-default">
             <x-heroicon-o-clock class="w-3.5 h-3.5" />
             Today: {{ $todayCount }}
@@ -407,7 +425,7 @@
                 <span class="th-date-label">
                     @php
                         $d = \Carbon\Carbon::parse($date)->setTimezone('Asia/Manila');
-                        if ($d->isToday())        { echo 'Today'; }
+                        if ($d->isToday())         { echo 'Today'; }
                         elseif ($d->isYesterday()) { echo 'Yesterday'; }
                         else                       { echo $d->format('l, F j, Y'); }
                     @endphp
@@ -416,12 +434,12 @@
                 <span class="th-time">{{ $entries->count() }} {{ Str::plural('entry', $entries->count()) }}</span>
             </div>
 
-            {{-- Entries for this date --}}
+            {{-- Entries --}}
             <div class="th-timeline">
                 @foreach($entries as $idx => $tx)
                     @php
-                        $modSlug   = strtolower($tx->module);
-                        $modCss    = match($modSlug) {
+                        $modSlug  = strtolower($tx->module);
+                        $modCss   = match($modSlug) {
                             'leave'    => 'th-mod-leave',
                             'travel'   => 'th-mod-travel',
                             'locator'  => 'th-mod-locator',
@@ -431,26 +449,24 @@
                             'dtr'      => 'th-mod-dtr',
                             default    => 'th-mod-default',
                         };
-                        $statusCss = 'th-badge-' . strtolower($tx->status);
-                        if (!in_array(strtolower($tx->status), ['pending','approved','rejected','filed','uploaded','submitted','registered','cancelled'])) {
-                            $statusCss = 'th-badge-default';
-                        }
+                        $statusKey = strtolower($tx->status);
+                        $validStatuses = ['pending','approved','rejected','filed','uploaded','submitted','registered','cancelled'];
+                        $statusCss = in_array($statusKey, $validStatuses) ? "th-badge-{$statusKey}" : 'th-badge-default';
                         $avClass   = 'th-av-' . (abs(crc32($tx->employee_name)) % 8);
                         $icon      = $tx->resolved_icon;
                         $viewUrl   = route('filament.hrms.resources.transaction-histories.view', $tx->id);
-                        $recordUrl = $tx->record_url;
                     @endphp
 
-                    {{-- Entry card links to detail view --}}
                     <a href="{{ $viewUrl }}"
                        class="th-entry th-in"
-                       style="animation-delay: {{ 0.04 * $idx }}s"
-                       title="View details for this transaction">
+                       style="animation-delay: {{ min(0.04 * $idx, 0.4) }}s"
+                       title="{{ $tx->employee_name }} — {{ $tx->description }}">
 
                         {{-- Avatar --}}
                         <div class="th-avatar {{ $avClass }}">
                             @if($tx->user?->profile_photo_url)
-                                <img src="{{ $tx->user->profile_photo_url }}" alt="{{ $tx->employee_name }}">
+                                <img src="{{ $tx->user->profile_photo_url }}"
+                                     alt="{{ $tx->employee_name }}">
                             @else
                                 {{ $tx->initials }}
                             @endif
@@ -461,7 +477,7 @@
                             <x-dynamic-component :component="$icon" class="w-4 h-4" />
                         </div>
 
-                        {{-- Body --}}
+                        {{-- Body — name + description + meta chips --}}
                         <div class="th-body">
                             <div class="th-employee-name">{{ $tx->employee_name }}</div>
                             <div class="th-description">{{ $tx->description }}</div>
@@ -471,8 +487,8 @@
                                 <span class="th-time">
                                     {{ $tx->created_at->setTimezone('Asia/Manila')->format('g:i A') }}
                                 </span>
-                                @if($recordUrl)
-                                    <a href="{{ $recordUrl }}"
+                                @if($tx->record_url)
+                                    <a href="{{ $tx->record_url }}"
                                        target="_blank"
                                        onclick="event.stopPropagation()"
                                        class="th-time underline hover:text-emerald-600 transition-colors"
@@ -483,7 +499,7 @@
                             </div>
                         </div>
 
-                        {{-- Caret --}}
+                        {{-- Arrow caret --}}
                         <div class="th-view-arrow">
                             <x-heroicon-o-arrow-right class="w-3.5 h-3.5" />
                         </div>
@@ -494,7 +510,6 @@
 
         @endforeach
 
-        {{-- Pagination --}}
         <div class="th-pagination">
             {{ $transactions->links() }}
         </div>

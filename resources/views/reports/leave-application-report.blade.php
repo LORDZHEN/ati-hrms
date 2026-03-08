@@ -7,7 +7,7 @@
     <style>
         /*
         ┌──────────────────────────────────────────────────────────────────┐
-        │  DomPDF CONSTRAINTS — landscape A4                               │
+        │  DomPDF CONSTRAINTS — portrait A4                                │
         │  · No flexbox / CSS Grid  →  <table> for layout                  │
         │  · Images via public_path(), not asset()                         │
         │  · Font: 'DejaVu Sans' (bundled with DomPDF)                    │
@@ -19,52 +19,52 @@
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 10.5px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.6;
             color: #1f2937;
             background: #ffffff;
         }
 
         /* ── Page wrapper ────────────────────────────────────────────── */
-        .page { padding: 24px 28px 50px; }
+        .page { padding: 28px 32px 60px; }
 
         /* ── Running page footer ────────────────────────────────────── */
         .page-footer {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            padding: 5px 28px;
+            padding: 6px 32px;
             border-top: 1px solid #d1d5db;
         }
 
         .page-footer table { width: 100%; }
-        .page-footer td { border: none; padding: 0; font-size: 8px; color: #6b7280; }
+        .page-footer td { border: none; padding: 0; font-size: 9px; color: #6b7280; }
 
         /* ── Report header ──────────────────────────────────────────── */
         .report-header {
             border-bottom: 3px solid #1a3a5c;
-            padding-bottom: 11px;
-            margin-bottom: 12px;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .republic-label {
             text-align: center;
-            font-size: 8px;
+            font-size: 9.5px;
             letter-spacing: 0.07em;
             color: #4b5563;
             text-transform: uppercase;
-            margin-bottom: 7px;
+            margin-bottom: 8px;
         }
 
         .header-layout { width: 100%; }
         .header-layout td { border: none; padding: 0; vertical-align: middle; }
 
         .logo-cell { width: 62px; text-align: center; }
-        .logo-cell img { height: 52px; width: auto; }
+        .logo-cell img { height: 56px; width: auto; }
 
         .title-cell { text-align: center; padding: 0 10px; }
 
         .org-name {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: bold;
             color: #1a3a5c;
             letter-spacing: 0.03em;
@@ -72,26 +72,26 @@
         }
 
         .org-branch {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
             color: #2c5f8a;
             letter-spacing: 0.04em;
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
         .header-contact {
             text-align: center;
-            font-size: 8.5px;
+            font-size: 10px;
             color: #4b5563;
-            margin-top: 5px;
-            line-height: 1.5;
+            margin-top: 6px;
+            line-height: 1.6;
         }
 
         /* ── Report title ───────────────────────────────────────────── */
-        .title-block { text-align: center; margin: 10px 0 10px; }
+        .title-block { text-align: center; margin: 12px 0 12px; }
 
         .title-block h1 {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             color: #1a3a5c;
             text-transform: uppercase;
@@ -99,23 +99,23 @@
         }
 
         .title-hr {
-            width: 160px;
+            width: 180px;
             border: none;
             border-top: 1.5px solid #b8860b;
-            margin: 4px auto 0;
+            margin: 5px auto 0;
         }
 
         /* ── Meta info bar ──────────────────────────────────────────── */
         .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 11px;
+            margin-bottom: 13px;
             border: 1px solid #d1d5db;
         }
 
         .meta-table td {
             background: #f8f9fb;
-            padding: 5px 8px;
+            padding: 6px 10px;
             text-align: center;
             border-right: 1px solid #d1d5db;
             vertical-align: middle;
@@ -123,57 +123,33 @@
 
         .meta-table td:last-child { border-right: none; }
 
-        .ml { display: block; font-size: 7px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 1px; }
-        .mv { font-size: 9px; font-weight: bold; color: #1a3a5c; }
+        .ml { display: block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; }
+        .mv { font-size: 10.5px; font-weight: bold; color: #1a3a5c; }
 
         /* ── Summary block ──────────────────────────────────────────── */
         .summary-block {
             background: #f8f9fb;
             border-left: 4px solid #1a3a5c;
-            padding: 8px 11px;
-            margin-bottom: 11px;
-            font-size: 10px;
-            line-height: 1.7;
+            padding: 10px 13px;
+            margin-bottom: 13px;
+            font-size: 11.5px;
+            line-height: 1.85;
+            text-align: justify;
         }
 
         .summary-block strong { color: #1a3a5c; }
 
-        /* ── Stats row ──────────────────────────────────────────────── */
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
-
-        .stats-table td {
-            border: 1px solid #d1d5db;
-            padding: 8px 6px;
-            text-align: center;
-            background: #ffffff;
-            vertical-align: middle;
-        }
-
-        .stats-table td.gap { border: none; width: 8px; background: transparent; }
-
-        .s-num          { font-size: 20px; font-weight: bold; color: #1a3a5c; line-height: 1; }
-        .s-num.approved { color: #1a6b3a; }
-        .s-num.disapproved { color: #8b1a1a; }
-        .s-num.pending  { color: #7a4f00; }
-
-        .s-lbl { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 3px; }
-
         /* ── Section header ─────────────────────────────────────────── */
-        .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 6px; }
-        .sec-hdr td { border: none; padding: 0 0 3px; vertical-align: bottom; }
-        .sec-title { font-size: 11px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
-        .sec-count { font-size: 8.5px; font-weight: bold; color: #6b7280; text-align: right; }
+        .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 7px; }
+        .sec-hdr td { border: none; padding: 0 0 4px; vertical-align: bottom; }
+        .sec-title { font-size: 12.5px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sec-count { font-size: 10px; font-weight: bold; color: #6b7280; text-align: right; }
 
         /* ── Leave applications table ───────────────────────────────── */
-        /*  Portrait A4 ≈ 555px usable. 10 cols → trimmed to 8 cols.   */
         .leave-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
+            font-size: 10px;
             margin-bottom: 20px;
         }
 
@@ -181,9 +157,9 @@
 
         .leave-table thead th {
             color: #ffffff;
-            padding: 5px 6px;
+            padding: 6px 7px;
             text-align: left;
-            font-size: 7.5px;
+            font-size: 9px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -196,20 +172,20 @@
         .leave-table tbody tr:last-child { border-bottom: 2px solid #1a3a5c; }
 
         .leave-table td {
-            padding: 5px 6px;
+            padding: 6px 7px;
             vertical-align: middle;
         }
 
-        .row-num   { color: #9ca3af; font-size: 7.5px; }
+        .row-num   { color: #9ca3af; font-size: 9px; }
         .emp-name  { font-weight: bold; color: #1f2937; }
         .leave-type { color: #374151; }
 
         /* ── Badges ─────────────────────────────────────────────────── */
         .badge {
             display: inline-block;
-            padding: 1px 6px;
+            padding: 2px 7px;
             border-radius: 8px;
-            font-size: 7.5px;
+            font-size: 8.5px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -231,22 +207,22 @@
         /* ── No data ────────────────────────────────────────────────── */
         .no-data {
             text-align: center;
-            padding: 26px 20px;
+            padding: 28px 20px;
             color: #6b7280;
-            font-size: 10.5px;
+            font-size: 11.5px;
             border: 1px dashed #d1d5db;
             margin-bottom: 20px;
         }
 
         /* ── Signature section ──────────────────────────────────────── */
-        .sig-section { margin-top: 26px; border-top: 1px solid #d1d5db; padding-top: 16px; page-break-inside: avoid; }
+        .sig-section { margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 18px; page-break-inside: avoid; }
         .sig-table { width: 100%; }
-        .sig-table td { width: 33.33%; text-align: center; padding: 0 8px; vertical-align: top; border: none; }
+        .sig-table td { width: 33.33%; text-align: center; padding: 0 10px; vertical-align: top; border: none; }
 
-        .sig-label { display: block; font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 32px; }
-        .sig-line  { border-top: 1.5px solid #374151; padding-top: 4px; margin: 0 6px; }
-        .sig-name  { font-size: 10px; font-weight: bold; color: #1a3a5c; }
-        .sig-title { font-size: 8.5px; color: #4b5563; margin-top: 2px; }
+        .sig-label { display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 36px; }
+        .sig-line  { border-top: 1.5px solid #374151; padding-top: 5px; margin: 0 6px; }
+        .sig-name  { font-size: 11.5px; font-weight: bold; color: #1a3a5c; }
+        .sig-title { font-size: 10px; color: #4b5563; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -280,7 +256,7 @@
         <div class="header-contact">
             Brgy. Data Abdul Dadia, Panabo City, Davao del Norte 8105
             &nbsp;&bull;&nbsp; (084) 217-3345
-            &nbsp;&bull;&nbsp; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f0918499c1c1de91949480c4b0979d91999cde939f9d">[email&#160;protected]</a>
+            &nbsp;&bull;&nbsp; rtc11@ati.da.gov.ph
             &nbsp;&bull;&nbsp; ati.da.gov.ph/region11
         </div>
     </div>
@@ -331,60 +307,15 @@
     {{-- ─────────────────────────── SUMMARY ───────────────────────────── --}}
     <div class="summary-block">
         @if($status === 'approved')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $approved }}</strong> leave application(s) were approved,
-            covering <strong>{{ $totalDays }}</strong> working day(s) in aggregate.
-            This report provides details of all approved leave requests processed during the selected period.
+            This report presents the consolidated leave application records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. For the reference period, a total of <strong>{{ $approved }}</strong> leave application(s) were duly reviewed and subsequently <strong>approved</strong> by the authorized approving officer, collectively accounting for an aggregate of <strong>{{ $totalDays }}</strong> working day(s) of leave availed. This document is intended for official reference, monitoring, and compliance purposes in accordance with existing Civil Service Commission rules and regulations governing leave administration.
         @elseif($status === 'disapproved')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $disapproved }}</strong> leave application(s) were disapproved.
-            This report provides details of all disapproved leave requests processed during the selected period.
+            This report presents the consolidated leave application records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. For the reference period, a total of <strong>{{ $disapproved }}</strong> leave application(s) were reviewed and <strong>disapproved</strong> by the authorized approving officer. The disapproval of the herein enumerated leave applications may be attributed to various grounds including, but not limited to, exigency of service, incomplete documentation, or non-compliance with prescribed leave procedures. This document is issued for official reference and records management purposes.
         @elseif($status === 'pending')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $pending }}</strong> leave application(s) are currently pending review and approval.
+            This report presents the consolidated leave application records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. As of the date of generation of this report, a total of <strong>{{ $pending }}</strong> leave application(s) remain <strong>pending</strong> final action and have not yet been acted upon by the authorized approving officer. The concerned Human Resource Management Officer is hereby advised to expedite the processing of all pending applications in accordance with established timelines under Civil Service Commission regulations.
         @else
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $total }}</strong> leave application(s) were submitted, covering
-            <strong>{{ $totalDays }}</strong> working day(s) in aggregate.
-            Of these, <strong>{{ $approved }}</strong> were approved,
-            <strong>{{ $disapproved }}</strong> were disapproved, and
-            <strong>{{ $pending }}</strong> remain pending.
+            This report presents the consolidated leave application records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. During the said period, a total of <strong>{{ $total }}</strong> leave application(s) were filed and recorded in the Human Resource Management System, covering an aggregate of <strong>{{ $totalDays }}</strong> working day(s). Of the total applications received, <strong>{{ $approved }}</strong> were duly approved by the authorized approving officer, <strong>{{ $disapproved }}</strong> were disapproved on grounds evaluated by the approving authority, and <strong>{{ $pending }}</strong> remain pending final action as of the date of this report. This document is prepared for official monitoring, compliance, and administrative reference purposes consistent with the leave administration policies of the Civil Service Commission.
         @endif
     </div>
-
-    {{-- ─────────────────────────── STATS ─────────────────────────────── --}}
-    <table class="stats-table">
-        <tr>
-            <td>
-                <div class="s-num">{{ $total }}</div>
-                <div class="s-lbl">Total</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num approved">{{ $approved }}</div>
-                <div class="s-lbl">Approved</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num disapproved">{{ $disapproved }}</div>
-                <div class="s-lbl">Disapproved</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num pending">{{ $pending }}</div>
-                <div class="s-lbl">Pending</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num">{{ $totalDays }}</div>
-                <div class="s-lbl">Total Days</div>
-            </td>
-        </tr>
-    </table>
 
     {{-- ─────────────────────── SECTION HEADER ────────────────────────── --}}
     <table class="sec-hdr">
@@ -400,13 +331,13 @@
         <thead>
             <tr>
                 <th style="width:18px;">#</th>
-                <th style="width:110px;">Employee Name</th>
-                <th style="width:100px;">Type of Leave</th>
-                <th style="width:62px;">Leave From</th>
-                <th style="width:62px;">Leave To</th>
-                <th style="width:36px;">Days</th>
-                <th style="width:58px;">Status</th>
-                <th style="width:88px;">Processed By</th>
+                <th style="width:115px;">Employee Name</th>
+                <th style="width:105px;">Type of Leave</th>
+                <th style="width:65px;">Leave From</th>
+                <th style="width:65px;">Leave To</th>
+                <th style="width:38px;">Days</th>
+                <th style="width:62px;">Status</th>
+                <th style="width:90px;">Processed By</th>
                 <th>Remarks</th>
             </tr>
         </thead>
@@ -484,3 +415,12 @@
                     <div class="sig-line">
                         <div class="sig-name">&nbsp;</div>
                         <div class="sig-title">Regional Director</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

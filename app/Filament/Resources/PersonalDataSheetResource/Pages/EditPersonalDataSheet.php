@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\PersonalDataSheetResource\Pages;
 
 use App\Filament\Resources\PersonalDataSheetResource;
+use App\Models\User;
+use App\Notifications\PDSSubmittedNotification;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,15 +20,104 @@ class EditPersonalDataSheet extends EditRecord
             Actions\Action::make('print')
                 ->label('Print PDS')
                 ->icon('heroicon-o-printer')
+                ->color('success')
                 ->visible(fn() => $this->record->status === 'approved')
                 ->url(fn() => route('pds.print', $this->record->id))
                 ->openUrlInNewTab(),
 
             Actions\DeleteAction::make()
-                ->visible(fn() =>
+                ->visible(
+                    fn() =>
                     Auth::user()->role === 'admin' ||
                     (Auth::user()->role === 'employee' && $this->record->status !== 'approved')
                 ),
+        ];
+    }
+
+    // =========================================================================
+    //  RESUBMISSION — step 1: mutate data before save
+    //
+    //  When an employee saves, force status back to 'submitted' so the admin
+    //  sees the updated PDS in their queue again regardless of prior state
+    //  (submitted or disapproved).
+    //
+    //  Admin saves are left untouched so they can write remarks without
+    //  accidentally resetting status.
+    // =========================================================================
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (Auth::user()->role === 'employee') {
+            $data['status'] = 'submitted';
+        }
+
+        return $data;
+    }
+
+    // =========================================================================
+    //  RESUBMISSION — step 2: after save side-effects
+    //
+    //  created_at is updated to now() so the "Last Submitted" column in the
+    //  table always reflects the most recent submission, not the original
+    //  creation date. updateQuietly() skips model events so we don't trigger
+    //  any unintended listeners.
+    //
+    //  All admins receive a PDSSubmittedNotification in their bell — same
+    //  notification used for initial submissions.
+    // =========================================================================
+
+    protected function afterSave(): void
+    {
+        if (Auth::user()->role !== 'employee') {
+            return;
+        }
+
+        $user = Auth::user();
+
+        // Stamp the resubmission time on created_at.
+        $this->record->updateQuietly(['created_at' => now()]);
+
+        // NOTE: TransactionHistory is logged automatically by
+        // PersonalDataSheetObserver::updated() when status changes to
+        // 'submitted' — no manual log needed here.
+
+        // Notify all admins of the updated submission.
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new PDSSubmittedNotification($user, $this->record));
+        }
+
+        Notification::make()
+            ->title('PDS Resubmitted Successfully')
+            ->body('Your Personal Data Sheet has been updated and sent for review.')
+            ->success()
+            ->send();
+    }
+
+    // =========================================================================
+    //  FORM ACTIONS
+    //
+    //  Employees see "Resubmit PDS" to make it clear the action triggers a
+    //  new review cycle. Admins see "Save Changes".
+    //  Cancel uses color('gray') — Filament v3 has no 'secondary' color.
+    // =========================================================================
+
+    protected function getFormActions(): array
+    {
+        $isEmployee = Auth::user()->role === 'employee';
+
+        return [
+            Actions\Action::make('save')
+                ->label($isEmployee ? 'Resubmit PDS' : 'Save Changes')
+                ->submit('save')
+                ->color('primary')
+                ->icon($isEmployee ? 'heroicon-o-paper-airplane' : 'heroicon-o-check'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
         ];
     }
 
@@ -34,9 +126,9 @@ class EditPersonalDataSheet extends EditRecord
         return $this->getResource()::getUrl('index');
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR REPEATER FIELDS
-    // ============================================================
+    // =========================================================================
+    //  LIVEWIRE METHODS FOR REPEATER FIELDS  (unchanged from source)
+    // =========================================================================
 
     public function addChild()
     {
@@ -218,7 +310,6 @@ class EditPersonalDataSheet extends EditRecord
         }
     }
 
-    // Auto-copy residential to permanent address
     public function updatedDataSameAsResidential($value)
     {
         if ($value) {
@@ -231,6 +322,4 @@ class EditPersonalDataSheet extends EditRecord
             $this->data['perm_zip_code'] = $this->data['res_zip_code'] ?? '';
         }
     }
-
-    
 }

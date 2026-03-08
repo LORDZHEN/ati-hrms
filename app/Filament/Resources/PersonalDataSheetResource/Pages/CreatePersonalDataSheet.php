@@ -14,13 +14,10 @@ class CreatePersonalDataSheet extends CreateRecord
 {
     protected static string $resource = PersonalDataSheetResource::class;
 
-    /**
-     * 🔑 Attach PDS to logged-in user and set initial status
-     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = Auth::id();
-        $data['status'] = 'submitted'; // Set initial status
+        $data['status'] = 'submitted';
 
         return $data;
     }
@@ -31,12 +28,16 @@ class CreatePersonalDataSheet extends CreateRecord
             Actions\Action::make('create')
                 ->label('Submit PDS')
                 ->submit('create')
-                ->color('primary'),
+                ->color('primary')
+                ->icon('heroicon-o-paper-airplane'),
 
+            // WHY color('gray'): Filament v3 removed the 'secondary' color.
+            // All cancel/back buttons project-wide use color('gray').
             Actions\Action::make('cancel')
                 ->label('Cancel')
                 ->url($this->getResource()::getUrl('index'))
-                ->color('secondary'),
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
         ];
     }
 
@@ -45,24 +46,28 @@ class CreatePersonalDataSheet extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 
-    /**
-     * 🔔 Notify admins after successful submission
-     */
     protected function afterCreate(): void
     {
-        // Notify all admins — stored in their bell
+        $user = Auth::user();
+
+        // NOTE: TransactionHistory is logged automatically by
+        // PersonalDataSheetObserver::created() — no manual log needed here.
+
         $admins = User::where('role', 'admin')->get();
         foreach ($admins as $admin) {
-            $admin->notify(new PDSSubmittedNotification(Auth::user(), $this->record));
+            $admin->notify(new PDSSubmittedNotification($user, $this->record));
         }
 
-        // Flash confirmation only for the submitting employee
         Notification::make()
             ->title('PDS Submitted Successfully!')
             ->body('Your Personal Data Sheet has been sent for review.')
             ->success()
             ->send();
     }
+
+    // =========================================================================
+    //  LIVEWIRE METHODS FOR REPEATER FIELDS  (unchanged from source)
+    // =========================================================================
 
     public function addChild()
     {
@@ -87,7 +92,7 @@ class CreatePersonalDataSheet extends CreateRecord
             'degree' => '',
             'from_year' => '',
             'to_year' => '',
-            'honors' => ''
+            'honors' => '',
         ];
         $this->data['education'] = $education;
     }
@@ -108,7 +113,7 @@ class CreatePersonalDataSheet extends CreateRecord
             'exam_date' => '',
             'place' => '',
             'license_no' => '',
-            'validity' => ''
+            'validity' => '',
         ];
         $this->data['civil_service_eligibility'] = $civilService;
     }
@@ -131,7 +136,7 @@ class CreatePersonalDataSheet extends CreateRecord
             'salary' => '',
             'salary_grade' => '',
             'status' => '',
-            'is_government' => false
+            'is_government' => false,
         ];
         $this->data['work_experience'] = $work;
     }
@@ -151,7 +156,7 @@ class CreatePersonalDataSheet extends CreateRecord
             'from_date' => '',
             'to_date' => '',
             'hours' => '',
-            'position' => ''
+            'position' => '',
         ];
         $this->data['voluntary_work'] = $voluntary;
     }
@@ -172,7 +177,7 @@ class CreatePersonalDataSheet extends CreateRecord
             'to_date' => '',
             'hours' => '',
             'type' => '',
-            'conducted_by' => ''
+            'conducted_by' => '',
         ];
         $this->data['learning_development'] = $ld;
     }
@@ -244,7 +249,6 @@ class CreatePersonalDataSheet extends CreateRecord
         }
     }
 
-    // Add this to auto-copy residential to permanent address
     public function updatedDataSameAsResidential($value)
     {
         if ($value) {

@@ -12,20 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
  * Represents a single logged HRMS activity.
  *
  * Provides a static ::log() helper so any module can record a transaction
- * in one line without coupling to this model's internals:
- *
- *   TransactionHistory::log([
- *       'user_id'          => auth()->id(),
- *       'employee_name'    => $user->full_name,
- *       'transaction_type' => 'Leave Application',
- *       'module'           => 'Leave',
- *       'description'      => 'Filed a sick leave for 3 days',
- *       'status'           => 'pending',
- *       'icon'             => 'heroicon-o-calendar',
- *       'color'            => 'blue',
- *       'record_id'        => $leave->id,
- *       'record_url'       => route('filament.hrms.resources.leave-applications.view', $leave->id),
- *   ]);
+ * in one line without coupling to this model's internals.
  *
  * @property int         $id
  * @property int|null    $user_id
@@ -63,9 +50,46 @@ class TransactionHistory extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'record_id'  => 'integer',
-        'user_id'    => 'integer',
+        'record_id' => 'integer',
+        'user_id' => 'integer',
     ];
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Boot — auto-fill employee_name as a safety net
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * If any code path creates a TransactionHistory without supplying
+     * employee_name (or supplies one of the sentinel fallbacks), we
+     * automatically resolve it from the user_id relationship before
+     * the INSERT fires.
+     *
+     * This is a last-resort safety net — the primary source of truth
+     * is each observer/caller passing the correct name. This prevents
+     * "Unknown" from ever reaching the DB even if an observer forgets.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $tx): void {
+            $needsName = blank($tx->employee_name)
+                || in_array($tx->employee_name, ['Unknown', 'Unknown Employee'], true);
+
+            if ($needsName && $tx->user_id) {
+                $user = User::find($tx->user_id);
+
+                if ($user) {
+                    $tx->employee_name = $user->full_name ?? $user->name ?? "Employee #{$tx->user_id}";
+                } else {
+                    $tx->employee_name = "Employee #{$tx->user_id}";
+                }
+            }
+
+            // Still blank after lookup (no user_id at all) — use a clean fallback
+            if (blank($tx->employee_name)) {
+                $tx->employee_name = 'Unknown Employee';
+            }
+        });
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Relationships
@@ -78,7 +102,7 @@ class TransactionHistory extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withDefault([
-            'name'     => 'System',
+            'name' => 'System',
             'full_name' => 'System',
         ]);
     }
@@ -109,16 +133,16 @@ class TransactionHistory extends Model
     public static function log(array $data): self
     {
         return static::create([
-            'user_id'          => $data['user_id']          ?? null,
-            'employee_name'    => $data['employee_name']    ?? 'Unknown',
+            'user_id' => $data['user_id'] ?? null,
+            'employee_name' => $data['employee_name'] ?? null, // boot will fix if null
             'transaction_type' => $data['transaction_type'] ?? 'Activity',
-            'module'           => $data['module']           ?? 'General',
-            'description'      => $data['description']      ?? '',
-            'status'           => $data['status']           ?? 'pending',
-            'icon'             => $data['icon']             ?? null,
-            'color'            => $data['color']            ?? 'gray',
-            'record_id'        => $data['record_id']        ?? null,
-            'record_url'       => $data['record_url']       ?? null,
+            'module' => $data['module'] ?? 'General',
+            'description' => $data['description'] ?? '',
+            'status' => $data['status'] ?? 'pending',
+            'icon' => $data['icon'] ?? null,
+            'color' => $data['color'] ?? 'gray',
+            'record_id' => $data['record_id'] ?? null,
+            'record_url' => $data['record_url'] ?? null,
         ]);
     }
 
@@ -149,14 +173,14 @@ class TransactionHistory extends Model
     public static function moduleIcon(string $module): string
     {
         return match (strtolower($module)) {
-            'leave'    => 'heroicon-o-calendar',
-            'travel'   => 'heroicon-o-briefcase',
-            'locator'  => 'heroicon-o-map-pin',
-            'saln'     => 'heroicon-o-document-text',
-            'pds'      => 'heroicon-o-identification',
+            'leave' => 'heroicon-o-calendar',
+            'travel' => 'heroicon-o-briefcase',
+            'locator' => 'heroicon-o-map-pin',
+            'saln' => 'heroicon-o-document-text',
+            'pds' => 'heroicon-o-identification',
             'employee' => 'heroicon-o-user-plus',
-            'dtr'      => 'heroicon-o-clock',
-            default    => 'heroicon-o-bolt',
+            'dtr' => 'heroicon-o-clock',
+            default => 'heroicon-o-bolt',
         };
     }
 
@@ -166,15 +190,15 @@ class TransactionHistory extends Model
     public static function statusColor(string $status): string
     {
         return match (strtolower($status)) {
-            'pending'    => 'amber',
-            'approved'   => 'success',
-            'rejected'   => 'danger',
-            'filed'      => 'info',
-            'uploaded'   => 'info',
+            'pending' => 'amber',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            'filed' => 'info',
+            'uploaded' => 'info',
             'registered' => 'success',
-            'submitted'  => 'info',
-            'cancelled'  => 'gray',
-            default      => 'gray',
+            'submitted' => 'info',
+            'cancelled' => 'gray',
+            default => 'gray',
         };
     }
 
@@ -193,7 +217,7 @@ class TransactionHistory extends Model
     {
         $parts = explode(' ', trim($this->employee_name));
         $first = strtoupper(substr($parts[0] ?? 'U', 0, 1));
-        $last  = strtoupper(substr($parts[array_key_last($parts)] ?? '', 0, 1));
+        $last = strtoupper(substr($parts[array_key_last($parts)] ?? '', 0, 1));
 
         return $first . ($last !== $first ? $last : '');
     }

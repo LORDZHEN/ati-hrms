@@ -274,44 +274,106 @@
     .up-ico-green { color: #059669; }
     .up-ico-amber { color: #d97706; }
 
-    .up-input, .up-select {
+    .up-input {
         width: 100%; padding: 0.5875rem 0.875rem;
         border-radius: 10px; border: 1.5px solid #e5e7eb;
         background: #f9faf7; color: #111827;
         font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
         transition: all 0.18s ease; outline: none;
-        -webkit-appearance: none; appearance: none;
     }
 
-    .dark .up-input, .dark .up-select {
-        background: #071a10; border-color: #1f3429; color: #f0fdf4;
-    }
-
+    .dark .up-input { background: #071a10; border-color: #1f3429; color: #f0fdf4; }
     .up-input::placeholder { color: #9ca3af; }
     .dark .up-input::placeholder { color: #374151; }
 
-    .up-input:focus, .up-select:focus {
+    .up-input:focus {
         border-color: #059669; background: #ffffff;
         box-shadow: 0 0 0 3px rgba(5,150,105,0.11), 0 1px 3px rgba(0,0,0,0.05);
     }
 
-    .dark .up-input:focus, .dark .up-select:focus {
+    .dark .up-input:focus {
         background: #0f1f18;
         box-shadow: 0 0 0 3px rgba(16,185,129,0.14);
     }
 
-    .up-select-wrap { position: relative; }
+    /* ── SELECT WRAPPER ─────────────────────────────────────────────
+       Positions the single custom arrow chevron.
+    ────────────────────────────────────────────────────────────────── */
+    .up-select-wrap {
+        position: relative;
+        display: block;
+        width: 100%;
+    }
 
+    /* Our ONE custom arrow — pointer-events:none so clicks pass through */
     .up-select-wrap::after {
         content: '';
-        position: absolute; right: 0.875rem; top: 50%;
+        position: absolute;
+        right: 0.9rem;
+        top: 50%;
         transform: translateY(-50%);
         width: 0; height: 0;
-        border-left: 4px solid transparent; border-right: 4px solid transparent;
-        border-top: 5px solid #6b7280; pointer-events: none;
+        border-left: 4.5px solid transparent;
+        border-right: 4.5px solid transparent;
+        border-top: 5.5px solid #6b7280;
+        pointer-events: none;
+        z-index: 3;
     }
 
     .dark .up-select-wrap::after { border-top-color: #6ee7b7; }
+
+    /* ── SELECT ELEMENT ─────────────────────────────────────────────
+       !important beats Tailwind @tailwindcss/forms plugin which
+       injects a background-image SVG arrow via high-specificity rules.
+       Without !important the plugin arrow survives and you get doubles.
+    ────────────────────────────────────────────────────────────────── */
+    .up-select {
+        -webkit-appearance: none !important;
+        -moz-appearance:    none !important;
+        appearance:         none !important;
+        background-image:   none !important;
+        background-color:   #f9faf7 !important;
+
+        display: block;
+        width: 100%;
+        /* right padding = space for our custom arrow */
+        padding: 0.5875rem 2.5rem 0.5875rem 0.875rem;
+        border-radius: 10px;
+        border: 1.5px solid #e5e7eb;
+        color: #111827;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        outline: none;
+        cursor: pointer;
+    }
+
+    /* Hide IE/Edge native arrow */
+    .up-select::-ms-expand { display: none !important; }
+
+    .up-select:focus {
+        border-color:     #059669 !important;
+        background-color: #ffffff !important;
+        background-image: none    !important;
+        box-shadow: 0 0 0 3px rgba(5,150,105,0.11), 0 1px 3px rgba(0,0,0,0.05);
+        outline: none;
+    }
+
+    /* Dark mode overrides — all !important to beat Tailwind */
+    .dark .up-select {
+        background-color: #071a10 !important;
+        background-image: none    !important;
+        border-color:     #1f3429 !important;
+        color:            #f0fdf4 !important;
+    }
+
+    .dark .up-select:focus {
+        background-color: #0f1f18 !important;
+        background-image: none    !important;
+        border-color:     #059669 !important;
+        box-shadow: 0 0 0 3px rgba(16,185,129,0.14);
+    }
 
     .up-error {
         font-size: 0.6875rem; font-weight: 600; color: #dc2626;
@@ -359,11 +421,7 @@
     }
 
     .dark .up-btn-cancel { background: #0f1f18; border-color: #1f3429; color: #d1fae5; }
-
-    .up-btn-cancel:hover {
-        background: #f3f4f6; border-color: #d1d5db; transform: translateY(-1px);
-    }
-
+    .up-btn-cancel:hover { background: #f3f4f6; border-color: #d1d5db; transform: translateY(-1px); }
     .dark .up-btn-cancel:hover { background: #1f3429; }
 
     .up-btn-save {
@@ -398,11 +456,6 @@
     [x-cloak] { display: none !important; }
 </style>
 
-{{-- ============================================================
-     Wrap everything in a single Alpine x-data so the trigger
-     button and the modal share the same "show" state.
-     No Livewire openModal / closeModal methods are needed.
-     ============================================================ --}}
 <div x-data="{ show: false }">
 
     {{-- Trigger Button --}}
@@ -446,7 +499,7 @@
         >
             <div class="up-stripe"></div>
 
-            {{-- HERO — sticky, never scrolls --}}
+            {{-- HERO --}}
             <div class="up-hero" style="flex-shrink: 0;">
                 <div class="up-hero-bg"></div>
                 <div class="up-hero-grid"></div>
@@ -468,16 +521,15 @@
                             <div class="up-hero-sub">Keep your information up to date</div>
                         </div>
                     </div>
-                    {{-- Close button uses Alpine --}}
                     <button type="button" @click="show = false" class="up-hero-close">
                         <x-heroicon-o-x-mark style="width:15px;height:15px;" />
                     </button>
                 </div>
             </div>
 
-            <form wire:submit.prevent="update" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-                {{-- Scrollable area: body only --}}
-                <div class="up-modal-scroll" style="flex: 1; min-height: 0;">
+            <form wire:submit.prevent="update" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+
+                <div class="up-modal-scroll" style="flex:1; min-height:0;">
                 <div class="up-body">
 
                     {{-- PROFILE PHOTO --}}
@@ -556,13 +608,14 @@
                             </div>
                         </div>
 
+                        {{-- SUFFIX --}}
                         <div class="up-field">
                             <label class="up-label">
                                 <x-heroicon-o-tag style="width:11px;height:11px;" class="up-ico-amber" />
                                 Suffix
                             </label>
                             <div class="up-select-wrap">
-                                <select wire:model.defer="suffix" class="up-select" style="padding-right:2rem;">
+                                <select wire:model.defer="suffix" class="up-select">
                                     <option value="">None</option>
                                     <option value="Jr">Jr</option>
                                     <option value="Sr">Sr</option>
@@ -594,13 +647,15 @@
                                 <input type="text" wire:model.defer="position" placeholder="e.g. Intern" class="up-input" />
                                 @error('position')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                             </div>
+
+                            {{-- EMPLOYMENT STATUS --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-check-badge style="width:11px;height:11px;" class="up-ico-amber" />
                                     Employment Status
                                 </label>
                                 <div class="up-select-wrap">
-                                    <select wire:model.defer="employment_status" class="up-select" style="padding-right:2rem;">
+                                    <select wire:model.defer="employment_status" class="up-select">
                                         <option value="">Select Status</option>
                                         <option value="Permanent">Permanent</option>
                                         <option value="Contractual">Contractual</option>
@@ -612,13 +667,14 @@
                             </div>
                         </div>
 
+                        {{-- DEPARTMENT --}}
                         <div class="up-field">
                             <label class="up-label">
                                 <x-heroicon-o-building-office-2 style="width:11px;height:11px;" class="up-ico-green" />
                                 Department
                             </label>
                             <div class="up-select-wrap">
-                                <select wire:model.defer="department" class="up-select" style="padding-right:2rem;">
+                                <select wire:model.defer="department" class="up-select">
                                     <option value="">Select Department</option>
                                     <option value="Administration">Administration</option>
                                     <option value="Human Resources (HR)">Human Resources (HR)</option>
@@ -640,11 +696,10 @@
                     </div>
 
                 </div>
-                {{-- END up-body --}}
                 </div>
                 {{-- END scrollable area --}}
 
-                {{-- FOOTER — sticky at bottom, never scrolls --}}
+                {{-- FOOTER --}}
                 <div class="up-footer" style="flex-shrink: 0;">
                     <div class="up-footer-left">
                         <div class="up-status-pill">
@@ -652,7 +707,6 @@
                             Editing Profile
                         </div>
                     </div>
-                    {{-- Cancel uses Alpine --}}
                     <button type="button" @click="show = false" class="up-btn-cancel">Cancel</button>
                     <button type="submit" class="up-btn-save">
                         <x-heroicon-o-check-circle style="width:15px;height:15px;" />

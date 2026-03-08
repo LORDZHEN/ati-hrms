@@ -1,4 +1,5 @@
 {{-- PAGE 2: LIABILITIES, BUSINESS INTERESTS, RELATIVES, DECLARATION --}}
+@php $ro = $isReadOnly ?? false; $dis = $ro ? 'disabled readonly' : ''; $disCb = $ro ? 'disabled' : ''; @endphp
 <div class="saln-form-page">
 
     <div class="saln-form-title" style="font-size:11pt;">SWORN STATEMENT OF ASSETS, LIABILITIES AND NET WORTH</div>
@@ -24,23 +25,18 @@
         @foreach($this->data['liabilities'] ?? [] as $index => $liability)
         <div class="saln-repeater-item">
             <div class="saln-grid-3">
-                <div>
-                    <label class="saln-field-label">Nature of Liability</label>
-                    <input type="text" wire:model="data.liabilities.{{ $index }}.nature" class="saln-input" placeholder="e.g., Housing Loan" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Name of Creditor</label>
-                    <input type="text" wire:model="data.liabilities.{{ $index }}.name_of_creditors" class="saln-input" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Outstanding Balance (₱)</label>
-                    <input type="number" wire:model="data.liabilities.{{ $index }}.outstanding_balance" class="saln-input" step="0.01" />
-                </div>
+                <div><label class="saln-field-label">Nature of Liability</label><input type="text" wire:model="data.liabilities.{{ $index }}.nature" class="saln-input" placeholder="e.g., Housing Loan" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Name of Creditor</label><input type="text" wire:model="data.liabilities.{{ $index }}.name_of_creditors" class="saln-input" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Outstanding Balance (₱)</label><input type="number" wire:model="data.liabilities.{{ $index }}.outstanding_balance" class="saln-input" step="0.01" {{ $dis }} /></div>
             </div>
+            @if(!$ro)
             <button type="button" wire:click="removeLiability({{ $index }})" class="saln-btn-remove">Remove</button>
+            @endif
         </div>
         @endforeach
+        @if(!$ro)
         <button type="button" wire:click="addLiability" class="saln-btn-add">+ Add Liability</button>
+        @endif
     </div>
 
     <div class="saln-net-worth-box">
@@ -50,20 +46,18 @@
 
     {{-- BUSINESS INTERESTS --}}
     <div class="saln-section-header">BUSINESS INTERESTS AND FINANCIAL CONNECTIONS</div>
-    <div class="saln-section-subtitle">
-        (of Declarant/Declarant's spouse; Ownership/Owning Shareholder (10 percent of total))
-    </div>
+    <div class="saln-section-subtitle">(of Declarant/Declarant's spouse; Ownership/Owning Shareholder (10 percent of total))</div>
 
     <div style="margin:6px 0;">
         <label class="saln-checkbox-label" style="display:inline-flex; margin-bottom:6px;">
-            <input type="checkbox" wire:model.live="data.has_business_interests" class="saln-checkbox-input"
-                x-on:change="if($event.target.checked) $wire.set('data.no_business_interests', false)" />
+            <input type="checkbox" wire:model.live="data.has_business_interests" class="saln-checkbox-input" {{ $disCb }}
+                @if(!$ro) x-on:change="if($event.target.checked) $wire.set('data.no_business_interests', false)" @endif />
             I/We have business interest or financial connection.
         </label>
         <br>
         <label class="saln-checkbox-label" style="display:inline-flex;">
-            <input type="checkbox" wire:model.live="data.no_business_interests" class="saln-checkbox-input"
-                x-on:change="if($event.target.checked) $wire.set('data.has_business_interests', false)" />
+            <input type="checkbox" wire:model.live="data.no_business_interests" class="saln-checkbox-input" {{ $disCb }}
+                @if(!$ro) x-on:change="if($event.target.checked) $wire.set('data.has_business_interests', false)" @endif />
             I/We do not have any business interest or financial connection.
         </label>
     </div>
@@ -83,27 +77,19 @@
         @foreach($this->data['businessInterests'] ?? [] as $index => $business)
         <div class="saln-repeater-item">
             <div class="saln-grid-2">
-                <div>
-                    <label class="saln-field-label">Business Name</label>
-                    <input type="text" wire:model="data.businessInterests.{{ $index }}.name_of_entity" class="saln-input" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Business Address</label>
-                    <textarea wire:model="data.businessInterests.{{ $index }}.business_address" class="saln-input" rows="2"></textarea>
-                </div>
-                <div>
-                    <label class="saln-field-label">Nature of Interest</label>
-                    <input type="text" wire:model="data.businessInterests.{{ $index }}.nature_of_business_interest" class="saln-input" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Date of Acquisition</label>
-                    <input type="date" wire:model="data.businessInterests.{{ $index }}.date_of_acquisition" class="saln-input" />
-                </div>
+                <div><label class="saln-field-label">Business Name</label><input type="text" wire:model="data.businessInterests.{{ $index }}.name_of_entity" class="saln-input" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Business Address</label><textarea wire:model="data.businessInterests.{{ $index }}.business_address" class="saln-input" rows="2" {{ $dis }}></textarea></div>
+                <div><label class="saln-field-label">Nature of Interest</label><input type="text" wire:model="data.businessInterests.{{ $index }}.nature_of_business_interest" class="saln-input" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Date of Acquisition</label><input type="date" wire:model="data.businessInterests.{{ $index }}.date_of_acquisition" class="saln-input" {{ $dis }} /></div>
             </div>
+            @if(!$ro)
             <button type="button" wire:click="removeBusinessInterest({{ $index }})" class="saln-btn-remove">Remove</button>
+            @endif
         </div>
         @endforeach
+        @if(!$ro)
         <button type="button" wire:click="addBusinessInterest" class="saln-btn-add">+ Add Business Interest</button>
+        @endif
     </div>
     @endif
 
@@ -113,14 +99,14 @@
 
     <div style="margin:6px 0;">
         <label class="saln-checkbox-label" style="display:inline-flex; margin-bottom:6px;">
-            <input type="checkbox" wire:model.live="data.has_relatives_in_government" class="saln-checkbox-input"
-                x-on:change="if($event.target.checked) $wire.set('data.no_relatives_in_government', false)" />
+            <input type="checkbox" wire:model.live="data.has_relatives_in_government" class="saln-checkbox-input" {{ $disCb }}
+                @if(!$ro) x-on:change="if($event.target.checked) $wire.set('data.no_relatives_in_government', false)" @endif />
             I have relatives in the government service within the fourth degree.
         </label>
         <br>
         <label class="saln-checkbox-label" style="display:inline-flex;">
-            <input type="checkbox" wire:model.live="data.no_relatives_in_government" class="saln-checkbox-input"
-                x-on:change="if($event.target.checked) $wire.set('data.has_relatives_in_government', false)" />
+            <input type="checkbox" wire:model.live="data.no_relatives_in_government" class="saln-checkbox-input" {{ $disCb }}
+                @if(!$ro) x-on:change="if($event.target.checked) $wire.set('data.has_relatives_in_government', false)" @endif />
             I/We do not know of any relative in the government service.
         </label>
     </div>
@@ -140,27 +126,19 @@
         @foreach($this->data['relativesInGovernment'] ?? [] as $index => $relative)
         <div class="saln-repeater-item">
             <div class="saln-grid-2">
-                <div>
-                    <label class="saln-field-label">Name of Relative</label>
-                    <input type="text" wire:model="data.relativesInGovernment.{{ $index }}.name_of_relative" class="saln-input" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Relationship</label>
-                    <input type="text" wire:model="data.relativesInGovernment.{{ $index }}.relationship" class="saln-input" placeholder="e.g., Father, Sibling" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Position</label>
-                    <input type="text" wire:model="data.relativesInGovernment.{{ $index }}.position" class="saln-input" />
-                </div>
-                <div>
-                    <label class="saln-field-label">Agency/Office and Address</label>
-                    <textarea wire:model="data.relativesInGovernment.{{ $index }}.name_of_agency_office_address" class="saln-input" rows="2"></textarea>
-                </div>
+                <div><label class="saln-field-label">Name of Relative</label><input type="text" wire:model="data.relativesInGovernment.{{ $index }}.name_of_relative" class="saln-input" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Relationship</label><input type="text" wire:model="data.relativesInGovernment.{{ $index }}.relationship" class="saln-input" placeholder="e.g., Father, Sibling" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Position</label><input type="text" wire:model="data.relativesInGovernment.{{ $index }}.position" class="saln-input" {{ $dis }} /></div>
+                <div><label class="saln-field-label">Agency/Office and Address</label><textarea wire:model="data.relativesInGovernment.{{ $index }}.name_of_agency_office_address" class="saln-input" rows="2" {{ $dis }}></textarea></div>
             </div>
+            @if(!$ro)
             <button type="button" wire:click="removeRelativeInGovernment({{ $index }})" class="saln-btn-remove">Remove</button>
+            @endif
         </div>
         @endforeach
+        @if(!$ro)
         <button type="button" wire:click="addRelativeInGovernment" class="saln-btn-add">+ Add Relative</button>
+        @endif
     </div>
     @endif
 
@@ -175,7 +153,7 @@
     {{-- DATE SIGNED --}}
     <div style="margin:10px 0; font-size:8.5pt; display:flex; align-items:center; gap:8px;">
         <span style="font-weight:bold;">Date Signed:</span>
-        <input type="date" wire:model="data.date_signed" class="saln-input" style="width:200px; border-bottom:1px solid #000;" />
+        <input type="date" wire:model="data.date_signed" class="saln-input" style="width:200px; border-bottom:1px solid #000;" {{ $dis }} />
     </div>
 
     {{-- SIGNATURES --}}
@@ -196,11 +174,11 @@
         <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:flex-end;">
             <div>
                 <label class="saln-field-label">Date Subscribed and Sworn</label>
-                <input type="date" wire:model="data.subscribed_sworn_date" class="saln-input" style="width:200px; border-bottom:1px solid #000;" />
+                <input type="date" wire:model="data.subscribed_sworn_date" class="saln-input" style="width:200px; border-bottom:1px solid #000;" {{ $dis }} />
             </div>
             <div style="flex:1;">
                 <label class="saln-field-label">Person Administering Oath</label>
-                <input type="text" wire:model="data.person_administering_oath" class="saln-input" style="border-bottom:1px solid #000;" />
+                <input type="text" wire:model="data.person_administering_oath" class="saln-input" style="border-bottom:1px solid #000;" {{ $dis }} />
             </div>
         </div>
     </div>

@@ -4,12 +4,12 @@ namespace App\Filament\Resources\TravelOrderResource\Pages;
 
 use App\Filament\Resources\TravelOrderResource;
 use App\Models\TravelOrder;
+use App\Notifications\TravelOrderStatusUpdated;
 use Filament\Actions;
 use Filament\Forms;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
-use App\Notifications\TravelOrderStatusUpdated;
 
 class ViewTravelOrder extends ViewRecord
 {
@@ -19,104 +19,93 @@ class ViewTravelOrder extends ViewRecord
     {
         return [
 
-            // ✅ APPROVE
+            // ── APPROVE ──────────────────────────────────────────────────────
             Actions\Action::make('approve')
-                ->label('Approve Travel Order')
-                ->icon('heroicon-m-check-circle')
+                ->label('Approve')
+                ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('Approve Travel Order')
-                ->modalDescription(fn(TravelOrder $record) =>
-                    'This will approve the travel order' .
-                    ($record->travel_type === 'batch' ? ' and all tagged employee copies.' : '.')
+                ->modalDescription('This will mark the travel order as approved and notify the employee.')
+                ->modalSubmitActionLabel('Yes, Approve')
+                ->visible(
+                    fn() =>
+                    $this->record->status === 'pending' &&
+                    Auth::user()->role === 'admin'
                 )
-                ->visible(fn(TravelOrder $record) =>
-                    Auth::user()->role === 'admin' &&
-                    $record->status === 'pending'
-                )
-                ->action(function (TravelOrder $record) {
-                    $updateData = [
-                        'status'                            => 'approved',
-                        'approved_by'                       => Auth::id(),
-                        'approved_at'                       => now(),
-                        'recommended_by_assistant_director' => true,
-                        'recommended_by'                    => Auth::id(),
-                        'approved_by_center_director'       => true,
-                        'rejection_remark'                  => null,  // clear on approval
-                    ];
+                ->action(function () {
+                    $this->record->update([
+                        'status' => 'approved',
+                        'approved_by' => Auth::user()->name,
+                        'approved_at' => now(),
+                    ]);
 
-                    $record->update($updateData);
-
-                    if ($record->travel_type === 'batch' && $record->batch_id) {
-                        TravelOrder::where('batch_id', $record->batch_id)
-                            ->where('id', '!=', $record->id)
-                            ->update($updateData);
-                    }
-
-                    $record->creator->notify(new TravelOrderStatusUpdated($record));
+                    // WHY: Notify AFTER update — employee is never notified
+                    // about an approval that fails to persist.
+                    $this->record->creator->notify(new TravelOrderStatusUpdated($this->record));
 
                     Notification::make()
                         ->title('Travel Order Approved')
-                        ->body($record->travel_type === 'batch'
-                            ? 'Batch travel order and all employee copies approved successfully.'
-                            : 'Travel order approved successfully.')
+                        ->body('The employee has been notified.')
                         ->success()
                         ->send();
                 }),
 
-            // ❌ REJECT (saves reason into dedicated rejection_remark column)
+            // ── REJECT ───────────────────────────────────────────────────────
             Actions\Action::make('reject')
-                ->label('Reject Travel Order')
-                ->icon('heroicon-m-x-circle')
+                ->label('Reject')
+                ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->modalHeading('Reject Travel Order')
-                ->modalDescription(fn(TravelOrder $record) =>
-                    'This will reject the travel order' .
-                    ($record->travel_type === 'batch' ? ' and all tagged employee copies.' : '.') .
-                    ' Please provide a reason so the employee can make the necessary corrections.'
+                ->visible(
+                    fn() =>
+                    $this->record->status === 'pending' &&
+                    Auth::user()->role === 'admin'
                 )
-                ->modalWidth('lg')
-                ->modalSubmitActionLabel('Confirm Rejection')
                 ->form([
                     Forms\Components\Textarea::make('rejection_remark')
-                        ->label('Rejection Reason')
-                        ->placeholder('Explain why this travel order is being rejected...')
+                        ->label('Reason for Rejection')
                         ->required()
-                        ->rows(4)
-                        ->maxLength(1000)
-                        ->helperText('This remark will be visible to the employee.'),
+                        ->rows(3)
+                        ->placeholder('Please provide a clear reason for rejecting this travel order...'),
                 ])
-                ->visible(fn(TravelOrder $record) =>
-                    Auth::user()->role === 'admin' &&
-                    $record->status === 'pending'
-                )
-                ->action(function (TravelOrder $record, array $data) {
-                    $updateData = [
-                        'status'           => 'rejected',
-                        'approved_by'      => Auth::id(),
-                        'approved_at'      => now(),
+                ->requiresConfirmation()
+                ->modalHeading('Reject Travel Order')
+                ->modalSubmitActionLabel('Yes, Reject')
+                ->action(function (array $data) {
+                    $this->record->update([
+                        'status' => 'rejected',
+                        'approved_by' => Auth::user()->name,
                         'rejection_remark' => $data['rejection_remark'],
-                    ];
+                    ]);
 
-                    $record->update($updateData);
-
-                    if ($record->travel_type === 'batch' && $record->batch_id) {
-                        TravelOrder::where('batch_id', $record->batch_id)
-                            ->where('id', '!=', $record->id)
-                            ->update($updateData);
-                    }
-
-                    $record->creator->notify(new TravelOrderStatusUpdated($record));
+                    $this->record->creator->notify(new TravelOrderStatusUpdated($this->record));
 
                     Notification::make()
                         ->title('Travel Order Rejected')
-                        ->body($record->travel_type === 'batch'
-                            ? 'Batch travel order and all employee copies rejected.'
-                            : 'Travel order rejected.')
+                        ->body('The employee has been notified.')
                         ->danger()
                         ->send();
                 }),
 
+            // ── PRINT ─────────────────────────────────────────────────────────
+            Actions\Action::make('print')
+                ->label('Print')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->url(fn() => route('travel-order.print', $this->record->id))
+                ->openUrlInNewTab()
+                ->visible(fn() => $this->record->status === 'approved'),
+
+            // ── EDIT / REVISE ─────────────────────────────────────────────────
+            Actions\EditAction::make()
+                ->label(fn() => $this->record->status === 'rejected' ? 'Revise & Resubmit' : 'Edit')
+                ->visible(
+                    fn() =>
+                    (Auth::user()->role === 'admin' && $this->record->status === 'pending') ||
+                    (Auth::user()->role === 'employee'
+                        && $this->record->created_by === Auth::id()
+                        && $this->record->status === 'rejected')
+                ),
         ];
     }
 }

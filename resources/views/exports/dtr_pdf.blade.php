@@ -1,402 +1,316 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>DTR - {{ $employee->name }}</title>
     <style>
         @page {
-            size: A4;
-            margin: 8mm 12mm;
+            size: A4 portrait;
+            margin: 12mm 20mm 14mm 20mm;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 9px;
-            margin: 0;
-            padding: 0;
+            font-size: 8.5px;
             color: #000;
             line-height: 1.3;
         }
 
-        .page-container {
-            min-height: 281mm; /* A4 height minus margins - fill entire page */
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .table-wrapper {
-            flex: 1;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 8px;
-        }
-
-        .header h4 {
-            font-size: 11px;
-            margin: 1.5px 0;
-            font-weight: bold;
-        }
-
-        .header h5 {
-            font-size: 9px;
-            margin: 1.5px 0;
-            font-weight: bold;
-        }
-
-        .header p {
+        /* ── CS FORM label above border ── */
+        .cs-form-label {
             font-size: 7.5px;
-            margin: 0.5px 0;
-            font-style: italic;
+            text-align: right;
+            margin-bottom: 2px;
+            padding-right: 2px;
         }
 
-        .info-section {
-            margin: 8px 0;
+        /* ── OUTER BORDER wrapping everything ── */
+        .page-border {
+            border: 1.5px solid #000;
+            padding: 6px 10px 8px 10px;
         }
 
-        .info-grid {
-            display: table;
+        /* ── AGENCY HEADER ── */
+        .agency-header {
+            text-align: center;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 4px;
+        }
+        .agency-republic { font-size: 7.5px; margin-bottom: 1px; }
+        .agency-name     { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px; }
+        .agency-address  { font-size: 7px; color: #222; margin-top: 1px; }
+
+        /* ── FORM TITLE ── */
+        .form-title-wrap { text-align: center; margin: 4px 0 5px; }
+        .form-title      { font-size: 13px; font-weight: bold; letter-spacing: 4px; text-transform: uppercase; }
+        .form-divider    { font-size: 8.5px; letter-spacing: 2px; margin-top: 3px; }
+
+        /* ── DTR TABLE ── */
+        .dtr-wrap { margin: 0 2px; }
+
+        table.dtr {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 6px;
         }
 
-        .info-row {
-            display: table-row;
-        }
-
-        .info-cell {
-            display: table-cell;
-            padding: 3px 6px;
-            font-size: 8.5px;
-        }
-
-        .info-label {
-            font-weight: bold;
-            width: 95px;
-        }
-
-        .info-value {
-            border-bottom: 1px solid #333;
-        }
-
-        table.dtr-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            font-size: 9px;
-        }
-
-        table.dtr-table th,
-        table.dtr-table td {
-            border: 0.5px solid #000;
-            padding: 5px 3px;
+        table.dtr th,
+        table.dtr td {
+            border: 0.75px solid #000;
             text-align: center;
             vertical-align: middle;
+            padding: 1px 1px;
         }
 
-        table.dtr-table th {
-            background-color: #e8e8e8;
+        table.dtr thead tr.header-top th {
             font-weight: bold;
-            font-size: 9px;
-            padding: 6px 3px;
-        }
-
-        table.dtr-table .date-col {
-            text-align: left;
-            padding-left: 6px;
-            font-size: 8.5px;
-        }
-
-        .summary-footer {
-            display: table;
-            width: 100%;
-            margin-top: 12px;
-            margin-bottom: 12px;
-            font-size: 8px;
-        }
-
-        .summary-left {
-            display: table-cell;
-            width: 55%;
-            vertical-align: top;
-            padding-right: 12px;
-        }
-
-        .summary-right {
-            display: table-cell;
-            width: 45%;
-            vertical-align: top;
-            border-left: 1px solid #ccc;
-            padding-left: 12px;
-        }
-
-        .summary-row {
-            margin: 3px 0;
-            line-height: 1.5;
-        }
-
-        .legend {
             font-size: 7.5px;
-            margin-top: 4px;
-            padding: 6px 8px;
-            background-color: #f5f5f5;
-            border-left: 2px solid #333;
-            line-height: 1.6;
-        }
-
-        .legend-title {
-            font-weight: bold;
-            font-size: 8px;
-            margin-bottom: 3px;
-        }
-
-        .legend-item {
-            display: inline-block;
-            margin-right: 10px;
-            margin-bottom: 2px;
-        }
-
-        .certification {
-            font-size: 7.5px;
-            text-align: justify;
-            margin: 8px 0;
-            line-height: 1.5;
-            padding: 4px 0;
-        }
-
-        .signatures {
-            display: table;
-            width: 100%;
-            margin-top: 15px;
-            margin-bottom: 10px;
-            font-size: 8px;
-        }
-
-        .sig-cell {
-            display: table-cell;
-            width: 33.33%;
-            text-align: center;
-            vertical-align: bottom;
-            padding: 0 5px;
-        }
-
-        .sig-line {
-            border-top: 1px solid #000;
-            width: 85%;
-            margin: 30px auto 4px;
-            padding-top: 4px;
-            font-weight: bold;
-            font-size: 8.5px;
-        }
-
-        .sig-label {
-            font-size: 7px;
-            font-style: italic;
-            color: #555;
-            margin-top: 3px;
+            background: #fff;
+            padding: 2px 1px;
             line-height: 1.3;
         }
 
-        .footer-note {
-            text-align: center;
+        table.dtr thead tr.header-sub th {
+            font-weight: bold;
             font-size: 7px;
-            color: #666;
-            margin-top: 12px;
-            padding-top: 6px;
-            border-top: 0.5px solid #ccc;
-            line-height: 1.4;
+            background: #fff;
+            padding: 1.5px 1px;
         }
 
-        /* Compact table styling */
-        .compact-td {
-            font-size: 8.5px;
+        .col-day  { width: 30px; }
+        .col-time { width: 48px; }
+        .col-ut   { width: 34px; }
+
+        table.dtr tbody td { height: 12.5px; font-size: 8px; }
+        table.dtr tbody tr.weekend td { background-color: #ebebeb; }
+        table.dtr tfoot td {
+            font-weight: bold; font-size: 8px;
+            background-color: #d8d8d8; padding: 2.5px 2px;
         }
 
-        /* Weekend highlighting */
-        .weekend-row {
-            background-color: #f5f5f5;
+        /* ── CERTIFICATION & VERIFICATION ── */
+        .cert-section {
+            display: table;
+            width: 100%;
+            margin: 4px 2px 0;
+        }
+        .cert-left {
+            display: table-cell; width: 55%;
+            vertical-align: top; padding-right: 12px;
+        }
+        .cert-right {
+            display: table-cell; width: 45%;
+            vertical-align: top;
+            border-left: 0.75px solid #000;
+            padding-left: 12px;
+        }
+        .cert-heading {
+            font-size: 7.5px; font-weight: bold;
+            text-transform: uppercase; margin-bottom: 4px;
+        }
+        .cert-body {
+            font-size: 7.5px; text-align: justify;
+            line-height: 1.6; margin-bottom: 22px;
+        }
+        .sig-block  { text-align: center; }
+        .sig-line {
+            border-top: 0.75px solid #000; padding-top: 2px;
+            font-weight: bold; font-size: 8.5px;
+            text-transform: uppercase; text-decoration: underline;
+            display: inline-block; min-width: 160px;
+        }
+        .sig-sub { font-size: 7px; font-style: italic; color: #333; margin-top: 2px; }
+
+        /* ── LEGEND ── */
+        .legend-wrap {
+            margin: 6px 2px 0;
+            border-top: 0.75px solid #000;
+            padding-top: 4px;
+        }
+        .legend-title { font-size: 7.5px; font-weight: bold; margin-bottom: 2px; }
+        .legend-items { display: table; width: 100%; }
+        .legend-col   { display: table-cell; font-size: 7px; vertical-align: top; }
+
+        /* ── PAGE FOOTER ── */
+        .page-footer {
+            text-align: center; font-size: 6px; color: #777;
+            margin-top: 5px; padding-top: 3px; border-top: 0.5px solid #ccc;
         }
     </style>
 </head>
 <body>
-    <div class="page-container">
-    <div class="content-wrapper">
-    <!-- Compact Header -->
-    <div class="header">
-        <h5 style="text-transform: uppercase;">Republic of the Philippines</h5>
-        <h5>Department of Agriculture</h5>
-        <h4>AGRICULTURAL TRAINING INSTITUTE - REGION XI</h4>
-        <p>Km. 7, Bangkal, Davao City</p>
-        <h4 style="margin-top: 4px;">DAILY TIME RECORD</h4>
-        <p>(Civil Service Commission Form No. 48)</p>
+
+@php
+    $totalUndertime = 0;
+    $byDay = [];
+
+    foreach ($records as $r) {
+        $day = (int) \Carbon\Carbon::parse($r['Date'])->format('j');
+        $byDay[$day] = $r;
+    }
+
+    $firstDate   = \Carbon\Carbon::parse($records[0]['Date'] ?? now());
+    $monthStart  = $firstDate->copy()->startOfMonth();
+    $daysInMonth = (int) $monthStart->daysInMonth;
+    $monthLabel  = $firstDate->format('F Y');
+
+    foreach ($records as $r) {
+        $d = \Carbon\Carbon::parse($r['Date']);
+        if ($d->isWeekend()) continue;
+        $totalUndertime += (int)($r['Undertime'] ?? 0);
+    }
+
+    $utTotalH = $totalUndertime > 0 ? (int) floor($totalUndertime / 60) : '';
+    $utTotalM = $totalUndertime > 0 ? ($totalUndertime % 60)            : '';
+@endphp
+
+<div class="cs-form-label">CS Form No. 48</div>
+
+<div class="page-border">
+
+    {{-- AGENCY HEADER --}}
+    <div class="agency-header">
+        <div class="agency-republic">Republic of the Philippines</div>
+        <div class="agency-name">Agricultural Training Institute</div>
+        <div class="agency-address">Datu Abdul Dadia, Panabo City, Davao Del Norte, Philippines 8105</div>
+        <div class="agency-address">Email: atixI.davao@gmail.com &nbsp;|&nbsp; Tel: (084) 823-0557 &nbsp;|&nbsp; www.ati.da.gov.ph</div>
     </div>
 
-    <!-- Employee Info - Compact Grid -->
-    <div class="info-section">
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-cell info-label">Name:</div>
-                <div class="info-cell info-value" style="width: 35%;">{{ strtoupper($employee->name) }}</div>
-                <div class="info-cell info-label" style="padding-left: 20px;">For the month of:</div>
-                <div class="info-cell info-value" style="width: 20%;">{{ \Carbon\Carbon::parse($records[0]['Date'] ?? now())->format('F Y') }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-cell info-label">Position:</div>
-                <div class="info-cell info-value" style="width: 35%;">{{ $employee->position ?? 'N/A' }}</div>
-                <div class="info-cell info-label" style="padding-left: 20px;">Official Hours:</div>
-                <div class="info-cell info-value" style="width: 20%;">8:00 AM - 12:00 NN / 1:00 PM - 5:00 PM</div>
-            </div>
+    {{-- FORM TITLE --}}
+    <div class="form-title-wrap">
+        <div class="form-title">Daily Time Record</div>
+        <div class="form-divider">- - - - - - o 0 o - - - - - -</div>
+    </div>
+
+    {{-- EMPLOYEE INFO --}}
+    <div style="margin: 0 2px 6px;">
+        <div style="display:table; width:100%; margin-bottom:1px;">
+            <div style="display:table-cell; width:5px;"></div>
+            <div style="display:table-cell; width:44%; border-bottom:0.75px solid #000; font-weight:bold; font-size:9px; padding-bottom:1px; padding-left:4px;">{{ strtoupper($employee->name) }}</div>
+            <div style="display:table-cell; width:12px;"></div>
+            <div style="display:table-cell; font-size:7.5px; vertical-align:bottom; white-space:nowrap; padding-bottom:1px; padding-right:4px;">For the month of</div>
+            <div style="display:table-cell; border-bottom:0.75px solid #000; font-weight:bold; font-size:9px; padding-bottom:1px; padding-left:4px;">{{ $monthLabel }}</div>
+        </div>
+        <div style="display:table; width:100%; margin-bottom:5px;">
+            <div style="display:table-cell; width:5px;"></div>
+            <div style="display:table-cell; font-size:6.5px; font-style:italic; color:#444; padding-left:4px;">(Name)</div>
+        </div>
+        <div style="display:table; width:100%;">
+            <div style="display:table-cell; width:5px;"></div>
+            <div style="display:table-cell; width:110px; font-size:7.5px; vertical-align:bottom; padding-bottom:1px;">Official hours for arrival<br>and departure</div>
+            <div style="display:table-cell; width:36%; border-bottom:0.75px solid #000; font-weight:bold; font-size:8px; padding-bottom:1px; padding-left:4px;">8:00 A.M. – 12:00 N.N. &nbsp;/&nbsp; 1:00 P.M. – 5:00 P.M.</div>
+            <div style="display:table-cell; font-size:7.5px; vertical-align:bottom; padding-bottom:1px; padding-left:10px; white-space:nowrap; padding-right:4px;">Regular days</div>
+            <div style="display:table-cell; border-bottom:0.75px solid #000; font-weight:bold; font-size:8px; padding-bottom:1px; padding-left:4px;">Monday – Friday</div>
         </div>
     </div>
 
-    <!-- DTR Table - Full Page Coverage -->
-    <div class="table-wrapper">
-    <table class="dtr-table">
-        <thead>
-            <tr>
-                <th rowspan="2" style="width: 70px;">Date</th>
-                <th colspan="2">A.M.</th>
-                <th colspan="2">P.M.</th>
-                <th colspan="2">Undertime</th>
-                <th rowspan="2" style="width: 50px;">Hours<br>Worked</th>
-            </tr>
-            <tr>
-                <th style="width: 42px;">In</th>
-                <th style="width: 42px;">Out</th>
-                <th style="width: 42px;">In</th>
-                <th style="width: 42px;">Out</th>
-                <th style="width: 36px;">Late</th>
-                <th style="width: 36px;">U.T.</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $totalLate = 0;
-                $totalUndertime = 0;
-                $totalWorkedMinutes = 0;
-                $daysPresent = 0;
-            @endphp
-
-            @foreach($records as $r)
-                @php
-                    $date = \Carbon\Carbon::parse($r['Date']);
-                    $isWeekend = $date->isWeekend();
-
-                    // Count working days
-                    if (!$isWeekend) {
-                        $daysPresent++;
-                    }
-
-                    // Parse worked hours
-                    if (isset($r['WorkedHours']) && $r['WorkedHours'] !== '0:00') {
-                        list($hours, $minutes) = explode(':', $r['WorkedHours']);
-                        $totalWorkedMinutes += ($hours * 60) + $minutes;
-                    }
-
-                    $totalLate += $r['Late'] ?? 0;
-                    $totalUndertime += $r['Undertime'] ?? 0;
-                @endphp
-
-                <tr class="{{ $isWeekend ? 'weekend-row' : '' }}">
-                    <td class="date-col compact-td">{{ $date->format('M d (D)') }}</td>
-                    <td class="compact-td">{{ $r['MorningIn'] ?? '' }}</td>
-                    <td class="compact-td">{{ $r['MorningOut'] ?? '' }}</td>
-                    <td class="compact-td">{{ $r['AfternoonIn'] ?? '' }}</td>
-                    <td class="compact-td">{{ $r['AfternoonOut'] ?? '' }}</td>
-                    <td class="compact-td">{{ ($r['Late'] ?? 0) > 0 ? $r['Late'] : '' }}</td>
-                    <td class="compact-td">{{ ($r['Undertime'] ?? 0) > 0 ? $r['Undertime'] : '' }}</td>
-                    <td class="compact-td">{{ $r['WorkedHours'] ?? '' }}</td>
+    {{-- DTR TABLE --}}
+    <div class="dtr-wrap">
+        <table class="dtr">
+            <thead>
+                <tr class="header-top">
+                    <th rowspan="2" class="col-day">Day</th>
+                    <th colspan="2">A.M.</th>
+                    <th colspan="2">P.M.</th>
+                    <th colspan="2">Undertime</th>
                 </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr style="font-weight: bold; background-color: #d8d8d8;">
-                <td colspan="5" style="text-align: right; padding-right: 8px; font-size: 9px;">TOTAL:</td>
-                <td style="font-size: 9px;">{{ $totalLate }}</td>
-                <td style="font-size: 9px;">{{ $totalUndertime }}</td>
-                <td style="font-size: 9px;">
+                <tr class="header-sub">
+                    <th class="col-time">Arrival</th>
+                    <th class="col-time">Departure</th>
+                    <th class="col-time">Arrival</th>
+                    <th class="col-time">Departure</th>
+                    <th class="col-ut">Hours</th>
+                    <th class="col-ut">Minutes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for ($day = 1; $day <= $daysInMonth; $day++)
                     @php
-                        $totalHours = floor($totalWorkedMinutes / 60);
-                        $totalMins = $totalWorkedMinutes % 60;
-                        echo $totalHours . ':' . str_pad($totalMins, 2, '0', STR_PAD_LEFT);
+                        $date   = $monthStart->copy()->addDays($day - 1);
+                        $isWeek = $date->isWeekend();
+                        $r      = $byDay[$day] ?? null;
+                        $ut     = (!$isWeek && $r) ? (int)($r['Undertime'] ?? 0) : 0;
+                        $utH    = $ut > 0 ? (int) floor($ut / 60) : '';
+                        $utM    = $ut > 0 ? ($ut % 60)            : '';
                     @endphp
-                </td>
-            </tr>
-        </tfoot>
-    </table>
+                    <tr class="{{ $isWeek ? 'weekend' : '' }}">
+                        <td class="col-day" style="font-size:7.5px; line-height:1.2;">
+                            {{ $day }}<br>
+                            <span style="font-size:6px; font-weight:normal;">{{ $date->format('D') }}</span>
+                        </td>
+                        <td class="col-time">{{ (!$isWeek && $r) ? ($r['MorningIn']    ?? '') : '' }}</td>
+                        <td class="col-time">{{ (!$isWeek && $r) ? ($r['MorningOut']   ?? '') : '' }}</td>
+                        <td class="col-time">{{ (!$isWeek && $r) ? ($r['AfternoonIn']  ?? '') : '' }}</td>
+                        <td class="col-time">{{ (!$isWeek && $r) ? ($r['AfternoonOut'] ?? '') : '' }}</td>
+                        <td class="col-ut">{{ $utH }}</td>
+                        <td class="col-ut">{{ $utM }}</td>
+                    </tr>
+                @endfor
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" style="text-align:right; padding-right:8px; font-size:7.5px; font-style:italic;">TOTAL for the month</td>
+                    <td class="col-ut">{{ $utTotalH }}</td>
+                    <td class="col-ut">{{ $utTotalM }}</td>
+                </tr>
+            </tfoot>
+        </table>
     </div>
 
-    <!-- Compact Summary & Certification -->
-    <div class="summary-footer">
-        <div class="summary-left">
-            <!-- Legend -->
-            <div class="legend">
-                <div class="legend-title">LEGEND:</div>
-                <span class="legend-item"><strong>UT</strong> - Undertime</span>
-                <span class="legend-item"><strong>L</strong> - Late</span>
-                <span class="legend-item"><strong>AB</strong> - Absent</span>
-                <span class="legend-item"><strong>OB</strong> - Official Business</span><br>
-                <span class="legend-item"><strong>SL</strong> - Sick Leave</span>
-                <span class="legend-item"><strong>VL</strong> - Vacation Leave</span>
-                <span class="legend-item"><strong>CTO</strong> - Compensatory Time Off</span>
-                <span class="legend-item"><strong>SPL</strong> - Special Privilege Leave</span>
+    {{-- CERTIFICATION & VERIFICATION --}}
+    <div class="cert-section">
+        <div class="cert-left">
+            <div class="cert-heading">Certification of Employee:</div>
+            <div class="cert-body">
+                I certify on my honor that the above is a true and correct report of the hours of work
+                performed, record of which was made daily at the time of arrival at and departure from office.
             </div>
-
-            <!-- Certification -->
-            <div class="certification">
-                I certify on my honor that the above is a true and correct report of the hours of work performed,
-                record of which was made daily at the time of arrival and departure from office.
-            </div>
-        </div>
-
-        <div class="summary-right">
-            <div class="summary-row"><strong>Days Present:</strong> {{ $daysPresent }} working day(s)</div>
-            <div class="summary-row"><strong>Total Late:</strong> {{ $totalLate }} mins ({{ number_format($totalLate / 60, 2) }} hrs)</div>
-            <div class="summary-row"><strong>Total Undertime:</strong> {{ $totalUndertime }} mins ({{ number_format($totalUndertime / 60, 2) }} hrs)</div>
-            <div class="summary-row"><strong>Total Hours Worked:</strong> {{ floor($totalWorkedMinutes / 60) }} hrs {{ $totalWorkedMinutes % 60 }} mins</div>
-            @php
-                $expectedHours = $daysPresent * 8 * 60; // in minutes
-                $deficiency = $expectedHours - $totalWorkedMinutes;
-            @endphp
-            <div class="summary-row" style="margin-top: 3px; padding-top: 3px; border-top: 1px solid #ccc;">
-                <strong>Expected Hours:</strong> {{ floor($expectedHours / 60) }} hrs<br>
-                <strong>Deficiency:</strong> {{ $deficiency > 0 ? floor($deficiency / 60) . ' hrs ' . ($deficiency % 60) . ' mins' : 'None' }}
+            <div class="sig-block">
+                <span class="sig-line">{{ $employee->name }}</span>
+                <div class="sig-sub">(Signature over printed name of employee)</div>
             </div>
         </div>
-    </div>
-
-    <!-- Compact Signatures -->
-    <div class="signatures">
-        <div class="sig-cell">
-            <div class="sig-line">{{ strtoupper($employee->name) }}</div>
-            <div class="sig-label">Employee Signature</div>
-        </div>
-        <div class="sig-cell">
-            <div class="sig-line">{{ $employee->immediate_supervisor ?? '' }}</div>
-            <div class="sig-label">Verified by: Immediate Supervisor</div>
-        </div>
-        <div class="sig-cell">
-            <div class="sig-line">{{ $employee->center_director ?? '' }}</div>
-            <div class="sig-label">Noted by: Center Director</div>
+        <div class="cert-right">
+            <div class="cert-heading">Verified as to the prescribed office hours:</div>
+            <div style="height:22px;"></div>
+            <div class="sig-block">
+                <span class="sig-line">{{ strtoupper($employee->immediate_supervisor ?? '') }}</span>
+                <div class="sig-sub">In Charge</div>
+            </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <div class="footer-note">
-        ATI-XI-DTR-{{ date('Y') }} | Generated: {{ now()->format('M d, Y h:i A') }} | Official copy filed at ATI-XI Administrative Division
+    {{-- LEGEND --}}
+    <div class="legend-wrap">
+        <div class="legend-title">Legends / Abbreviations:</div>
+        <div class="legend-items">
+            <div class="legend-col" style="width:30%;">
+                <strong>WD</strong> – Working Day<br>
+                <strong>SH</strong> – Special (Non-Working) Holiday
+            </div>
+            <div class="legend-col" style="width:30%;">
+                <strong>RH</strong> – Regular Holiday<br>
+                <strong>RL</strong> – Rest Day with Pay
+            </div>
+            <div class="legend-col" style="width:40%;">
+                <strong>VL</strong> – Vacation Leave &nbsp;
+                <strong>SL</strong> – Sick Leave<br>
+                <strong>UL</strong> – Undertime Leave &nbsp;
+                <strong>CTO</strong> – Compensatory Time Off
+            </div>
+        </div>
     </div>
-    </div>
-    </div>
+
+</div>
+
+{{-- PAGE FOOTER --}}
+<div class="page-footer">
+    Civil Service Form No. 48 &nbsp;|&nbsp; ATI – Panabo City, Davao Del Norte &nbsp;|&nbsp;
+    Generated: {{ now()->format('M d, Y h:i A') }}
+</div>
+
 </body>
 </html>

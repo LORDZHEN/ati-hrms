@@ -9,6 +9,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Support\Enums\FontWeight;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 
@@ -26,24 +28,21 @@ class LeaveApplicationResource extends Resource
         return auth()->user()->role === 'employee';
     }
 
+    // =========================================================================
+    //  FORM  (unchanged — preserving your full form logic)
+    // =========================================================================
+
     public static function form(Form $form): Form
     {
         return $form->schema([
 
-            // ============================================================
-            // CUSTOM LEAVE FORM VIEW - THE ONLY VISIBLE FORM
-            // ============================================================
             Forms\Components\View::make('filament.resources.leave-application-resource.leave-form')
                 ->columnSpanFull(),
 
-            // ============================================================
-            // ALL FORM FIELDS - COLLAPSED (for data binding & validation)
-            // ============================================================
             Forms\Components\Section::make('Form Fields (For Validation Only)')
                 ->description('⚠️ Fill out the official CSC Form 6 above. These fields are for data binding.')
                 ->schema([
 
-                    // Hidden employee fields
                     Forms\Components\Hidden::make('employee_id')
                         ->default(fn() => auth()->id()),
                     Forms\Components\Hidden::make('first_name')
@@ -61,7 +60,6 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Hidden::make('status')
                         ->default('pending'),
 
-                    // Leave type selection
                     Forms\Components\Select::make('type_of_leave')
                         ->label('Type of Leave')
                         ->options([
@@ -90,12 +88,6 @@ class LeaveApplicationResource extends Resource
                         ->required(fn(Forms\Get $get) => $get('type_of_leave') === 'others')
                         ->maxLength(255),
 
-                    // ============================================================
-                    // DATE FROM
-                    // vacation_leave  → earliest selectable = today + 5 working days
-                    // sick_leave      → latest selectable   = today (no future dates)
-                    // all others      → earliest selectable = today
-                    // ============================================================
                     Forms\Components\DatePicker::make('leave_date_from')
                         ->label('Leave Date From')
                         ->required()
@@ -104,38 +96,27 @@ class LeaveApplicationResource extends Resource
                         ->minDate(function (Forms\Get $get) {
                             $leaveType = $get('type_of_leave');
                             if ($leaveType === 'vacation_leave') {
-                                // Must file at least 5 working days in advance
                                 return self::addWorkingDays(now(), 5);
                             }
                             if ($leaveType === 'sick_leave') {
-                                // Sick leave: past dates only — no minimum restriction
                                 return null;
                             }
-                            // All other leave types: cannot be before today
                             return now()->startOfDay();
                         })
                         ->maxDate(function (Forms\Get $get) {
                             if ($get('type_of_leave') === 'sick_leave') {
-                                // Sick leave: cannot select future dates
                                 return now()->endOfDay();
                             }
                             return null;
                         })
                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                             self::calculateWorkingDays($state, $get('leave_date_to'), $set);
-                            // Clear "to" date if it's now before "from"
                             $to = $get('leave_date_to');
                             if ($to && Carbon::parse($state)->gt(Carbon::parse($to))) {
                                 $set('leave_date_to', null);
                             }
                         }),
 
-                    // ============================================================
-                    // DATE TO
-                    // vacation_leave  → min = leave_date_from (or today+5 if not set)
-                    // sick_leave      → max = today (no future dates)
-                    // all others      → min = leave_date_from
-                    // ============================================================
                     Forms\Components\DatePicker::make('leave_date_to')
                         ->label('Leave Date To')
                         ->required()
@@ -144,21 +125,16 @@ class LeaveApplicationResource extends Resource
                         ->minDate(function (Forms\Get $get) {
                             $leaveType = $get('type_of_leave');
                             $from = $get('leave_date_from');
-
                             if ($leaveType === 'vacation_leave') {
-                                // "To" must be on or after "from", which itself is already +5 days
                                 return $from ? Carbon::parse($from) : self::addWorkingDays(now(), 5);
                             }
                             if ($leaveType === 'sick_leave') {
-                                // Sick leave past dates only — allow from the start of "from" date
                                 return $from ? Carbon::parse($from) : null;
                             }
-                            // All others: must be on or after "from"
                             return $from ? Carbon::parse($from) : now()->startOfDay();
                         })
                         ->maxDate(function (Forms\Get $get) {
                             if ($get('type_of_leave') === 'sick_leave') {
-                                // Sick leave: cannot select future dates
                                 return now()->endOfDay();
                             }
                             return null;
@@ -176,7 +152,6 @@ class LeaveApplicationResource extends Resource
                         ->step(0.5)
                         ->readOnly(),
 
-                    // Supporting document
                     Forms\Components\FileUpload::make('supporting_document')
                         ->label('Supporting Document')
                         ->visible(
@@ -195,7 +170,6 @@ class LeaveApplicationResource extends Resource
                         ->image()
                         ->imageEditor(),
 
-                    // Vacation details
                     Forms\Components\Radio::make('vacation_location')
                         ->label('Vacation Location')
                         ->options([
@@ -211,7 +185,6 @@ class LeaveApplicationResource extends Resource
                         ->required(fn(Forms\Get $get) => $get('vacation_location') === 'abroad')
                         ->maxLength(255),
 
-                    // Sick leave details
                     Forms\Components\Radio::make('sick_leave_location')
                         ->label('Sick Leave Location')
                         ->options([
@@ -233,12 +206,10 @@ class LeaveApplicationResource extends Resource
                         ->required(fn(Forms\Get $get) => $get('sick_leave_location') === 'out_patient')
                         ->maxLength(255),
 
-                    // Women's illness
                     Forms\Components\TextInput::make('women_illness_specify')
                         ->label("Women's Illness")
                         ->maxLength(255),
 
-                    // Study leave
                     Forms\Components\Radio::make('study_leave_purpose')
                         ->label('Study Leave Purpose')
                         ->options([
@@ -247,7 +218,6 @@ class LeaveApplicationResource extends Resource
                         ])
                         ->inline(),
 
-                    // Other purpose
                     Forms\Components\Radio::make('other_purpose')
                         ->label('Other Purpose')
                         ->options([
@@ -256,7 +226,6 @@ class LeaveApplicationResource extends Resource
                         ])
                         ->inline(),
 
-                    // Commutation
                     Forms\Components\Radio::make('commutation')
                         ->label('Commutation')
                         ->options([
@@ -266,7 +235,6 @@ class LeaveApplicationResource extends Resource
                         ->default('not_requested')
                         ->inline()
                         ->required(),
-
                 ])
                 ->collapsed()
                 ->collapsible()
@@ -274,329 +242,394 @@ class LeaveApplicationResource extends Resource
         ]);
     }
 
-    /**
-     * Add N working days (Mon–Fri) to a given Carbon date.
-     * Skips weekends. Does NOT account for public holidays.
-     */
-    protected static function addWorkingDays(Carbon $date, int $days): Carbon
-    {
-        $result = $date->copy()->startOfDay();
-        $added = 0;
-
-        while ($added < $days) {
-            $result->addDay();
-            if ($result->isWeekday()) {
-                $added++;
-            }
-        }
-
-        return $result;
-    }
-
-    protected static function calculateWorkingDays($from, $to, Forms\Set $set): void
-    {
-        if (!$from || !$to)
-            return;
-
-        try {
-            $fromDate = Carbon::parse($from);
-            $toDate = Carbon::parse($to);
-
-            if ($toDate->lessThan($fromDate)) {
-                $set('number_of_working_days', 0);
-                return;
-            }
-
-            $workingDays = $fromDate->diffInWeekdays($toDate) + 1;
-            $set('number_of_working_days', $workingDays);
-        } catch (\Exception $e) {
-            $set('number_of_working_days', 0);
-        }
-    }
+    // =========================================================================
+    //  TABLE
+    // =========================================================================
 
     public static function table(Table $table): Table
     {
+        // Compute once — prevents repeated auth lookups in every closure.
+        $isAdmin = auth()->user()->role === 'admin';
+
         return $table
-            ->columns(self::getModernLeaveTableColumns())
-            ->filters(self::getEnhancedFilters())
-            ->actions(self::getContextualActions())
+            ->columns(self::getTableColumns($isAdmin))
+            ->filters(
+                self::getEnhancedFilters($isAdmin),
+                layout: FiltersLayout::AboveContentCollapsible
+            )
+            // WHY: 2 columns for employees (Status/Type + Period).
+            //      3 columns for admins (+ Employee selector).
+            //      Dynamic column count prevents wasted whitespace on the employee view.
+            ->filtersFormColumns($isAdmin ? 3 : 2)
+            ->filtersFormWidth(\Filament\Support\Enums\MaxWidth::FourExtraLarge)
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->role === 'admin'),
+                        ->visible(fn() => $isAdmin),
                 ]),
             ])
             ->defaultSort('date_of_filing', 'desc')
-            ->modifyQueryUsing(function (Builder $query) {
-                return auth()->user()->role === 'admin'
-                    ? $query
-                    : $query->where('employee_id', auth()->id());
-            })
+            ->modifyQueryUsing(
+                fn(Builder $query) => $isAdmin
+                ? $query->with('employee')
+                : $query->with('employee')->where('employee_id', auth()->id())
+            )
             ->poll('30s')
             ->striped()
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(10)
             ->emptyStateHeading('No leave applications found')
             ->emptyStateDescription('Submit your first leave application to get started.')
             ->emptyStateIcon('heroicon-o-calendar-days')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Create Leave Application')
+                    ->label('New Leave Application')
                     ->icon('heroicon-o-plus')
-                    ->visible(fn() => auth()->user()->role === 'employee'),
+                    ->visible(fn() => !$isAdmin),
             ]);
     }
 
-    protected static function getModernLeaveTableColumns(): array
+    // =========================================================================
+    //  TABLE COLUMNS
+    // =========================================================================
+
+    protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            Tables\Columns\Layout\Split::make([
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('employee.name')
-                        ->label('Employee')
-                        ->searchable()
-                        ->sortable()
-                        ->weight('bold')
-                        ->size('md')
-                        ->icon('heroicon-o-user-circle')
-                        ->iconColor('primary'),
+            // ── Employee — admin only ─────────────────────────────────────────
+            Tables\Columns\TextColumn::make('employee.name')
+                ->label('Employee')
+                ->searchable()
+                ->sortable()
+                ->weight(FontWeight::Bold)
+                ->icon('heroicon-o-user-circle')
+                ->iconColor('primary')
+                ->visible($isAdmin),
 
-                    Tables\Columns\TextColumn::make('position')
-                        ->label('Position')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-briefcase')
-                        ->iconColor('gray')
-                        ->formatStateUsing(
-                            fn($record) =>
-                            $record->position . ' • ' . ($record->office_department ?? 'N/A')
-                        ),
+            // ── Position • Department ─────────────────────────────────────────
+            Tables\Columns\TextColumn::make('position')
+                ->label('Position')
+                ->color('gray')
+                ->formatStateUsing(
+                    fn($record) => $record->position . ' • ' . ($record->office_department ?? 'N/A')
+                )
+                ->toggleable(isToggledHiddenByDefault: true),
 
-                    Tables\Columns\BadgeColumn::make('type_of_leave')
-                        ->label('Leave Type')
-                        ->formatStateUsing(fn($state) => str_replace('_', ' ', ucwords($state, '_')))
-                        ->colors([
-                            'success' => 'vacation_leave',
-                            'danger' => 'sick_leave',
-                            'warning' => 'mandatory_forced_leave',
-                            'info' => fn($state) => in_array($state, ['maternity_leave', 'paternity_leave']),
-                            'primary' => fn($state) => in_array($state, ['special_privilege_leave', 'study_leave']),
-                            'secondary' => 'others',
-                        ])
-                        ->icon(fn($state) => match ($state) {
-                            'vacation_leave' => 'heroicon-o-sun',
-                            'sick_leave' => 'heroicon-o-heart',
-                            'maternity_leave', 'paternity_leave' => 'heroicon-o-user-group',
-                            'study_leave' => 'heroicon-o-academic-cap',
-                            default => 'heroicon-o-document-text',
-                        }),
-                ])->space(2),
-
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('leave_dates')
-                        ->label('Leave Period')
-                        ->weight('medium')
-                        ->icon('heroicon-o-calendar-days')
-                        ->iconColor('warning')
-                        ->formatStateUsing(
-                            fn($record) =>
-                            Carbon::parse($record->leave_date_from)->format('M d, Y') .
-                            ' → ' .
-                            Carbon::parse($record->leave_date_to)->format('M d, Y')
-                        ),
-
-                    Tables\Columns\TextColumn::make('number_of_working_days')
-                        ->label('Duration')
-                        ->size('sm')
-                        ->formatStateUsing(fn($state) => $state . ' working ' . ($state == 1 ? 'day' : 'days'))
-                        ->badge()
-                        ->color('info')
-                        ->icon('heroicon-o-clock'),
-
-                    Tables\Columns\IconColumn::make('commutation')
-                        ->label('Commutation')
-                        ->boolean()
-                        ->trueIcon('heroicon-o-currency-dollar')
-                        ->falseIcon('heroicon-o-x-mark')
-                        ->trueColor('success')
-                        ->falseColor('gray')
-                        ->size('sm')
-                        ->getStateUsing(fn($record) => $record->commutation === 'requested'),
-                ])->space(1),
-
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->label('Status')
-                        ->colors([
-                            'warning' => 'pending',
-                            'success' => 'approved',
-                            'danger' => 'disapproved',
-                        ])
-                        ->icons([
-                            'heroicon-o-clock' => 'pending',
-                            'heroicon-o-check-circle' => 'approved',
-                            'heroicon-o-x-circle' => 'disapproved',
-                        ])
-                        ->formatStateUsing(fn(string $state): string => ucfirst($state))
-                        ->size('md'),
-
-                    Tables\Columns\TextColumn::make('date_of_filing')
-                        ->label('Filed')
-                        ->date('M d, Y')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-paper-airplane')
-                        ->iconColor('gray'),
-
-                    Tables\Columns\TextColumn::make('authorized_officer')
-                        ->label('Processed By')
-                        ->size('sm')
-                        ->color('gray')
-                        ->default('Awaiting Review')
-                        ->icon('heroicon-o-user')
-                        ->iconColor('gray')
-                        ->limit(20)
-                        ->tooltip(fn($record) => $record->authorized_officer),
-                ])->space(2)->alignment('end'),
-            ])->from('md'),
-
-            Tables\Columns\Layout\Panel::make([
-                Tables\Columns\Layout\Split::make([
-                    Tables\Columns\TextColumn::make('leave_details')
-                        ->label('Additional Details')
-                        ->formatStateUsing(function ($record) {
-                            $details = [];
-                            if ($record->vacation_location) {
-                                $location = $record->vacation_location === 'abroad'
-                                    ? 'Abroad: ' . ($record->abroad_specify ?? 'Not specified')
-                                    : 'Within Philippines';
-                                $details[] = '📍 ' . $location;
-                            }
-                            if ($record->sick_leave_location) {
-                                $treatment = $record->sick_leave_location === 'in_hospital'
-                                    ? 'Hospital: ' . ($record->hospital_illness_specify ?? 'Not specified')
-                                    : 'Outpatient: ' . ($record->outpatient_illness_specify ?? 'Not specified');
-                                $details[] = '🏥 ' . $treatment;
-                            }
-                            if ($record->supporting_document) {
-                                $details[] = '📎 Medical certificate attached';
-                            }
-                            return !empty($details) ? implode(' • ', $details) : 'No additional details';
-                        })
-                        ->size('sm')
-                        ->color('gray'),
-
-                    Tables\Columns\TextColumn::make('date_approved_disapproved')
-                        ->label('Processed On')
-                        ->dateTime('M d, Y h:i A')
-                        ->size('sm')
-                        ->color('gray')
-                        ->placeholder('Not yet processed')
-                        ->icon('heroicon-o-check-badge')
-                        ->iconColor('success'),
-                ]),
-            ])->collapsible(),
-        ];
-    }
-
-    protected static function getEnhancedFilters(): array
-    {
-        return [
-            Tables\Filters\SelectFilter::make('status')
-                ->label('Status')
-                ->options([
-                    'pending' => 'Pending',
-                    'approved' => 'Approved',
-                    'disapproved' => 'Disapproved',
-                ])
-                ->native(false)
-                ->indicator('Status'),
-
-            Tables\Filters\SelectFilter::make('type_of_leave')
+            // ── Leave Type badge ──────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('type_of_leave')
                 ->label('Leave Type')
-                ->options([
-                    'vacation_leave' => 'Vacation Leave',
-                    'sick_leave' => 'Sick Leave',
-                    'maternity_leave' => 'Maternity Leave',
-                    'paternity_leave' => 'Paternity Leave',
-                    'special_privilege_leave' => 'Special Privilege Leave',
-                    'mandatory_forced_leave' => 'Mandatory/Forced Leave',
-                ])
-                ->native(false)
-                ->indicator('Type'),
+                ->badge()
+                ->searchable()
+                ->formatStateUsing(fn($state) => str_replace('_', ' ', ucwords($state, '_')))
+                ->color(fn(string $state) => match ($state) {
+                    'vacation_leave' => 'success',
+                    'sick_leave' => 'danger',
+                    'mandatory_forced_leave' => 'warning',
+                    'maternity_leave',
+                    'paternity_leave' => 'info',
+                    'special_privilege_leave',
+                    'study_leave' => 'primary',
+                    default => 'gray',
+                })
+                ->icon(fn(string $state) => match ($state) {
+                    'vacation_leave' => 'heroicon-o-sun',
+                    'sick_leave' => 'heroicon-o-heart',
+                    'maternity_leave',
+                    'paternity_leave' => 'heroicon-o-user-group',
+                    'study_leave' => 'heroicon-o-academic-cap',
+                    default => 'heroicon-o-document-text',
+                }),
 
-            Tables\Filters\SelectFilter::make('commutation')
+            // ── Leave Period (From → To) ───────────────────────────────────────
+            Tables\Columns\TextColumn::make('leave_date_from')
+                ->label('Leave Period')
+                ->sortable()
+                ->icon('heroicon-o-calendar-days')
+                ->iconColor('warning')
+                ->formatStateUsing(
+                    fn($record) =>
+                    Carbon::parse($record->leave_date_from)->format('M d, Y')
+                    . ' → '
+                    . Carbon::parse($record->leave_date_to)->format('M d, Y')
+                ),
+
+            // ── Duration badge ────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('number_of_working_days')
+                ->label('Duration')
+                ->badge()
+                ->color('info')
+                ->icon('heroicon-o-clock')
+                ->formatStateUsing(
+                    fn($state) => $state . ' working ' . ($state == 1 ? 'day' : 'days')
+                ),
+
+            // ── Status badge ──────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('status')
+                ->label('Status')
+                ->badge()
+                ->sortable()
+                ->color(fn(string $state) => match ($state) {
+                    'pending' => 'warning',
+                    'approved' => 'success',
+                    'disapproved' => 'danger',
+                    default => 'gray',
+                })
+                ->icon(fn(string $state) => match ($state) {
+                    'pending' => 'heroicon-o-clock',
+                    'approved' => 'heroicon-o-check-circle',
+                    'disapproved' => 'heroicon-o-x-circle',
+                    default => null,
+                })
+                ->formatStateUsing(fn(string $state): string => ucfirst($state)),
+
+            // ── Filed ─────────────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('date_of_filing')
+                ->label('Filed')
+                ->since()
+                ->sortable()
+                ->tooltip(
+                    fn($record) => $record->date_of_filing
+                    ? Carbon::parse($record->date_of_filing)->format('M d, Y')
+                    : null
+                )
+                ->color('gray')
+                ->icon('heroicon-o-paper-airplane')
+                ->iconColor('gray'),
+
+            // ── Processed By ──────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('authorized_officer')
+                ->label('Processed By')
+                ->color('gray')
+                ->placeholder('Awaiting Review')
+                ->icon('heroicon-o-shield-check')
+                ->iconColor('gray')
+                ->limit(22)
+                ->tooltip(fn($record) => $record->authorized_officer),
+
+            // ── Commutation ───────────────────────────────────────────────────
+            Tables\Columns\IconColumn::make('commutation')
                 ->label('Commutation')
-                ->options([
-                    'requested' => 'Requested',
-                    'not_requested' => 'Not Requested',
-                ])
-                ->native(false)
-                ->indicator('Commutation'),
+                ->boolean()
+                ->trueIcon('heroicon-o-currency-dollar')
+                ->falseIcon('heroicon-o-x-mark')
+                ->trueColor('success')
+                ->falseColor('gray')
+                ->getStateUsing(fn($record) => $record->commutation === 'requested')
+                ->toggleable(isToggledHiddenByDefault: true),
 
-            Tables\Filters\Filter::make('date_range')
-                ->form([
-                    Forms\Components\DatePicker::make('filed_from')
-                        ->label('Filed From')
-                        ->native(false),
-                    Forms\Components\DatePicker::make('filed_until')
-                        ->label('Filed Until')
-                        ->native(false),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            $data['filed_from'],
-                            fn(Builder $query, $date): Builder => $query->whereDate('date_of_filing', '>=', $date),
-                        )
-                        ->when(
-                            $data['filed_until'],
-                            fn(Builder $query, $date): Builder => $query->whereDate('date_of_filing', '<=', $date),
-                        );
-                })
-                ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-                    if ($data['filed_from'] ?? null) {
-                        $indicators['from'] = 'Filed from ' . Carbon::parse($data['filed_from'])->toFormattedDateString();
-                    }
-                    if ($data['filed_until'] ?? null) {
-                        $indicators['until'] = 'Filed until ' . Carbon::parse($data['filed_until'])->toFormattedDateString();
-                    }
-                    return $indicators;
-                }),
-
-            Tables\Filters\Filter::make('leave_period')
-                ->form([
-                    Forms\Components\DatePicker::make('leave_from')
-                        ->label('Leave Period From')
-                        ->native(false),
-                    Forms\Components\DatePicker::make('leave_until')
-                        ->label('Leave Period Until')
-                        ->native(false),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            $data['leave_from'],
-                            fn(Builder $query, $date): Builder => $query->whereDate('leave_date_from', '>=', $date),
-                        )
-                        ->when(
-                            $data['leave_until'],
-                            fn(Builder $query, $date): Builder => $query->whereDate('leave_date_to', '<=', $date),
-                        );
-                })
-                ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-                    if ($data['leave_from'] ?? null) {
-                        $indicators['leave_from'] = 'Leave from ' . Carbon::parse($data['leave_from'])->toFormattedDateString();
-                    }
-                    if ($data['leave_until'] ?? null) {
-                        $indicators['leave_until'] = 'Leave until ' . Carbon::parse($data['leave_until'])->toFormattedDateString();
-                    }
-                    return $indicators;
-                }),
+            // ── Processed On ──────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('date_approved_disapproved')
+                ->label('Processed On')
+                ->dateTime('M d, Y h:i A')
+                ->color('gray')
+                ->placeholder('—')
+                ->icon('heroicon-o-check-badge')
+                ->iconColor('success')
+                ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
 
-    protected static function getContextualActions(): array
+    // =========================================================================
+    //  FILTERS
+    //
+    //  Design principle: fewer filters = less confusion.
+    //
+    //  EMPLOYEE view → 2 filters:
+    //    1. "Status & Type"  — the two most-used criteria
+    //    2. "Period"         — one Quick Select that auto-fills From/To
+    //
+    //  ADMIN view → 3 filters (same 2 + Employee selector as column 1):
+    //    1. "Employee"       — searchable employee picker
+    //    2. "Status & Type"  — same as employee view
+    //    3. "Period"         — same as employee view
+    //
+    //  Commutation and Medical Certificate filters are removed from the
+    //  visible panel — they were rarely used and added visual noise.
+    //  Admins can still filter by those via the Generate Report modal.
+    // =========================================================================
+
+    protected static function getEnhancedFilters(bool $isAdmin): array
+    {
+        $filters = [];
+
+        // ── ADMIN ONLY — Column 1: Employee picker ────────────────────────────
+        if ($isAdmin) {
+            $filters[] = Tables\Filters\Filter::make('employee_filter')
+                ->label('Employee')
+                ->columnSpan(1)
+                ->form([
+                    Forms\Components\Select::make('employee_id')
+                        ->label('Employee')
+                        ->relationship('employee', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->placeholder('All employees'),
+                ])
+                ->query(
+                    fn(Builder $query, array $data) => $query
+                        ->when($data['employee_id'] ?? null, fn($q, $v) => $q->where('employee_id', $v))
+                )
+                ->indicateUsing(function (array $data): array {
+                    if (!($data['employee_id'] ?? null))
+                        return [];
+                    $name = \App\Models\User::find($data['employee_id'])?->name;
+                    return $name
+                        ? [Tables\Filters\Indicator::make('Employee: ' . $name)->removeField('employee_id')]
+                        : [];
+                });
+        }
+
+        // ── Column 1 (employee) / Column 2 (admin): Status & Leave Type ──────
+        // WHY: These are the two filters employees use 95% of the time.
+        // Grouped into one card so the panel stays compact and uncluttered.
+        $filters[] = Tables\Filters\Filter::make('status_and_type')
+            ->label('Status & Leave Type')
+            ->columnSpan(1)
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->native(false)
+                    ->placeholder('All statuses')
+                    ->options([
+                        'pending' => '🕐  Pending',
+                        'approved' => '✅  Approved',
+                        'disapproved' => '❌  Disapproved',
+                    ]),
+
+                Forms\Components\Select::make('type_of_leave')
+                    ->label('Leave Type')
+                    ->native(false)
+                    ->placeholder('All types')
+                    ->options([
+                        'vacation_leave' => 'Vacation Leave',
+                        'sick_leave' => 'Sick Leave',
+                        'maternity_leave' => 'Maternity Leave',
+                        'paternity_leave' => 'Paternity Leave',
+                        'special_privilege_leave' => 'Special Privilege Leave',
+                        'mandatory_forced_leave' => 'Mandatory/Forced Leave',
+                        'study_leave' => 'Study Leave',
+                        'solo_parent_leave' => 'Solo Parent Leave',
+                        'others' => 'Others',
+                    ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v))
+                    ->when($data['type_of_leave'] ?? null, fn($q, $v) => $q->where('type_of_leave', $v))
+            )
+            ->indicateUsing(function (array $data): array {
+                $indicators = [];
+                if ($data['status'] ?? null) {
+                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))
+                        ->removeField('status');
+                }
+                if ($data['type_of_leave'] ?? null) {
+                    $label = str_replace('_', ' ', ucwords($data['type_of_leave'], '_'));
+                    $indicators[] = Tables\Filters\Indicator::make('Type: ' . $label)
+                        ->removeField('type_of_leave');
+                }
+                return $indicators;
+            });
+
+        // ── Column 2 (employee) / Column 3 (admin): Period picker ────────────
+        // WHY: A single Quick Select dropdown covers "this month", "last month"
+        // etc. in one click. The From/To pickers are auto-filled but editable
+        // for custom ranges. This replaces the old 4-field date range mess.
+        $filters[] = Tables\Filters\Filter::make('period')
+            ->label('Filing Period')
+            ->columnSpan(1)
+            ->form([
+                Forms\Components\Select::make('preset')
+                    ->label('Quick Select')
+                    ->placeholder('— pick a period —')
+                    ->native(false)
+                    ->options([
+                        'this_month' => '📅  This Month',
+                        'last_month' => '📅  Last Month',
+                        'this_week' => '📅  This Week',
+                        'this_year' => '📅  This Year',
+                        'custom' => '✏️   Custom range…',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        [$from, $to] = match ($state) {
+                            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+                            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                            default => [null, null], // 'custom' — let user fill pickers
+                        };
+                        $set('from', $from);
+                        $set('to', $to);
+                    }),
+
+                // From/To shown below — auto-filled by preset, editable for custom
+                Forms\Components\Grid::make(2)->schema([
+                    Forms\Components\DatePicker::make('from')
+                        ->label('From')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->maxDate(fn(callable $get) => $get('to') ?? now()),
+                    Forms\Components\DatePicker::make('to')
+                        ->label('To')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->minDate(fn(callable $get) => $get('from'))
+                        ->maxDate(now()),
+                ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('date_of_filing', '>=', $d))
+                    ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('date_of_filing', '<=', $d))
+            )
+            ->indicateUsing(function (array $data): array {
+                // Show the preset label as a single chip when pickers were auto-filled
+                $presetLabels = [
+                    'this_month' => 'This Month',
+                    'last_month' => 'Last Month',
+                    'this_week' => 'This Week',
+                    'this_year' => 'This Year',
+                ];
+
+                $indicators = [];
+
+                if (($data['from'] ?? null) || ($data['to'] ?? null)) {
+                    // If a named preset was chosen and the dates weren't manually edited,
+                    // show the preset name. Otherwise show the raw date range.
+                    $preset = $data['preset'] ?? null;
+                    if ($preset && isset($presetLabels[$preset])) {
+                        $indicators[] = Tables\Filters\Indicator::make('Period: ' . $presetLabels[$preset])
+                            ->removeField('preset');
+                    } else {
+                        if ($data['from'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make(
+                                'From: ' . Carbon::parse($data['from'])->format('M d, Y')
+                            )->removeField('from');
+                        }
+                        if ($data['to'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make(
+                                'To: ' . Carbon::parse($data['to'])->format('M d, Y')
+                            )->removeField('to');
+                        }
+                    }
+                }
+
+                return $indicators;
+            });
+
+        return $filters;
+    }
+
+    // =========================================================================
+    //  ACTIONS
+    // =========================================================================
+
+    protected static function getContextualActions(bool $isAdmin): array
     {
         return [
             Tables\Actions\ActionGroup::make([
@@ -609,12 +642,11 @@ class LeaveApplicationResource extends Resource
                     ->color('warning')
                     ->visible(
                         fn($record) =>
-                        auth()->user()->role === 'employee' &&
-                        $record->status === 'pending'
+                        !$isAdmin && $record->status === 'pending'
                     ),
 
                 Tables\Actions\Action::make('print')
-                    ->label('Print')
+                    ->label('Print Form')
                     ->icon('heroicon-o-printer')
                     ->color('success')
                     ->url(fn($record) => route('leave_application.print', $record))
@@ -633,22 +665,57 @@ class LeaveApplicationResource extends Resource
                     ->icon('heroicon-o-trash')
                     ->visible(
                         fn($record) =>
-                        auth()->user()->role === 'employee' &&
-                        $record->status === 'pending'
+                        !$isAdmin && $record->status === 'pending'
                     ),
             ])
                 ->label('Actions')
                 ->icon('heroicon-o-ellipsis-vertical')
-                ->size('sm')
+                ->size(\Filament\Support\Enums\ActionSize::Small)
                 ->color('gray')
                 ->button(),
         ];
     }
 
-    public static function getRelations(): array
+    // =========================================================================
+    //  HELPERS
+    // =========================================================================
+
+    protected static function addWorkingDays(Carbon $date, int $days): Carbon
     {
-        return [];
+        $result = $date->copy()->startOfDay();
+        $added = 0;
+        while ($added < $days) {
+            $result->addDay();
+            if ($result->isWeekday()) {
+                $added++;
+            }
+        }
+        return $result;
     }
+
+    protected static function calculateWorkingDays($from, $to, Forms\Set $set): void
+    {
+        if (!$from || !$to)
+            return;
+
+        try {
+            $fromDate = Carbon::parse($from);
+            $toDate = Carbon::parse($to);
+
+            if ($toDate->lessThan($fromDate)) {
+                $set('number_of_working_days', 0);
+                return;
+            }
+
+            $set('number_of_working_days', $fromDate->diffInWeekdays($toDate) + 1);
+        } catch (\Exception) {
+            $set('number_of_working_days', 0);
+        }
+    }
+
+    // =========================================================================
+    //  NAVIGATION BADGE
+    // =========================================================================
 
     public static function getNavigationBadge(): ?string
     {
@@ -664,6 +731,15 @@ class LeaveApplicationResource extends Resource
             LeaveApplication::where('status', 'pending')->count() > 0
             ? 'warning'
             : null;
+    }
+
+    // =========================================================================
+    //  RELATIONS / PAGES
+    // =========================================================================
+
+    public static function getRelations(): array
+    {
+        return [];
     }
 
     public static function getPages(): array

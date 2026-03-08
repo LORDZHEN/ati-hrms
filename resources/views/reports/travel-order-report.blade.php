@@ -9,51 +9,48 @@
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 9.5px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.6;
             color: #1f2937;
             background: #ffffff;
         }
 
-        .page { padding: 22px 28px 46px; }
+        .page { padding: 28px 32px 60px; }
 
         /* ── Running footer ──────────────────────────────────────────── */
         .page-footer {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            padding: 4px 28px;
+            padding: 6px 32px;
             border-top: 1px solid #d1d5db;
         }
 
         .page-footer table { width: 100%; }
-        .page-footer td { border: none; padding: 0; font-size: 8px; color: #6b7280; }
+        .page-footer td { border: none; padding: 0; font-size: 9px; color: #6b7280; }
 
         /* ── Report header ───────────────────────────────────────────── */
         .report-header {
             border-bottom: 3px solid #1a3a5c;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .republic-label {
             text-align: center;
-            font-size: 8px;
+            font-size: 9.5px;
             letter-spacing: 0.07em;
             color: #4b5563;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .header-layout { width: 100%; }
         .header-layout td { border: none; padding: 0; vertical-align: middle; }
 
-        .logo-cell { width: 58px; text-align: center; }
-        .logo-cell img { height: 52px; width: auto; }
-
         .title-cell { text-align: center; padding: 0 10px; }
 
         .org-name {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: bold;
             color: #1a3a5c;
             letter-spacing: 0.03em;
@@ -61,26 +58,26 @@
         }
 
         .org-branch {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
             color: #2c5f8a;
             letter-spacing: 0.04em;
-            margin-top: 1px;
+            margin-top: 3px;
         }
 
         .header-contact {
             text-align: center;
-            font-size: 8.5px;
+            font-size: 10px;
             color: #4b5563;
-            margin-top: 5px;
-            line-height: 1.5;
+            margin-top: 6px;
+            line-height: 1.6;
         }
 
         /* ── Report title ────────────────────────────────────────────── */
-        .title-block { text-align: center; margin: 10px 0 9px; }
+        .title-block { text-align: center; margin: 12px 0 12px; }
 
         .title-block h1 {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             color: #1a3a5c;
             text-transform: uppercase;
@@ -88,23 +85,23 @@
         }
 
         .title-hr {
-            width: 160px;
+            width: 180px;
             border: none;
             border-top: 1.5px solid #b8860b;
-            margin: 4px auto 0;
+            margin: 5px auto 0;
         }
 
         /* ── Meta bar ────────────────────────────────────────────────── */
         .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 13px;
             border: 1px solid #d1d5db;
         }
 
         .meta-table td {
             background: #f8f9fb;
-            padding: 5px 8px;
+            padding: 6px 10px;
             text-align: center;
             border-right: 1px solid #d1d5db;
             vertical-align: middle;
@@ -112,57 +109,33 @@
 
         .meta-table td:last-child { border-right: none; }
 
-        .ml { display: block; font-size: 7px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 1px; }
-        .mv { font-size: 9px; font-weight: bold; color: #1a3a5c; }
+        .ml { display: block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; }
+        .mv { font-size: 10.5px; font-weight: bold; color: #1a3a5c; }
 
         /* ── Summary block ───────────────────────────────────────────── */
         .summary-block {
             background: #f8f9fb;
             border-left: 4px solid #1a3a5c;
-            padding: 8px 11px;
-            margin-bottom: 10px;
-            font-size: 9.5px;
-            line-height: 1.7;
+            padding: 10px 13px;
+            margin-bottom: 13px;
+            font-size: 11.5px;
+            line-height: 1.85;
+            text-align: justify;
         }
 
         .summary-block strong { color: #1a3a5c; }
 
-        /* ── Stats row ───────────────────────────────────────────────── */
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
-
-        .stats-table td {
-            border: 1px solid #d1d5db;
-            padding: 8px 6px;
-            text-align: center;
-            background: #ffffff;
-            vertical-align: middle;
-        }
-
-        .stats-table td.gap { border: none; width: 7px; background: transparent; }
-
-        .s-num              { font-size: 20px; font-weight: bold; color: #1a3a5c; line-height: 1; }
-        .s-num.approved     { color: #1a6b3a; }
-        .s-num.recommended  { color: #1a4a7a; }
-        .s-num.pending      { color: #7a4f00; }
-        .s-num.rejected     { color: #8b1a1a; }
-
-        .s-lbl { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 3px; }
-
         /* ── Section header ──────────────────────────────────────────── */
-        .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 6px; }
-        .sec-hdr td { border: none; padding: 0 0 3px; vertical-align: bottom; }
-        .sec-title { font-size: 11px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
-        .sec-count { font-size: 8.5px; font-weight: bold; color: #6b7280; text-align: right; }
+        .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 7px; }
+        .sec-hdr td { border: none; padding: 0 0 4px; vertical-align: bottom; }
+        .sec-title { font-size: 12.5px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sec-count { font-size: 10px; font-weight: bold; color: #6b7280; text-align: right; }
 
         /* ── Travel order table ──────────────────────────────────────── */
         .to-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
+            font-size: 10px;
             margin-bottom: 20px;
         }
 
@@ -170,9 +143,9 @@
 
         .to-table thead th {
             color: #ffffff;
-            padding: 5px 6px;
+            padding: 6px 7px;
             text-align: left;
-            font-size: 7.5px;
+            font-size: 9px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -184,18 +157,18 @@
         .to-table tbody tr.odd  { background-color: #ffffff; }
         .to-table tbody tr:last-child { border-bottom: 2px solid #1a3a5c; }
 
-        .to-table td { padding: 5px 6px; vertical-align: middle; }
+        .to-table td { padding: 6px 7px; vertical-align: middle; }
 
-        .row-num   { color: #9ca3af; font-size: 7.5px; }
-        .order-no  { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #2c5f8a; font-weight: bold; }
+        .row-num   { color: #9ca3af; font-size: 9px; }
+        .order-no  { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #2c5f8a; font-weight: bold; }
         .emp-name  { font-weight: bold; color: #1f2937; }
 
         /* ── Badges ──────────────────────────────────────────────────── */
         .badge {
             display: inline-block;
-            padding: 1px 5px;
+            padding: 2px 7px;
             border-radius: 8px;
-            font-size: 7px;
+            font-size: 8.5px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -213,22 +186,22 @@
         /* ── No data ─────────────────────────────────────────────────── */
         .no-data {
             text-align: center;
-            padding: 24px 20px;
+            padding: 28px 20px;
             color: #6b7280;
-            font-size: 10px;
+            font-size: 11.5px;
             border: 1px dashed #d1d5db;
             margin-bottom: 20px;
         }
 
         /* ── Signatures ──────────────────────────────────────────────── */
-        .sig-section { margin-top: 24px; border-top: 1px solid #d1d5db; padding-top: 16px; page-break-inside: avoid; }
+        .sig-section { margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 18px; page-break-inside: avoid; }
         .sig-table { width: 100%; }
-        .sig-table td { width: 33.33%; text-align: center; padding: 0 8px; vertical-align: top; border: none; }
+        .sig-table td { width: 33.33%; text-align: center; padding: 0 10px; vertical-align: top; border: none; }
 
-        .sig-label { display: block; font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 30px; }
-        .sig-line  { border-top: 1.5px solid #374151; padding-top: 4px; margin: 0 6px; }
-        .sig-name  { font-size: 10px; font-weight: bold; color: #1a3a5c; }
-        .sig-title { font-size: 8.5px; color: #4b5563; margin-top: 2px; }
+        .sig-label { display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 36px; }
+        .sig-line  { border-top: 1.5px solid #374151; padding-top: 5px; margin: 0 6px; }
+        .sig-name  { font-size: 11.5px; font-weight: bold; color: #1a3a5c; }
+        .sig-title { font-size: 10px; color: #4b5563; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -315,77 +288,17 @@
     {{-- SUMMARY --}}
     <div class="summary-block">
         @if($status === 'approved')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $approvedCnt }}</strong> travel order(s) were approved.
-            This report provides details of all approved travel orders during the selected period.
+            This report presents the consolidated travel order records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. For the reference period, a total of <strong>{{ $approvedCnt }}</strong> travel order(s) were duly processed and subsequently <strong>approved</strong> by the authorized approving officer. All approved travel orders enumerated herein have been duly authorized for official travel in accordance with existing government guidelines and budgetary allotments. This document is intended for official reference, monitoring, and compliance purposes.
         @elseif($status === 'recommended')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $recommendedCnt }}</strong> travel order(s) have been recommended by the Assistant Director.
-            This report provides details of all recommended travel orders during the selected period.
+            This report presents the consolidated travel order records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. For the reference period, a total of <strong>{{ $recommendedCnt }}</strong> travel order(s) have been reviewed and <strong>recommended</strong> by the authorized recommending officer and are currently awaiting final approval by the Regional Director. This document is issued for official reference and administrative monitoring purposes.
         @elseif($status === 'rejected')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $rejectedCnt }}</strong> travel order(s) were rejected.
-            This report provides details of all rejected travel orders during the selected period.
+            This report presents the consolidated travel order records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. For the reference period, a total of <strong>{{ $rejectedCnt }}</strong> travel order(s) were reviewed and <strong>rejected</strong> by the authorized approving officer. The rejection of the herein enumerated travel orders may be attributed to various grounds including, but not limited to, insufficient justification, unavailability of funds, exigency of service, or non-compliance with prescribed procedures. This document is issued for official reference and records management purposes.
         @elseif($status === 'pending')
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $pendingCnt }}</strong> travel order(s) are currently pending review.
-            This report provides details of all pending travel orders during the selected period.
+            This report presents the consolidated travel order records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the period covering <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. As of the date of generation of this report, a total of <strong>{{ $pendingCnt }}</strong> travel order(s) remain <strong>pending</strong> final action and have not yet been acted upon by the authorized approving officer. The concerned administrative officer is hereby advised to expedite the processing of all pending travel orders in accordance with established procedures and departure timelines.
         @else
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>, a total of
-            <strong>{{ $total }}</strong> travel order(s) were submitted.
-            Of these, <strong>{{ $approvedCnt }}</strong> were approved,
-            <strong>{{ $recommendedCnt }}</strong> were recommended,
-            <strong>{{ $pendingCnt }}</strong> are pending, and
-            <strong>{{ $rejectedCnt }}</strong> were rejected.
-            The breakdown includes <strong>{{ $soloCnt }}</strong> solo and
-            <strong>{{ $batchCnt }}</strong> batch travel orders.
+            This report presents the consolidated travel order records of personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. During the said period, a total of <strong>{{ $total }}</strong> travel order(s) were filed and recorded in the Human Resource Management System. Of the total travel orders received, <strong>{{ $approvedCnt }}</strong> were duly approved by the authorized approving officer, <strong>{{ $recommendedCnt }}</strong> were endorsed by the recommending officer and are awaiting final approval, <strong>{{ $pendingCnt }}</strong> remain pending final action, and <strong>{{ $rejectedCnt }}</strong> were rejected on grounds evaluated by the approving authority. The breakdown further indicates <strong>{{ $soloCnt }}</strong> individual and <strong>{{ $batchCnt }}</strong> group travel orders. This document is prepared for official monitoring, compliance, and administrative reference purposes consistent with applicable government travel regulations.
         @endif
     </div>
-
-    {{-- STATS --}}
-    <table class="stats-table">
-        <tr>
-            <td>
-                <div class="s-num">{{ $total }}</div>
-                <div class="s-lbl">Total</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num approved">{{ $approvedCnt }}</div>
-                <div class="s-lbl">Approved</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num recommended">{{ $recommendedCnt }}</div>
-                <div class="s-lbl">Recommended</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num pending">{{ $pendingCnt }}</div>
-                <div class="s-lbl">Pending</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num rejected">{{ $rejectedCnt }}</div>
-                <div class="s-lbl">Rejected</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num">{{ $soloCnt }}</div>
-                <div class="s-lbl">Solo</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num">{{ $batchCnt }}</div>
-                <div class="s-lbl">Batch</div>
-            </td>
-        </tr>
-    </table>
 
     {{-- SECTION HEADER --}}
     <table class="sec-hdr">
@@ -401,21 +314,20 @@
         <thead>
             <tr>
                 <th style="width:18px;">#</th>
-                <th style="width:64px;">Order No.</th>
-                <th style="width:48px;">Type</th>
+                <th style="width:68px;">Order No.</th>
+                <th style="width:50px;">Type</th>
                 <th>Traveler(s)</th>
                 <th>Destination</th>
-                <th style="width:56px;">Departure</th>
-                <th style="width:56px;">Return</th>
-                <th style="width:58px;">Status</th>
-                <th style="width:75px;">Recommended By</th>
-                <th style="width:75px;">Approved By</th>
+                <th style="width:60px;">Departure</th>
+                <th style="width:60px;">Return</th>
+                <th style="width:62px;">Status</th>
+                <th style="width:80px;">Recommended By</th>
+                <th style="width:80px;">Approved By</th>
             </tr>
         </thead>
         <tbody>
             @foreach($travelOrders as $index => $order)
             @php
-                // Resolve traveler name(s)
                 if ($order->travel_type === 'batch' && !empty($order->employee_ids)) {
                     $names = \App\Models\User::whereIn('id', $order->employee_ids)->pluck('name')->toArray();
                     $nameDisplay = count($names) <= 2

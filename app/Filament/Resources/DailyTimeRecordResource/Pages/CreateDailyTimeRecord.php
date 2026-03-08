@@ -21,27 +21,35 @@ class CreateDailyTimeRecord extends CreateRecord
     public function mount(): void
     {
         abort_unless(Auth::user()->role === User::ROLE_ADMIN, 403);
-
         parent::mount();
     }
 
     /**
-     * Override default record creation to handle multiple employees
+     * Override default record creation to handle multiple employees.
      */
     protected function handleRecordCreation(array $data): Model
     {
-        $createdRecords = [];
-        $successCount = 0;
-        $errorCount = 0;
-        $employeeNames = [];
+        $createdRecords  = [];
+        $successCount    = 0;
+        $errorCount      = 0;
+        $employeeNames   = [];
+
+        // FIX 12: Pre-load all employees in a single query instead of
+        //         calling User::find() inside the loop (N+1 problem).
+        $employeeIds = collect($data['dtr_rows'] ?? [])->pluck('employee_id')->filter()->unique();
+        $employees   = User::whereIn('id', $employeeIds)->get()->keyBy('id');
 
         DB::beginTransaction();
 
         try {
             foreach ($data['dtr_rows'] ?? [] as $row) {
                 try {
-                    // ✅ Filament already stored the file.
+                    // FIX 10: Unwrap file_path here at write time — once — so the
+                    //          stored value is always a plain string, never an array.
                     $filePath = $row['file_path'] ?? null;
+                    if (is_array($filePath)) {
+                        $filePath = $filePath[0] ?? null;
+                    }
 
                     if (!$filePath) {
                         $errorCount++;
@@ -50,41 +58,63 @@ class CreateDailyTimeRecord extends CreateRecord
 
                     $record = EmployeeDtr::create([
                         'employee_id' => $row['employee_id'],
-                        'file_path' => $filePath,
-                        'notes' => $row['notes'] ?? null,
+                        'file_path'   => $filePath,          // always a string now
+                        'notes'       => $row['notes'] ?? null,
                     ]);
 
                     $createdRecords[] = $record;
                     $successCount++;
 
-                    // Get employee details
-                    $employee = User::find($row['employee_id']);
+                    // FIX 12: Use pre-loaded collection — zero extra queries
+                    $employee = $employees->get($row['employee_id']);
 
                     if ($employee) {
                         $employeeNames[] = $employee->name;
-
-                        // Send individual DTR upload notification to employee
-                        $employee->notify(new DtrUploaded($record));
+                        // Notification is collected but sent AFTER commit — see below.
+                        // Attach employee to record so we can notify post-commit.
+                        $record->setRelation('employee', $employee);
                     }
 
                 } catch (\Exception $e) {
                     $errorCount++;
-
                     \Log::error('DTR Upload Error', [
                         'employee_id' => $row['employee_id'] ?? null,
-                        'error' => $e->getMessage(),
+                        'error'       => $e->getMessage(),
                     ]);
                 }
             }
 
+            // FIX 9: Only commit if at least one record was created.
+            if ($successCount === 0) {
+                DB::rollBack();
+
+                Notification::make()
+                    ->title('Upload Failed')
+                    ->body('No records were saved. Check that all files are valid.')
+                    ->danger()
+                    ->send();
+
+                // FIX 9: Return a new (unsaved) model so Filament doesn't crash
+                //         trying to call ->getKey() on null.  We halt the redirect
+                //         via the notification — the page stays open.
+                $this->halt();
+
+                return new EmployeeDtr(); // unreachable but satisfies return type
+            }
+
             DB::commit();
 
-            // Send batch completion notification to admin
-            if ($successCount > 0) {
-                $admin = Auth::user();
-                $admin->notify(new DtrBatchUploadCompleted($successCount, $errorCount, $employeeNames));
+            // FIX 11: Send notifications AFTER the transaction commits so employees
+            //          are only notified about records that are actually persisted.
+            foreach ($createdRecords as $savedRecord) {
+                $savedRecord->employee?->notify(new DtrUploaded($savedRecord));
+            }
 
-                // Show success toast
+            if ($successCount > 0) {
+                Auth::user()->notify(
+                    new DtrBatchUploadCompleted($successCount, $errorCount, $employeeNames)
+                );
+
                 Notification::make()
                     ->title('DTR Records Uploaded Successfully')
                     ->body("Successfully uploaded {$successCount} record(s)." .
@@ -93,7 +123,8 @@ class CreateDailyTimeRecord extends CreateRecord
                     ->send();
             }
 
-            return $createdRecords[0] ?? new EmployeeDtr();
+            // Filament requires a persisted Model returned here.
+            return $createdRecords[0];
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -104,12 +135,55 @@ class CreateDailyTimeRecord extends CreateRecord
                 ->danger()
                 ->send();
 
-            return new EmployeeDtr();
+            $this->halt();
+
+            return new EmployeeDtr(); // unreachable after halt()
         }
     }
 
     /**
-     * Customize form actions
+     * Validate before creation.
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (empty($data['dtr_rows'])) {
+            Notification::make()
+                ->title('No Employees Selected')
+                ->body('Please select at least one employee to upload DTR records.')
+                ->warning()
+                ->send();
+
+            $this->halt();
+        }
+
+        // FIX 10: Normalize file_path to string here as well so validation sees
+        //          the right type (not a wrapped array).
+        foreach ($data['dtr_rows'] as $index => $row) {
+            $filePath = $row['file_path'] ?? null;
+            if (is_array($filePath)) {
+                $filePath = $filePath[0] ?? null;
+            }
+            $data['dtr_rows'][$index]['file_path'] = $filePath;
+
+            if (empty($filePath)) {
+                $employees = User::find($row['employee_id']);
+                $name = $employees?->name ?? 'Unknown';
+
+                Notification::make()
+                    ->title('Missing DTR File')
+                    ->body("Please upload a DTR file for {$name}.")
+                    ->warning()
+                    ->send();
+
+                $this->halt();
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Customize form actions.
      */
     protected function getFormActions(): array
     {
@@ -132,67 +206,23 @@ class CreateDailyTimeRecord extends CreateRecord
         ];
     }
 
-    /**
-     * Redirect after successful creation
-     */
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
-    /**
-     * Customize the page heading
-     */
     public function getHeading(): string
     {
         return 'Upload Daily Time Records';
     }
 
-    /**
-     * Add subheading
-     */
     public function getSubheading(): ?string
     {
         return 'Upload DTR CSV files for multiple employees at once. Maximum 10 employees per upload.';
     }
 
-    /**
-     * Validate before creation
-     */
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        // Validate that we have at least one employee selected
-        if (empty($data['dtr_rows'])) {
-            Notification::make()
-                ->title('No Employees Selected')
-                ->body('Please select at least one employee to upload DTR records.')
-                ->warning()
-                ->send();
-
-            $this->halt();
-        }
-
-        // Validate that all selected employees have files uploaded
-        foreach ($data['dtr_rows'] as $index => $row) {
-            if (empty($row['file_path'])) {
-                $employee = User::find($row['employee_id']);
-                $employeeName = $employee ? $employee->name : 'Unknown';
-
-                Notification::make()
-                    ->title('Missing DTR File')
-                    ->body("Please upload a DTR file for {$employeeName}.")
-                    ->warning()
-                    ->send();
-
-                $this->halt();
-            }
-        }
-
-        return $data;
-    }
-
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'DTR records uploaded successfully';
+        return null; // We send our own notification in handleRecordCreation
     }
 }

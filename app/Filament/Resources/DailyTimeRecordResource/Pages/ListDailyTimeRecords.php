@@ -3,23 +3,26 @@
 namespace App\Filament\Resources\DailyTimeRecordResource\Pages;
 
 use App\Filament\Resources\DailyTimeRecordResource;
-use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Auth;
 
 class ListDailyTimeRecords extends ListRecords
 {
     protected static string $resource = DailyTimeRecordResource::class;
 
+    /**
+     * No page-level header actions needed.
+     *
+     * BiometricImportAction extends Filament\Tables\Actions\Action (a TABLE
+     * action) — it cannot be placed here because getHeaderActions() requires
+     * Filament\Actions\Action (a PAGE action). They are different namespaces
+     * and are NOT interchangeable in Filament v3.
+     *
+     * BiometricImportAction is correctly registered in
+     * DailyTimeRecordResource::table() via ->headerActions([...]),
+     * which is the right place for table-scoped actions.
+     */
     protected function getHeaderActions(): array
     {
-        return Auth::user()->isAdmin()
-            ? [
-                Actions\CreateAction::make()
-                    ->label('Upload DTR Records')
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->color('primary'),
-            ]
-            : [];
+        return [];
     }
 }

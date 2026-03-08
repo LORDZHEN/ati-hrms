@@ -15,10 +15,8 @@ class ListLeaveApplications extends ListRecords
 {
     protected static string $resource = LeaveApplicationResource::class;
 
-    // ----------------------------------------------------------------
-    // Register the LeaveCreditWidget above the table.
-    // canView() inside the widget already restricts it to employees.
-    // ----------------------------------------------------------------
+    // ── Widget: show leave credit balances to employees above the table ───────
+    // canView() inside LeaveCreditWidget already restricts this to employees.
     protected function getHeaderWidgets(): array
     {
         return [
@@ -28,14 +26,26 @@ class ListLeaveApplications extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $actions = [
-            Actions\CreateAction::make(),
-        ];
+        $actions = [];
 
-        if (auth()->check() && auth()->user()->role === 'admin') {
+        // Employees get a "New leave application" button.
+        // canCreate() on the Resource already gates this to employees only,
+        // but we guard here too for defence-in-depth.
+        if (auth()->user()->role === 'employee') {
+            $actions[] = Actions\CreateAction::make()
+                ->label('New leave application')
+                ->icon('heroicon-o-plus')
+                ->color('primary');
+        }
+
+        // Admins get the Generate Report modal.
+        // WHY: This is a page-level Actions\Action (not a table action) so it
+        // can legitimately live in getHeaderActions(). The redirect inside
+        // ->action() navigates to the report route without a full page reload.
+        if (auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
-                ->icon('heroicon-o-document-text')
+                ->icon('heroicon-o-document-chart-bar')
                 ->color('info')
                 ->modalHeading('Generate Leave Application Report')
                 ->modalDescription('Create a detailed PDF report of leave applications within a specific period.')
@@ -46,10 +56,10 @@ class ListLeaveApplications extends ListRecords
                         Select::make('status')
                             ->label('Leave Status')
                             ->options([
-                                'all'          => 'All Applications',
-                                'approved'     => 'Approved',
-                                'disapproved'  => 'Disapproved',
-                                'pending'      => 'Pending',
+                                'all' => 'All Applications',
+                                'approved' => 'Approved',
+                                'disapproved' => 'Disapproved',
+                                'pending' => 'Pending',
                             ])
                             ->default('all')
                             ->required()
@@ -58,11 +68,11 @@ class ListLeaveApplications extends ListRecords
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly'    => 'This Week',
-                                'monthly'   => 'This Month',
+                                'weekly' => 'This Week',
+                                'monthly' => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly'    => 'This Year',
-                                'custom'    => 'Custom Date Range',
+                                'yearly' => 'This Year',
+                                'custom' => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -70,13 +80,24 @@ class ListLeaveApplications extends ListRecords
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
-
                                 match ($state) {
-                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
-                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default     => null,
+                                    'weekly' => [
+                                        $set('from', $now->copy()->startOfWeek()->toDateString()),
+                                        $set('to', $now->copy()->endOfWeek()->toDateString()),
+                                    ],
+                                    'monthly' => [
+                                        $set('from', $now->copy()->startOfMonth()->toDateString()),
+                                        $set('to', $now->copy()->endOfMonth()->toDateString()),
+                                    ],
+                                    'quarterly' => [
+                                        $set('from', $now->copy()->startOfQuarter()->toDateString()),
+                                        $set('to', $now->copy()->endOfQuarter()->toDateString()),
+                                    ],
+                                    'yearly' => [
+                                        $set('from', $now->copy()->startOfYear()->toDateString()),
+                                        $set('to', $now->copy()->endOfYear()->toDateString()),
+                                    ],
+                                    default => null,
                                 };
                             }),
                     ]),
@@ -86,12 +107,14 @@ class ListLeaveApplications extends ListRecords
                             ->label('From Date')
                             ->required()
                             ->native(false)
+                            ->displayFormat('M d, Y')
                             ->default(Carbon::now()->startOfMonth()->toDateString()),
 
                         DatePicker::make('to')
                             ->label('To Date')
                             ->required()
                             ->native(false)
+                            ->displayFormat('M d, Y')
                             ->after('from')
                             ->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
@@ -100,8 +123,8 @@ class ListLeaveApplications extends ListRecords
                     $url = route('leave-applications.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'] ?? 'monthly',
-                        'from'   => $data['from'],
-                        'to'     => $data['to'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
                     ]);
 
                     $this->redirect($url, navigate: false);

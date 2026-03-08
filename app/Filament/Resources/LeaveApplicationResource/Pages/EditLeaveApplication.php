@@ -13,6 +13,7 @@ class EditLeaveApplication extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            // Print is only meaningful once approved.
             Actions\Action::make('print')
                 ->label('Print Leave Form')
                 ->icon('heroicon-o-printer')
@@ -21,6 +22,7 @@ class EditLeaveApplication extends EditRecord
                 ->openUrlInNewTab()
                 ->visible(fn() => $this->record->status === 'approved'),
 
+            // Only pending applications can be deleted.
             Actions\DeleteAction::make()
                 ->visible(fn() => $this->record->status === 'pending'),
         ];
@@ -30,10 +32,4 @@ class EditLeaveApplication extends EditRecord
     {
         return $this->getResource()::getUrl('index');
     }
-
-    // ============================================================
-    // NOTE: Leave Application has NO repeaters
-    // Unlike PDS/SALN, no add/remove methods needed here
-    // All fields are simple inputs without dynamic add/remove
-    // ============================================================
 }

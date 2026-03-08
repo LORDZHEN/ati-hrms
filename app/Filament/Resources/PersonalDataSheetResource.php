@@ -16,6 +16,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Database\Eloquent\Collection;
 use App\Notifications\PDSStatusUpdated;
 use App\Notifications\PDSRemarksAdded;
+use App\Notifications\PDSSubmittedNotification;
 
 use Filament\Forms\Components\{
     View as ViewComponent,
@@ -41,17 +42,43 @@ class PersonalDataSheetResource extends Resource
     protected static ?int $navigationSort = 4;
     protected static ?string $navigationGroup = 'Documents';
 
-    /* ============================================================
-       AUTHORIZATION
-       ============================================================ */
+    // =========================================================================
+    //  AUTHORIZATION
+    // =========================================================================
 
     public static function canCreate(): bool
     {
-        return Auth::user()->role === 'employee';
+        // Employees can only CREATE a PDS if they don't have one yet.
+        // Admins never create PDS records.
+        if (Auth::user()->role !== 'employee') {
+            return false;
+        }
+
+        return !PersonalDataSheet::where('user_id', Auth::id())->exists();
     }
+
+    public static function canEdit($record): bool
+    {
+        $user = Auth::user();
+
+        // Admins CANNOT edit — they use the table actions (approve/disapprove/remarks).
+        // Keeping admins out of the edit page prevents accidental data changes.
+        if ($user->role === 'admin') {
+            return false;
+        }
+
+        // Employees can always access their own PDS edit page.
+        // Fields are locked on the form when approved via $isLocked.
+        return $record->user_id === $user->id;
+    }
+
+    // =========================================================================
+    //  FORM
+    // =========================================================================
 
     public static function form(Form $form): Form
     {
+        // Lock all fields only when the record is approved.
         $isLocked = fn($record) =>
             Auth::user()->role === 'employee' &&
             $record?->status === 'approved';
@@ -321,15 +348,24 @@ class PersonalDataSheetResource extends Resource
         ])->columns(1);
     }
 
+    // =========================================================================
+    //  TABLE
+    // =========================================================================
+
     public static function table(Table $table): Table
     {
         $isAdmin = Auth::user()->role === 'admin';
 
         return $table
-            ->columns(self::getCardLayoutColumns())
-            ->filters(self::getEnhancedFilters(), layout: FiltersLayout::AboveContentCollapsible)
-            ->filtersFormColumns(2)
-            ->filtersFormWidth('2xl')
+            ->columns(self::getTableColumns($isAdmin))
+            ->filters(
+                self::getEnhancedFilters($isAdmin),
+                layout: FiltersLayout::AboveContentCollapsible
+            )
+            ->filtersFormColumns($isAdmin ? 3 : 2)
+            ->filtersFormWidth(\Filament\Support\Enums\MaxWidth::FourExtraLarge)
+            ->persistFiltersInSession()
+            ->persistSortInSession()
             ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -346,7 +382,7 @@ class PersonalDataSheetResource extends Resource
                             foreach ($records as $record) {
                                 if ($record->status !== 'approved') {
                                     $record->update(['status' => 'approved']);
-                                    $record->user->notify(new PDSStatusUpdated($record));
+                                    $record->user?->notify(new PDSStatusUpdated($record));
                                     $count++;
                                 }
                             }
@@ -373,12 +409,13 @@ class PersonalDataSheetResource extends Resource
                         ->action(function (Collection $records, array $data) {
                             $count = 0;
                             foreach ($records as $record) {
-                                if ($record->status !== 'disapproved') {
+                                // Only disapprove records that are NOT already approved
+                                if ($record->status === 'submitted') {
                                     $record->update([
                                         'status' => 'disapproved',
                                         'remarks' => $data['remarks'],
                                     ]);
-                                    $record->user->notify(new PDSStatusUpdated($record));
+                                    $record->user?->notify(new PDSStatusUpdated($record));
                                     $count++;
                                 }
                             }
@@ -398,244 +435,345 @@ class PersonalDataSheetResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->persistSortInSession()
+            ->poll('30s')
             ->striped()
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(10)
             ->emptyStateHeading('No Personal Data Sheets yet')
-            ->emptyStateDescription('Once employees submit their PDS, they will appear here.')
+            ->emptyStateDescription('Submit your Personal Data Sheet to get started.')
             ->emptyStateIcon('heroicon-o-document-text')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Create PDS')
                     ->icon('heroicon-o-plus')
-                    ->visible(fn() => Auth::user()->role === 'employee'),
-            ])
-            ->poll('30s');
+                    ->visible(
+                        fn() =>
+                        Auth::user()->role === 'employee' &&
+                        !PersonalDataSheet::where('user_id', Auth::id())->exists()
+                    ),
+            ]);
     }
 
-    /* ============================================================
-       CARD-STYLE TABLE COLUMNS
-       ============================================================ */
+    // =========================================================================
+    //  TABLE COLUMNS
+    // =========================================================================
 
-    protected static function getCardLayoutColumns(): array
+    protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            Tables\Columns\Layout\Split::make([
-                // Left: Employee Name & Info
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('full_name')
-                        ->label('Employee')
-                        ->getStateUsing(fn($record) => self::getFullName($record))
-                        ->searchable(['surname', 'first_name', 'middle_name'])
-                        ->weight(FontWeight::Bold)
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Large)
-                        ->icon('heroicon-o-user-circle')
-                        ->iconColor('primary'),
+            Tables\Columns\TextColumn::make('full_name')
+                ->label('Employee')
+                ->getStateUsing(fn($record) => self::getFullName($record))
+                ->searchable(['surname', 'first_name', 'middle_name'])
+                ->sortable()
+                ->weight(FontWeight::Bold)
+                ->icon('heroicon-o-user-circle')
+                ->iconColor('primary'),
 
-                    Tables\Columns\TextColumn::make('place_of_birth')
-                        ->label('Place of Birth')
-                        ->icon('heroicon-o-map-pin')
-                        ->iconColor('gray')
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
-                        ->color('gray')
-                        ->limit(30)
-                        ->default('Not specified'),
+            Tables\Columns\TextColumn::make('email')
+                ->label('Email')
+                ->icon('heroicon-o-envelope')
+                ->iconColor('primary')
+                ->copyable()
+                ->copyMessage('Email copied!')
+                ->placeholder('No email')
+                ->toggleable(isToggledHiddenByDefault: true),
 
-                    Tables\Columns\TextColumn::make('created_at')
-                        ->label('Submitted')
-                        ->dateTime('M d, Y')
-                        ->icon('heroicon-o-calendar-days')
-                        ->iconColor('gray')
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
-                        ->color('gray'),
-                ])->space(1),
+            Tables\Columns\TextColumn::make('mobile')
+                ->label('Mobile')
+                ->icon('heroicon-o-phone')
+                ->iconColor('success')
+                ->copyable()
+                ->copyMessage('Mobile copied!')
+                ->placeholder('No mobile')
+                ->toggleable(isToggledHiddenByDefault: true),
 
-                // Middle: Contact Info
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('email')
-                        ->label('Email')
-                        ->icon('heroicon-o-envelope')
-                        ->iconColor('blue')
-                        ->color('blue')
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
-                        ->copyable()
-                        ->copyMessage('Email copied!')
-                        ->default('No email'),
+            Tables\Columns\TextColumn::make('place_of_birth')
+                ->label('Place of Birth')
+                ->icon('heroicon-o-map-pin')
+                ->iconColor('gray')
+                ->color('gray')
+                ->limit(30)
+                ->placeholder('Not specified')
+                ->toggleable(isToggledHiddenByDefault: true),
 
-                    Tables\Columns\TextColumn::make('mobile')
-                        ->label('Mobile')
-                        ->icon('heroicon-o-phone')
-                        ->iconColor('green')
-                        ->color('green')
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
-                        ->copyable()
-                        ->copyMessage('Mobile copied!')
-                        ->default('No mobile'),
-                ])->space(1),
-
-                // Right: Status & Completion
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('status')
-                        ->label('Status')
-                        ->badge()
-                        ->colors([
-                            'warning' => 'submitted',
-                            'success' => 'approved',
-                            'danger'  => 'disapproved',
-                        ])
-                        ->icons([
-                            'heroicon-m-clock'        => 'submitted',
-                            'heroicon-m-check-circle' => 'approved',
-                            'heroicon-m-x-circle'     => 'disapproved',
-                        ])
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Medium)
-                        ->weight(FontWeight::SemiBold),
-
-                    Tables\Columns\TextColumn::make('completion_rate')
-                        ->label('Completion')
-                        ->getStateUsing(fn($record) => self::calculateCompletionRate($record))
-                        ->formatStateUsing(fn($state) => $state . '%')
-                        ->badge()
-                        ->color(fn($state) => match (true) {
-                            $state >= 90 => 'success',
-                            $state >= 70 => 'warning',
-                            default      => 'danger',
-                        })
-                        ->icon(fn($state) => match (true) {
-                            $state >= 90 => 'heroicon-o-check-circle',
-                            $state >= 70 => 'heroicon-o-exclamation-circle',
-                            default      => 'heroicon-o-x-circle',
-                        })
-                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small),
-                ])->space(1)->alignment('end'),
-            ])->from('md'),
-
-            // Admin Remarks Panel
-            Tables\Columns\Layout\Panel::make([
-                Tables\Columns\Layout\Split::make([
-                    Tables\Columns\IconColumn::make('has_remarks')
-                        ->label('Remarks')
-                        ->boolean()
-                        ->getStateUsing(fn($record) => !blank($record->remarks))
-                        ->trueIcon('heroicon-o-chat-bubble-left-ellipsis')
-                        ->falseIcon('heroicon-o-check-circle')
-                        ->trueColor('warning')
-                        ->falseColor('success')
-                        ->size(Tables\Columns\IconColumn\IconColumnSize::Large),
-
-                    Tables\Columns\TextColumn::make('remarks')
-                        ->label('Admin Remarks')
-                        ->limit(100)
-                        ->wrap()
-                        ->default('No remarks - All good!')
-                        ->color(fn($record) => blank($record->remarks) ? 'success' : 'warning')
-                        ->icon(fn($record) => blank($record->remarks)
-                            ? 'heroicon-o-check'
-                            : 'heroicon-o-exclamation-triangle'
-                        ),
-                ]),
-            ])
-                ->collapsible()
-                ->collapsed(fn($record) => blank($record->remarks)),
-        ];
-    }
-
-    /* ============================================================
-       ENHANCED FILTERS
-       ============================================================ */
-
-    protected static function getEnhancedFilters(): array
-    {
-        $isAdmin = Auth::user()->role === 'admin';
-
-        return [
-            Tables\Filters\SelectFilter::make('status')
-                ->options([
-                    'submitted'   => 'Submitted',
-                    'approved'    => 'Approved',
-                    'disapproved' => 'Disapproved',
-                ])
-                ->label('Status')
-                ->multiple()
-                ->placeholder('All statuses')
-                ->indicator('Status')
-                ->native(false),
-
-            Tables\Filters\Filter::make('date_range')
-                ->form([
-                    Grid::make(2)->schema([
-                        DatePicker::make('submitted_from')
-                            ->label('From Date')
-                            ->placeholder('Select start date')
-                            ->native(false),
-                        DatePicker::make('submitted_until')
-                            ->label('To Date')
-                            ->placeholder('Select end date')
-                            ->native(false),
-                    ]),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when($data['submitted_from'], fn($q, $date) => $q->whereDate('created_at', '>=', $date))
-                        ->when($data['submitted_until'], fn($q, $date) => $q->whereDate('created_at', '<=', $date));
+            Tables\Columns\TextColumn::make('completion_rate')
+                ->label('Completion')
+                ->getStateUsing(fn($record) => self::calculateCompletionRate($record))
+                ->formatStateUsing(fn($state) => $state . '%')
+                ->badge()
+                ->color(fn($state) => match (true) {
+                    $state >= 90 => 'success',
+                    $state >= 70 => 'warning',
+                    default => 'danger',
                 })
-                ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-                    if ($data['submitted_from'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make('From: ' .
-                            \Carbon\Carbon::parse($data['submitted_from'])->format('M d, Y'))
-                            ->removeField('submitted_from');
-                    }
-                    if ($data['submitted_until'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make('To: ' .
-                            \Carbon\Carbon::parse($data['submitted_until'])->format('M d, Y'))
-                            ->removeField('submitted_until');
-                    }
-                    return $indicators;
+                ->icon(fn($state) => match (true) {
+                    $state >= 90 => 'heroicon-o-check-circle',
+                    $state >= 70 => 'heroicon-o-exclamation-circle',
+                    default => 'heroicon-o-x-circle',
                 }),
 
-            Tables\Filters\TernaryFilter::make('has_remarks')
-                ->label('Admin Remarks')
-                ->placeholder('All records')
-                ->trueLabel('With remarks')
-                ->falseLabel('Without remarks')
-                ->queries(
-                    true: fn(Builder $query) => $query->whereNotNull('remarks')->where('remarks', '!=', ''),
-                    false: fn(Builder $query) => $query->where(fn($q) => $q->whereNull('remarks')->orWhere('remarks', '')),
-                )
-                ->visible($isAdmin)
-                ->indicator('Remarks'),
+            Tables\Columns\TextColumn::make('status')
+                ->label('Status')
+                ->badge()
+                ->sortable()
+                ->color(fn(string $state) => match ($state) {
+                    'submitted' => 'warning',
+                    'approved' => 'success',
+                    'disapproved' => 'danger',
+                    default => 'gray',
+                })
+                ->icon(fn(string $state) => match ($state) {
+                    'submitted' => 'heroicon-m-clock',
+                    'approved' => 'heroicon-m-check-circle',
+                    'disapproved' => 'heroicon-m-x-circle',
+                    default => null,
+                })
+                ->formatStateUsing(fn(string $state): string => ucfirst($state)),
 
-            Tables\Filters\SelectFilter::make('completion_level')
-                ->label('Completion Level')
-                ->options([
-                    'complete'   => 'High (90%+)',
-                    'moderate'   => 'Moderate (70-89%)',
-                    'incomplete' => 'Low (<70%)',
-                ])
-                ->placeholder('All levels')
-                ->native(false)
-                ->indicator('Completion'),
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Last Submitted')
+                ->since()
+                ->sortable()
+                ->tooltip(fn($record) => $record->created_at->format('M d, Y h:i A'))
+                ->color('gray')
+                ->icon('heroicon-o-paper-airplane')
+                ->iconColor('gray'),
+
+            Tables\Columns\TextColumn::make('remarks')
+                ->label('Remarks')
+                ->limit(50)
+                ->wrap()
+                ->placeholder('—')
+                ->color(fn($record) => filled($record?->remarks) ? 'warning' : 'gray')
+                ->icon(fn($record) => filled($record?->remarks) ? 'heroicon-o-chat-bubble-left-ellipsis' : null)
+                ->iconColor('warning')
+                ->tooltip(fn($record) => $record?->remarks)
+                ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
 
-    /* ============================================================
-       CONTEXTUAL ACTIONS
-       ============================================================ */
+    // =========================================================================
+    //  FILTERS
+    // =========================================================================
 
-    protected static function getContextualActions($isAdmin): array
+    protected static function getEnhancedFilters(bool $isAdmin): array
+    {
+        $filters = [];
+
+        if ($isAdmin) {
+            $filters[] = Tables\Filters\Filter::make('employee_and_remarks')
+                ->label('Employee & Remarks')
+                ->columnSpan(1)
+                ->form([
+                    \Filament\Forms\Components\Select::make('employee_name')
+                        ->label('Employee')
+                        ->options(
+                            fn() => \App\Models\User::where('role', 'employee')
+                                ->orderBy('name')
+                                ->pluck('name', 'name')
+                                ->toArray()
+                        )
+                        ->searchable()
+                        ->native(false)
+                        ->placeholder('All employees'),
+
+                    \Filament\Forms\Components\Select::make('has_remarks')
+                        ->label('Admin Remarks')
+                        ->native(false)
+                        ->placeholder('All records')
+                        ->options([
+                            'with' => 'With remarks',
+                            'without' => 'Without remarks',
+                        ]),
+                ])
+                ->query(
+                    fn(Builder $query, array $data) => $query
+                        ->when(
+                            $data['employee_name'] ?? null,
+                            fn($q, $v) =>
+                            $q->where(
+                                fn($q2) =>
+                                $q2->whereRaw("CONCAT(surname, ' ', first_name) LIKE ?", ["%{$v}%"])
+                            )
+                        )
+                        ->when(
+                            ($data['has_remarks'] ?? null) === 'with',
+                            fn($q) =>
+                            $q->whereNotNull('remarks')->where('remarks', '!=', '')
+                        )
+                        ->when(
+                            ($data['has_remarks'] ?? null) === 'without',
+                            fn($q) =>
+                            $q->where(fn($q2) => $q2->whereNull('remarks')->orWhere('remarks', ''))
+                        )
+                )
+                ->indicateUsing(function (array $data): array {
+                    $indicators = [];
+                    if ($data['employee_name'] ?? null) {
+                        $indicators[] = Tables\Filters\Indicator::make('Employee: ' . $data['employee_name'])
+                            ->removeField('employee_name');
+                    }
+                    if ($data['has_remarks'] ?? null) {
+                        $label = $data['has_remarks'] === 'with' ? 'With remarks' : 'Without remarks';
+                        $indicators[] = Tables\Filters\Indicator::make('Remarks: ' . $label)
+                            ->removeField('has_remarks');
+                    }
+                    return $indicators;
+                });
+        }
+
+        $filters[] = Tables\Filters\Filter::make('status_and_completion')
+            ->label('Status & Completion')
+            ->columnSpan(1)
+            ->form([
+                \Filament\Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->native(false)
+                    ->placeholder('All statuses')
+                    ->options([
+                        'submitted' => '🕐  Submitted',
+                        'approved' => '✅  Approved',
+                        'disapproved' => '❌  Disapproved',
+                    ]),
+
+                \Filament\Forms\Components\Select::make('completion_level')
+                    ->label('Completion Level')
+                    ->native(false)
+                    ->placeholder('All levels')
+                    ->options([
+                        'high' => '✅  High (90%+)',
+                        'moderate' => '⚠️   Moderate (70–89%)',
+                        'low' => '❌  Low (<70%)',
+                    ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v))
+            )
+            ->indicateUsing(function (array $data): array {
+                $indicators = [];
+                if ($data['status'] ?? null) {
+                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))
+                        ->removeField('status');
+                }
+                if ($data['completion_level'] ?? null) {
+                    $labels = ['high' => 'High (90%+)', 'moderate' => 'Moderate (70–89%)', 'low' => 'Low (<70%)'];
+                    $indicators[] = Tables\Filters\Indicator::make('Completion: ' . ($labels[$data['completion_level']] ?? ''))
+                        ->removeField('completion_level');
+                }
+                return $indicators;
+            });
+
+        $filters[] = Tables\Filters\Filter::make('submitted_period')
+            ->label('Submitted Period')
+            ->columnSpan(1)
+            ->form([
+                \Filament\Forms\Components\Select::make('preset')
+                    ->label('Quick Select')
+                    ->placeholder('— pick a period —')
+                    ->native(false)
+                    ->options([
+                        'this_week' => '📅  This Week',
+                        'this_month' => '📅  This Month',
+                        'last_month' => '📅  Last Month',
+                        'this_year' => '📅  This Year',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        [$from, $to] = match ($state) {
+                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+                            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                            default => [null, null],
+                        };
+                        $set('from', $from);
+                        $set('to', $to);
+                    }),
+
+                \Filament\Forms\Components\Grid::make(2)->schema([
+                    \Filament\Forms\Components\DatePicker::make('from')
+                        ->label('From')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->maxDate(fn(callable $get) => $get('to') ?? now()),
+                    \Filament\Forms\Components\DatePicker::make('to')
+                        ->label('To')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->minDate(fn(callable $get) => $get('from'))
+                        ->maxDate(now()),
+                ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('created_at', '>=', $d))
+                    ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('created_at', '<=', $d))
+            )
+            ->indicateUsing(function (array $data): array {
+                $presetLabels = [
+                    'this_week' => 'This Week',
+                    'this_month' => 'This Month',
+                    'last_month' => 'Last Month',
+                    'this_year' => 'This Year',
+                ];
+                $indicators = [];
+                $preset = $data['preset'] ?? null;
+
+                if (($data['from'] ?? null) || ($data['to'] ?? null)) {
+                    if ($preset && isset($presetLabels[$preset])) {
+                        $indicators[] = Tables\Filters\Indicator::make('Submitted: ' . $presetLabels[$preset])
+                            ->removeField('preset');
+                    } else {
+                        if ($data['from'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('From: ' . \Carbon\Carbon::parse($data['from'])->format('M d, Y'))
+                                ->removeField('from');
+                        }
+                        if ($data['to'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('To: ' . \Carbon\Carbon::parse($data['to'])->format('M d, Y'))
+                                ->removeField('to');
+                        }
+                    }
+                }
+                return $indicators;
+            });
+
+        return $filters;
+    }
+
+    // =========================================================================
+    //  CONTEXTUAL ACTIONS
+    //
+    //  ADMIN actions:  Approve | Disapprove | Add/Edit Remarks | Print | Delete
+    //  EMPLOYEE actions: Edit/Resubmit (submitted/disapproved) | View PDS (approved) | Print (approved)
+    //
+    //  Removed: Quick View, Reset Status
+    //  Approved records: Disapprove button hidden for both admin and employee
+    // =========================================================================
+
+    protected static function getContextualActions(bool $isAdmin): array
     {
         return [
             Tables\Actions\ActionGroup::make([
-                Tables\Actions\Action::make('quickView')
-                    ->label('Quick View')
+
+                // ---------------------------------------------------------------
+                //  ADMIN: View PDS
+                //  Opens the edit page in read-only mode — canEdit() returns false
+                //  for admins so Filament renders all fields as disabled.
+                //  This gives admins full visibility of the PDS content without
+                //  any risk of accidentally modifying employee data.
+                // ---------------------------------------------------------------
+                Tables\Actions\ViewAction::make()
+                    ->label('View PDS')
                     ->icon('heroicon-m-eye')
                     ->color('info')
-                    ->modalHeading(fn($record) => 'PDS: ' . self::getFullName($record))
-                    ->modalContent(fn($record) => view('filament.resources.personal-data-sheet.quick-view', ['record' => $record]))
-                    ->modalWidth('5xl')
-                    ->modalFooterActions(fn() => [])
-                    ->slideOver(),
+                    ->visible(fn() => $isAdmin),
 
+                // ---------------------------------------------------------------
+                //  ADMIN: Approve
+                //  Hidden when already approved.
+                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
@@ -646,6 +784,7 @@ class PersonalDataSheetResource extends Resource
                     ->modalDescription(fn($record) => 'Are you sure you want to approve the PDS for ' . self::getFullName($record) . '?')
                     ->action(function ($record) {
                         $record->update(['status' => 'approved']);
+                        $record->user?->notify(new PDSStatusUpdated($record));
                         Notification::make()
                             ->success()
                             ->title('PDS Approved')
@@ -653,11 +792,16 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
+                // ---------------------------------------------------------------
+                //  ADMIN: Disapprove
+                //  Hidden when already approved — once approved, it stays approved.
+                //  Hidden when already disapproved — no need to disapprove twice.
+                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('disapprove')
                     ->label('Disapprove')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn($record) => $isAdmin && $record->status !== 'disapproved')
+                    ->visible(fn($record) => $isAdmin && $record->status === 'submitted')
                     ->form([
                         Textarea::make('remarks')
                             ->label('Reason for Disapproval')
@@ -666,15 +810,23 @@ class PersonalDataSheetResource extends Resource
                             ->placeholder('Please provide a clear reason for disapproval...'),
                     ])
                     ->action(function ($record, array $data) {
-                        $record->update(['remarks' => $data['remarks']]);
-                        $record->user->notify(new PDSRemarksAdded($record));
+                        $record->update([
+                            'status' => 'disapproved',
+                            'remarks' => $data['remarks'],
+                        ]);
+                        $record->user?->notify(new PDSStatusUpdated($record));
+                        $record->user?->notify(new PDSRemarksAdded($record));
                         Notification::make()
                             ->success()
-                            ->title('Remarks Updated')
-                            ->body('Admin remarks have been saved and the employee has been notified.')
+                            ->title('PDS Disapproved')
+                            ->body('The employee has been notified with your remarks.')
                             ->send();
                     }),
 
+                // ---------------------------------------------------------------
+                //  ADMIN: Add / Edit Remarks
+                //  Available at any status — admins can always leave notes.
+                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('remarks')
                     ->label(fn($record) => blank($record->remarks) ? 'Add Remarks' : 'Edit Remarks')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -690,31 +842,18 @@ class PersonalDataSheetResource extends Resource
                     ])
                     ->action(function ($record, array $data) {
                         $record->update(['remarks' => $data['remarks']]);
+                        $record->user?->notify(new PDSRemarksAdded($record));
                         Notification::make()
                             ->success()
                             ->title('Remarks Updated')
-                            ->body('Admin remarks have been saved.')
+                            ->body('Admin remarks have been saved and the employee has been notified.')
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('resetToSubmitted')
-                    ->label('Reset Status')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('gray')
-                    ->visible(fn($record) => $isAdmin && $record->status !== 'submitted')
-                    ->requiresConfirmation()
-                    ->modalHeading('Reset to Submitted')
-                    ->modalDescription('This will reset the status back to "Submitted" and clear any remarks.')
-                    ->action(function ($record) {
-                        $record->update(['status' => 'submitted', 'remarks' => null]);
-                        $record->user->notify(new PDSStatusUpdated($record));
-                        Notification::make()
-                            ->info()
-                            ->title('Status Reset')
-                            ->body('PDS status has been reset to submitted.')
-                            ->send();
-                    }),
-
+                // ---------------------------------------------------------------
+                //  SHARED: Print
+                //  Visible to both admin and employee, only when approved.
+                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
@@ -723,30 +862,51 @@ class PersonalDataSheetResource extends Resource
                     ->url(fn($record) => route('pds.print', $record))
                     ->openUrlInNewTab(),
 
+                // ---------------------------------------------------------------
+                //  EMPLOYEE: Edit / Resubmit (submitted or disapproved only)
+                //  EMPLOYEE: View PDS (approved — read-only, fields locked in form)
+                // ---------------------------------------------------------------
                 Tables\Actions\EditAction::make()
-                    ->label('Edit')
-                    ->icon('heroicon-m-pencil-square')
-                    ->color('warning')
-                    ->visible(fn($record) =>
+                    ->label(
+                        fn($record) => $record->status === 'approved'
+                        ? 'View PDS'
+                        : 'Edit / Resubmit'
+                    )
+                    ->icon(
+                        fn($record) => $record->status === 'approved'
+                        ? 'heroicon-m-eye'
+                        : 'heroicon-m-pencil-square'
+                    )
+                    ->color(
+                        fn($record) => $record->status === 'approved'
+                        ? 'info'
+                        : 'warning'
+                    )
+                    ->visible(
+                        fn($record) =>
                         Auth::user()->role === 'employee' &&
-                        $record->status !== 'approved'
+                        $record->user_id === Auth::id()
                     ),
 
+                // ---------------------------------------------------------------
+                //  ADMIN: Delete
+                // ---------------------------------------------------------------
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
+
             ])
                 ->label('Actions')
                 ->icon('heroicon-o-ellipsis-vertical')
-                ->size('sm')
+                ->size(\Filament\Support\Enums\ActionSize::Small)
                 ->color('gray')
                 ->button(),
         ];
     }
 
-    /* ============================================================
-       HELPERS
-       ============================================================ */
+    // =========================================================================
+    //  HELPERS
+    // =========================================================================
 
     protected static function getFullName($record): string
     {
@@ -767,13 +927,15 @@ class PersonalDataSheetResource extends Resource
         $basicFields = ['surname', 'first_name', 'date_of_birth', 'place_of_birth', 'sex', 'civil_status', 'height', 'weight', 'blood_type', 'mobile', 'email'];
         foreach ($basicFields as $field) {
             $totalFields++;
-            if (!blank($record->$field)) $filledFields++;
+            if (!blank($record->$field))
+                $filledFields++;
         }
 
         $addressFields = ['res_house_block_lot_no', 'res_street', 'res_barangay', 'res_city_municipality', 'res_province', 'res_zip_code'];
         foreach ($addressFields as $field) {
             $totalFields++;
-            if (!blank($record->$field)) $filledFields++;
+            if (!blank($record->$field))
+                $filledFields++;
         }
 
         $jsonFields = ['children', 'education', 'work_experience', 'references'];
@@ -781,14 +943,20 @@ class PersonalDataSheetResource extends Resource
             $totalFields++;
             $value = $record->$field;
             $data = is_array($value) ? $value : (is_string($value) ? json_decode($value, true) : []);
-            if (is_array($data) && count($data) > 0) $filledFields++;
+            if (is_array($data) && count($data) > 0)
+                $filledFields++;
         }
 
-        if (!blank($record->gov_id_type) && !blank($record->gov_id_no)) $filledFields++;
+        if (!blank($record->gov_id_type) && !blank($record->gov_id_no))
+            $filledFields++;
         $totalFields++;
 
         return $totalFields > 0 ? round(($filledFields / $totalFields) * 100) : 0;
     }
+
+    // =========================================================================
+    //  QUERY / NAVIGATION
+    // =========================================================================
 
     public static function getEloquentQuery(): Builder
     {
@@ -801,24 +969,35 @@ class PersonalDataSheetResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin') return null;
+        if (auth()->user()?->role !== 'admin')
+            return null;
         $count = PersonalDataSheet::where('status', 'submitted')->count();
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        if (auth()->user()?->role !== 'admin') return null;
-        $count = PersonalDataSheet::where('status', 'submitted')->count();
-        return $count > 0 ? 'warning' : 'success';
+        if (auth()->user()?->role !== 'admin')
+            return null;
+        return PersonalDataSheet::where('status', 'submitted')->count() > 0 ? 'warning' : 'success';
+    }
+
+    public static function canView($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return true;
+        }
+        return $record->user_id === $user->id;
     }
 
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListPersonalDataSheets::route('/'),
+            'index' => Pages\ListPersonalDataSheets::route('/'),
             'create' => Pages\CreatePersonalDataSheet::route('/create'),
-            'edit'   => Pages\EditPersonalDataSheet::route('/{record}/edit'),
+            'edit' => Pages\EditPersonalDataSheet::route('/{record}/edit'),
+            'view' => Pages\ViewPersonalDataSheet::route('/{record}'),
         ];
     }
 }

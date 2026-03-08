@@ -16,14 +16,25 @@ class ListLocatorSlips extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $actions = [
-            Actions\CreateAction::make(),
-        ];
+        $actions = [];
 
-        if (auth()->check() && auth()->user()->role === 'admin') {
+        // Employees get the "New Locator Slip" create button.
+        // canCreate() on the Resource already gates this, but we guard
+        // here too so the button never appears for admins.
+        if (auth()->user()->role === 'employee') {
+            $actions[] = Actions\CreateAction::make()
+                ->label('New Locator Slip')
+                ->icon('heroicon-o-plus')
+                ->color('primary');
+        }
+
+        // Admins get the Generate Report modal.
+        // WHY: This is Filament\Actions\Action (page-level) — safe to use
+        // in getHeaderActions() unlike Tables\Actions\Action which would throw.
+        if (auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
-                ->icon('heroicon-o-document-text')
+                ->icon('heroicon-o-document-chart-bar')
                 ->color('info')
                 ->modalHeading('Generate Locator Slip Report')
                 ->modalDescription('Create a detailed PDF report of locator slips within a specific period.')
@@ -34,10 +45,10 @@ class ListLocatorSlips extends ListRecords
                         Select::make('status')
                             ->label('Locator Slip Status')
                             ->options([
-                                'all'          => 'All',
-                                'pending'      => 'Pending',
-                                'approved'     => 'Approved',
-                                'disapproved'  => 'Disapproved',
+                                'all' => 'All',
+                                'pending' => 'Pending',
+                                'approved' => 'Approved',
+                                'disapproved' => 'Disapproved',
                             ])
                             ->default('all')
                             ->required()
@@ -46,11 +57,11 @@ class ListLocatorSlips extends ListRecords
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly'    => 'This Week',
-                                'monthly'   => 'This Month',
+                                'weekly' => 'This Week',
+                                'monthly' => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly'    => 'This Year',
-                                'custom'    => 'Custom Date Range',
+                                'yearly' => 'This Year',
+                                'custom' => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -58,13 +69,24 @@ class ListLocatorSlips extends ListRecords
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
-
                                 match ($state) {
-                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()),    $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()),   $set('to', $now->copy()->endOfMonth()->toDateString())],
-                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()),    $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default     => null,
+                                    'weekly' => [
+                                        $set('from', $now->copy()->startOfWeek()->toDateString()),
+                                        $set('to', $now->copy()->endOfWeek()->toDateString()),
+                                    ],
+                                    'monthly' => [
+                                        $set('from', $now->copy()->startOfMonth()->toDateString()),
+                                        $set('to', $now->copy()->endOfMonth()->toDateString()),
+                                    ],
+                                    'quarterly' => [
+                                        $set('from', $now->copy()->startOfQuarter()->toDateString()),
+                                        $set('to', $now->copy()->endOfQuarter()->toDateString()),
+                                    ],
+                                    'yearly' => [
+                                        $set('from', $now->copy()->startOfYear()->toDateString()),
+                                        $set('to', $now->copy()->endOfYear()->toDateString()),
+                                    ],
+                                    default => null,
                                 };
                             }),
                     ]),
@@ -74,12 +96,14 @@ class ListLocatorSlips extends ListRecords
                             ->label('From Date')
                             ->required()
                             ->native(false)
+                            ->displayFormat('M d, Y')
                             ->default(Carbon::now()->startOfMonth()->toDateString()),
 
                         DatePicker::make('to')
                             ->label('To Date')
                             ->required()
                             ->native(false)
+                            ->displayFormat('M d, Y')
                             ->after('from')
                             ->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
@@ -88,11 +112,10 @@ class ListLocatorSlips extends ListRecords
                     $url = route('locator-slip.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'],
-                        'from'   => $data['from'],
-                        'to'     => $data['to'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
                     ]);
 
-                    // Full navigation so browser receives the PDF stream
                     $this->redirect($url, navigate: false);
                 });
         }

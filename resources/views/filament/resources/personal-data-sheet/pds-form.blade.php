@@ -1,13 +1,43 @@
 {{-- Main wrapper for the PDS form view --}}
-<div class="pds-form-container">
-    {{-- Include all 4 pages of the form --}}
-    @include('filament.resources.personal-data-sheet.form-pages.page-1')
-    @include('filament.resources.personal-data-sheet.form-pages.page-2')
-    @include('filament.resources.personal-data-sheet.form-pages.page-3')
-    @include('filament.resources.personal-data-sheet.form-pages.page-4')
+{{--
+    $isReadOnly is shared by ViewPersonalDataSheet::mount() via view()->share('isReadOnly', true).
+    Each @included page receives it and disables all inputs / hides add-remove buttons.
+--}}
+@php $isReadOnly = $isReadOnly ?? false; @endphp
+
+<div class="pds-form-container" @if($isReadOnly) data-readonly="true" @endif>
+    @include('filament.resources.personal-data-sheet.form-pages.page-1', ['isReadOnly' => $isReadOnly])
+    @include('filament.resources.personal-data-sheet.form-pages.page-2', ['isReadOnly' => $isReadOnly])
+    @include('filament.resources.personal-data-sheet.form-pages.page-3', ['isReadOnly' => $isReadOnly])
+    @include('filament.resources.personal-data-sheet.form-pages.page-4', ['isReadOnly' => $isReadOnly])
 </div>
 
 <style>
+    /* =============================================
+       READ-ONLY STATE
+       ============================================= */
+    .pds-form-container[data-readonly="true"] .pds-input {
+        background: #f5f5f5 !important;
+        cursor: not-allowed !important;
+        color: #333 !important;
+    }
+
+    .pds-form-container[data-readonly="true"] .pds-input:focus {
+        outline: none !important;
+        background: #f5f5f5 !important;
+    }
+
+    .pds-form-container[data-readonly="true"] input[type="checkbox"],
+    .pds-form-container[data-readonly="true"] input[type="radio"] {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+
+    .pds-form-container[data-readonly="true"] label {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+
     /* Global PDS Form Styles */
     .pds-form-container {
         font-family: Arial, sans-serif;
@@ -81,10 +111,6 @@
         padding: 4px;
     }
 
-    /* ========================================= */
-    /* CUSTOM INPUT STYLES */
-    /* ========================================= */
-
     .pds-input {
         border: none !important;
         background: transparent !important;
@@ -108,13 +134,11 @@
         font-style: italic !important;
     }
 
-    /* Textarea specific */
     textarea.pds-input {
         resize: vertical;
         min-height: 40px;
     }
 
-    /* Select dropdown */
     select.pds-input {
         cursor: pointer;
         padding-right: 20px !important;
@@ -123,10 +147,6 @@
         background-position: right 4px center !important;
         background-size: 12px !important;
     }
-
-    /* ========================================= */
-    /* ENHANCED RADIO BUTTON STYLING */
-    /* ========================================= */
 
     .radio-label {
         display: inline-flex !important;
@@ -166,10 +186,6 @@
         accent-color: #3b82f6 !important;
     }
 
-    /* ========================================= */
-    /* ENHANCED CHECKBOX STYLING */
-    /* ========================================= */
-
     .checkbox-label {
         display: inline-flex !important;
         align-items: center !important;
@@ -207,11 +223,6 @@
         accent-color: #22c55e !important;
     }
 
-    /* ========================================= */
-    /* REGULAR LABEL AND INPUT STYLES */
-    /* ========================================= */
-
-    /* Regular labels (not radio/checkbox) */
     label:not(.radio-label):not(.checkbox-label) {
         cursor: pointer;
         font-size: 8pt;
@@ -220,7 +231,6 @@
         margin-right: 10px;
     }
 
-    /* Regular checkboxes and radios (not in special labels) */
     input[type="checkbox"]:not(.checkbox-input),
     input[type="radio"]:not(.radio-input) {
         width: 16px !important;
@@ -230,7 +240,6 @@
         accent-color: #3b82f6 !important;
     }
 
-    /* Button styles */
     .pds-btn-add,
     .pds-btn-remove {
         padding: 5px 10px;
@@ -258,104 +267,21 @@
         border-color: #faa;
     }
 
-    /* ========================================= */
-    /* OVERRIDE FILAMENT STYLES */
-    /* ========================================= */
+    .pds-form-container .fi-fo-field-wrp { margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important; }
+    .pds-form-container .fi-fo-field-wrp-label, .pds-form-container .fi-fo-field-wrp-hint { display: none !important; }
+    .pds-form-container .fi-input-wrp, .pds-form-container .fi-select-wrp, .pds-form-container .fi-textarea-wrp { box-shadow: none !important; border: none !important; background: transparent !important; padding: 0 !important; }
+    .pds-form-container .fi-select-wrp::after { display: none !important; }
+    .pds-form-container .fi-fo-repeater { border: none !important; background: transparent !important; padding: 0 !important; }
+    .pds-form-container .fi-fo-repeater-item { border: 1px solid #ccc !important; margin-bottom: 10px !important; padding: 10px !important; background: #f9fafb !important; border-radius: 4px !important; }
+    .pds-form-container .fi-fo-repeater-item-actions, .pds-form-container .fi-ac-btn-group { margin: 0 !important; padding: 0 !important; }
+    .pds-form-container [x-ref="input"] { border: none !important; background: transparent !important; }
+    .pds-form-container .fi-input-wrp:focus-within, .pds-form-container .fi-select-wrp:focus-within, .pds-form-container .fi-textarea-wrp:focus-within { box-shadow: none !important; border: none !important; }
+    .pds-form-container .grid { display: grid; }
 
-    /* Remove all Filament field wrappers */
-    .pds-form-container .fi-fo-field-wrp {
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        background: transparent !important;
-    }
-
-    /* Hide Filament labels but keep our custom ones */
-    .pds-form-container .fi-fo-field-wrp-label,
-    .pds-form-container .fi-fo-field-wrp-hint {
-        display: none !important;
-    }
-
-    /* Reset Filament input wrappers */
-    .pds-form-container .fi-input-wrp,
-    .pds-form-container .fi-select-wrp,
-    .pds-form-container .fi-textarea-wrp {
-        box-shadow: none !important;
-        border: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-    }
-
-    /* Hide Filament select arrow */
-    .pds-form-container .fi-select-wrp::after {
-        display: none !important;
-    }
-
-    /* Repeater items styling */
-    .pds-form-container .fi-fo-repeater {
-        border: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-    }
-
-    .pds-form-container .fi-fo-repeater-item {
-        border: 1px solid #ccc !important;
-        margin-bottom: 10px !important;
-        padding: 10px !important;
-        background: #f9fafb !important;
-        border-radius: 4px !important;
-    }
-
-    /* Action buttons */
-    .pds-form-container .fi-fo-repeater-item-actions,
-    .pds-form-container .fi-ac-btn-group {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    /* DatePicker specific */
-    .pds-form-container [x-ref="input"] {
-        border: none !important;
-        background: transparent !important;
-    }
-
-    /* Remove Filament focus rings */
-    .pds-form-container .fi-input-wrp:focus-within,
-    .pds-form-container .fi-select-wrp:focus-within,
-    .pds-form-container .fi-textarea-wrp:focus-within {
-        box-shadow: none !important;
-        border: none !important;
-    }
-
-    /* Grid layouts for repeater items */
-    .pds-form-container .grid {
-        display: grid;
-    }
-
-    /* Print media query */
     @media print {
-        .pds-form-page {
-            page-break-after: always;
-            border: none;
-            box-shadow: none;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .pds-btn-add,
-        .pds-btn-remove {
-            display: none !important;
-        }
-
-        .pds-input:focus {
-            outline: none !important;
-            background: transparent !important;
-        }
-
-        .radio-label,
-        .checkbox-label {
-            border: 1px solid #000 !important;
-            background: transparent !important;
-        }
+        .pds-form-page { page-break-after: always; border: none; box-shadow: none; margin: 0; padding: 20px; }
+        .pds-btn-add, .pds-btn-remove { display: none !important; }
+        .pds-input:focus { outline: none !important; background: transparent !important; }
+        .radio-label, .checkbox-label { border: 1px solid #000 !important; background: transparent !important; }
     }
 </style>

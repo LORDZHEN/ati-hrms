@@ -1,10 +1,43 @@
 {{-- Main wrapper for the SALN interactive form --}}
-<div class="saln-form-container">
-    @include('filament.resources.saln-resource.form-pages.page-1')
-    @include('filament.resources.saln-resource.form-pages.page-2')
+{{--
+    $isReadOnly is shared by ViewSaln::mount() via view()->share('isReadOnly', true).
+    Each @included page receives it and disables all inputs / hides add-remove buttons.
+--}}
+@php $isReadOnly = $isReadOnly ?? false; @endphp
+
+<div class="saln-form-container" @if($isReadOnly) data-readonly="true" @endif>
+    @include('filament.resources.saln-resource.form-pages.page-1', ['isReadOnly' => $isReadOnly])
+    @include('filament.resources.saln-resource.form-pages.page-2', ['isReadOnly' => $isReadOnly])
 </div>
 
 <style>
+    /* =============================================
+       READ-ONLY STATE
+       ============================================= */
+    .saln-form-container[data-readonly="true"] .saln-input {
+        background: #f5f5f5 !important;
+        cursor: not-allowed !important;
+        color: #333 !important;
+    }
+
+    .saln-form-container[data-readonly="true"] .saln-input:focus {
+        outline: none !important;
+        background: #f5f5f5 !important;
+    }
+
+    .saln-form-container[data-readonly="true"] .saln-checkbox-input,
+    .saln-form-container[data-readonly="true"] input[type="checkbox"],
+    .saln-form-container[data-readonly="true"] input[type="radio"] {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+
+    .saln-form-container[data-readonly="true"] .saln-checkbox-label {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+        opacity: 0.8 !important;
+    }
+
     .saln-form-container {
         font-family: Arial, sans-serif;
         font-size: 9pt;
@@ -138,9 +171,6 @@
         line-height: 1.2;
     }
 
-    /* =============================================
-       NATIVE INPUT STYLES - matching PDS exactly
-       ============================================= */
     .saln-input {
         border: none !important;
         background: transparent !important;
@@ -173,7 +203,6 @@
         cursor: pointer;
     }
 
-    /* Checkbox label - matching PDS .checkbox-label */
     .saln-checkbox-label {
         display: inline-flex !important;
         align-items: center !important;
@@ -205,7 +234,6 @@
         flex-shrink: 0 !important;
     }
 
-    /* Add/Remove buttons - matching PDS .pds-btn-add/remove */
     .saln-btn-add,
     .saln-btn-remove {
         padding: 5px 10px;
@@ -232,7 +260,6 @@
         background: #fca5a5;
     }
 
-    /* Repeater card */
     .saln-repeater-item {
         border: 1px solid #ccc;
         padding: 10px;

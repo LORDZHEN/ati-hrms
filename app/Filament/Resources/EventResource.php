@@ -51,12 +51,12 @@ class EventResource extends Resource
     }
 
     /* ============================================================
-       FORM
+       FORM  (unchanged)
        ============================================================ */
 
     public static function form(Form $form): Form
     {
-        $isEmployee = ! (Auth::user()?->isAdmin() ?? false);
+        $isEmployee = !(Auth::user()?->isAdmin() ?? false);
 
         return $form->schema([
             Forms\Components\Placeholder::make('readonly_notice')
@@ -69,16 +69,16 @@ class EventResource extends Resource
                         Forms\Components\TextInput::make('title')->required()->maxLength(255)->placeholder('Enter event title...')->columnSpanFull()->disabled($isEmployee),
                         Forms\Components\Textarea::make('description')->rows(5)->placeholder('Describe what this event is about...')->columnSpanFull()->disabled($isEmployee),
                     ])
-                    ->heading('Event Details')
-                    ->description($isEmployee ? 'This event was created by an administrator.' : 'Provide a clear title and description for the event.')
-                    ->icon('heroicon-o-pencil-square'),
+                        ->heading('Event Details')
+                        ->description($isEmployee ? 'This event was created by an administrator.' : 'Provide a clear title and description for the event.')
+                        ->icon('heroicon-o-pencil-square'),
 
                     Forms\Components\Section::make()->schema([
                         Forms\Components\DatePicker::make('event_date')->label('Event Date')->required()->native(false)->displayFormat('M d, Y')->default(now())->prefixIcon('heroicon-o-calendar')->disabled($isEmployee),
                         Forms\Components\TimePicker::make('event_time')->label('Event Time')->required()->seconds(false)->default('09:00')->prefixIcon('heroicon-o-clock')->disabled($isEmployee),
                         Forms\Components\TextInput::make('location')->required()->maxLength(255)->placeholder('e.g. Conference Room A, Main Hall...')->prefixIcon('heroicon-o-map-pin')->columnSpanFull()->disabled($isEmployee),
                     ])
-                    ->heading('Schedule & Location')->description('Set when and where the event will take place.')->icon('heroicon-o-map-pin')->columns(2),
+                        ->heading('Schedule & Location')->description('Set when and where the event will take place.')->icon('heroicon-o-map-pin')->columns(2),
                 ])->columnSpan(2),
 
                 Forms\Components\Group::make()->schema([
@@ -159,7 +159,7 @@ class EventResource extends Resource
 
                     Tables\Actions\DeleteAction::make()
                         ->icon('heroicon-o-trash')->visible($isAdmin),
-                ])->label('Actions')->icon('heroicon-o-ellipsis-vertical')->size('sm')->color('gray')->button(),
+                ])->label('Actions')->icon('heroicon-o-ellipsis-vertical')->size(\Filament\Support\Enums\ActionSize::Small)->color('gray')->button(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -193,32 +193,39 @@ class EventResource extends Resource
                     Tables\Columns\TextColumn::make('title')
                         ->label('Event')
                         ->searchable()->sortable()
-                        ->weight('bold')
+                        ->weight(\Filament\Support\Enums\FontWeight::Bold)
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Large)
                         ->icon('heroicon-o-calendar-days')->iconColor('primary'),
 
                     Tables\Columns\TextColumn::make('description')
                         ->label('Description')
-                        ->size('sm')->color('gray')->limit(70)->wrap()
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')->limit(70)->wrap()
                         ->formatStateUsing(fn($state) => Str::limit($state ?? '', 70)),
 
-                    Tables\Columns\BadgeColumn::make('type')
+                    // WHY: BadgeColumn was removed in Filament v3. Use
+                    // TextColumn->badge() with ->color() and ->icon() closures.
+                    Tables\Columns\TextColumn::make('type')
                         ->label('Type')
-                        ->colors([
-                            'success' => 'event',
-                            'info'    => 'meeting',
-                            'danger'  => 'deadline',
-                            'warning' => 'training',
-                            'primary' => 'holiday',
-                        ])
-                        ->icons([
-                            'heroicon-m-star'               => 'event',
-                            'heroicon-m-user-group'         => 'meeting',
-                            'heroicon-m-exclamation-circle' => 'deadline',
-                            'heroicon-m-academic-cap'       => 'training',
-                            'heroicon-m-sun'                => 'holiday',
-                        ])
-                        ->sortable(),
+                        ->badge()
+                        ->sortable()
+                        ->color(fn(string $state) => match ($state) {
+                            'event' => 'success',
+                            'meeting' => 'info',
+                            'deadline' => 'danger',
+                            'training' => 'warning',
+                            'holiday' => 'primary',
+                            default => 'gray',
+                        })
+                        ->icon(fn(string $state) => match ($state) {
+                            'event' => 'heroicon-m-star',
+                            'meeting' => 'heroicon-m-user-group',
+                            'deadline' => 'heroicon-m-exclamation-circle',
+                            'training' => 'heroicon-m-academic-cap',
+                            'holiday' => 'heroicon-m-sun',
+                            default => null,
+                        })
+                        ->formatStateUsing(fn(string $state) => ucfirst($state)),
                 ])->space(1),
 
                 // Middle: Date, Time & Location
@@ -229,18 +236,21 @@ class EventResource extends Resource
                         ->icon('heroicon-m-calendar')
                         ->color(fn($record) => $record->isUpcoming() ? 'success' : 'gray')
                         ->weight(fn($record) => $record->isUpcoming() ? 'semibold' : 'normal')
-                        ->size('sm')->sortable(),
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->sortable(),
 
                     Tables\Columns\TextColumn::make('event_time')
                         ->label('Time')
                         ->time('g:i A')
                         ->icon('heroicon-m-clock')->iconColor('info')
-                        ->size('sm')->color('gray')->sortable(),
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')->sortable(),
 
                     Tables\Columns\TextColumn::make('location')
                         ->label('Location')
                         ->icon('heroicon-m-map-pin')->iconColor('warning')
-                        ->size('sm')->color('gray')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')
                         ->limit(30)->tooltip(fn($record) => $record->location)
                         ->searchable(),
                 ])->space(1),
@@ -257,9 +267,11 @@ class EventResource extends Resource
                     Tables\Columns\TextColumn::make('creator.name')
                         ->label('Created By')
                         ->icon('heroicon-m-user-circle')->iconColor('gray')
-                        ->color('gray')->size('sm')->sortable()
+                        ->color('gray')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->sortable()
                         ->visible($isAdmin),
-                ])->space(1)->alignment('end'),
+                ])->space(1)->alignment(\Filament\Support\Enums\Alignment::End),
             ])->from('md'),
         ];
     }
@@ -272,9 +284,9 @@ class EventResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListEvents::route('/'),
+            'index' => Pages\ListEvents::route('/'),
             'create' => Pages\CreateEvent::route('/create'),
-            'edit'   => Pages\EditEvent::route('/{record}/edit'),
+            'edit' => Pages\EditEvent::route('/{record}/edit'),
         ];
     }
 

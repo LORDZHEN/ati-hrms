@@ -4,17 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TravelOrderResource\Pages;
 use App\Models\TravelOrder;
-use App\Models\User;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
-use App\Notifications\TravelOrderStatusUpdated;
 
 class TravelOrderResource extends Resource
 {
@@ -22,705 +21,794 @@ class TravelOrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-map';
     protected static ?string $slug = 'travel-orders';
     protected static ?string $navigationLabel = 'Travel Orders';
+    protected static ?string $modelLabel = 'Travel Order';
+    protected static ?string $pluralModelLabel = 'Travel Orders';
     protected static ?string $navigationGroup = 'Documents';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 4;
 
-    /* ============================================================
-       AUTHORIZATION
-       ============================================================ */
-
-    public static function canCreate(): bool
-    {
-        return Auth::user()->role === 'employee';
-    }
-
-    /* ============================================================
-       FORM DEFINITION
-       ============================================================ */
+    // =========================================================================
+    //  FORM
+    // =========================================================================
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            self::buildTravelOrderInfoSection(),
-            self::buildTravelDetailsSection(),
+            self::buildInfoSection(),
+            self::buildTravelerSection(),
+            self::buildItinerarySection(),
+            self::buildBatchTravelersSection(),
             self::buildApprovalSection(),
         ]);
     }
 
-    /* ============================================================
-       FORM SECTIONS
-       ============================================================ */
+    // ── Form Sections ─────────────────────────────────────────────────────────
 
-    protected static function buildTravelOrderInfoSection(): Forms\Components\Section
+    protected static function buildInfoSection(): Forms\Components\Section
     {
         return Forms\Components\Section::make('Travel Order Information')
             ->description('Basic information about this travel order')
             ->icon('heroicon-o-document-text')
             ->schema([
-                Forms\Components\Grid::make(3)->schema([
-                    Forms\Components\TextInput::make('travel_order_no')
-                        ->label('Travel Order No.')
-                        ->default('Auto-generated')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->prefixIcon('heroicon-o-hashtag')
-                        ->helperText('Will be generated automatically upon creation')
-                        ->columnSpan(1),
+                Forms\Components\TextInput::make('travel_order_no')
+                    ->label('Travel Order No.')
+                    ->placeholder('Auto-generated')
+                    ->disabled()
+                    ->prefixIcon('heroicon-o-hashtag')
+                    ->helperText('Will be generated automatically upon creation')
+                    ->columnSpan(1),
 
-                    Forms\Components\DatePicker::make('date')
-                        ->label('Date Issued')
-                        ->required()
-                        ->default(now())
-                        ->native(false)
-                        ->prefixIcon('heroicon-o-calendar')
-                        ->columnSpan(1),
+                Forms\Components\DatePicker::make('date')
+                    ->label('Date Issued')
+                    ->required()
+                    ->default(now())
+                    ->native(false)
+                    ->displayFormat('M j, Y')
+                    ->columnSpan(1),
 
-                    Forms\Components\Select::make('status')
-                        ->label('Current Status')
-                        ->options([
-                            'pending' => 'Pending Review',
-                        ])
-                        ->default('pending')
-                        ->disabled()
-                        ->required()
-                        ->prefixIcon('heroicon-o-information-circle')
-                        ->columnSpan(1),
-                ]),
-
-                Forms\Components\Placeholder::make('')->content('')->columnSpanFull(),
+                Forms\Components\Select::make('status')
+                    ->label('Current Status')
+                    ->options([
+                        'pending' => 'Pending Review',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                    ])
+                    ->default('pending')
+                    ->disabled(fn() => Auth::user()->role === 'employee')
+                    ->native(false)
+                    ->prefixIcon('heroicon-o-information-circle')
+                    ->columnSpan(1),
 
                 Forms\Components\Radio::make('travel_type')
                     ->label('Travel Type')
                     ->options([
-                        'solo'  => 'Solo Travel - Single Employee',
+                        'solo' => 'Solo Travel - Single Employee',
                         'batch' => 'Batch Travel - Multiple Employees',
                     ])
                     ->descriptions([
-                        'solo'  => 'Travel order for one employee only',
+                        'solo' => 'Travel order for one employee only',
                         'batch' => 'Travel order for multiple employees',
                     ])
                     ->default('solo')
-                    ->live()
                     ->required()
-                    ->inline()
+                    ->live()
                     ->columnSpanFull(),
-
-                // SOLO TRAVEL SECTION
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Traveler Information')
-                        ->description('Your personal travel details')
-                        ->icon('heroicon-o-user-circle')
-                        ->schema([
-                            Forms\Components\Grid::make(3)->schema([
-                                Forms\Components\Placeholder::make('solo_name')
-                                    ->label('Employee Name')
-                                    ->content(fn() => Auth::user()->name ?? 'N/A')
-                                    ->columnSpan(2),
-                                Forms\Components\Placeholder::make('solo_position')
-                                    ->label('Position')
-                                    ->content(fn() => Auth::user()->position ?? 'N/A')
-                                    ->columnSpan(1),
-                            ]),
-                            Forms\Components\Grid::make(3)->schema([
-                                Forms\Components\TextInput::make('station')
-                                    ->label('Work Station/Office')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->placeholder('e.g., Main Office, Branch Office')
-                                    ->prefixIcon('heroicon-o-building-office')
-                                    ->columnSpan(2),
-                                Forms\Components\TextInput::make('salary_per_annum')
-                                    ->label('Annual Salary')
-                                    ->numeric()
-                                    ->prefix('₱')
-                                    ->required()
-                                    ->placeholder('0.00')
-                                    ->helperText('Enter your annual salary')
-                                    ->columnSpan(1),
-                            ]),
-                        ])
-                        ->compact()
-                        ->columnSpanFull(),
-                ])->visible(fn(Forms\Get $get) => $get('travel_type') === 'solo'),
-
-                // BATCH TRAVEL SECTION
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Select Employees')
-                        ->description('Choose employees for this batch travel')
-                        ->icon('heroicon-o-user-group')
-                        ->schema([
-                            Forms\Components\Select::make('employee_ids')
-                                ->label('Search & Select Employees')
-                                ->multiple()
-                                ->searchable()
-                                ->preload()
-                                ->options(fn() => User::where('role', 'employee')
-                                    ->orWhere('id', Auth::id())
-                                    ->pluck('name', 'id'))
-                                ->required()
-                                ->placeholder('Type to search for employees...')
-                                ->helperText('You can select multiple employees for this travel order. They will be able to view this travel order in their "Tagged Travel Orders" tab.')
-                                ->native(false)
-                                ->columnSpanFull(),
-                        ])
-                        ->compact()
-                        ->columnSpanFull(),
-
-                    Forms\Components\Section::make('Common Information')
-                        ->description('Details applicable to all travelers')
-                        ->icon('heroicon-o-information-circle')
-                        ->schema([
-                            Forms\Components\Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('station')
-                                    ->label('Work Station/Office')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->placeholder('e.g., Main Office, Branch Office')
-                                    ->prefixIcon('heroicon-o-building-office')
-                                    ->helperText('Common station for all travelers')
-                                    ->columnSpan(1),
-                                Forms\Components\TextInput::make('position')
-                                    ->label('Position/Designation')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->placeholder('e.g., Administrative Officer II')
-                                    ->prefixIcon('heroicon-o-briefcase')
-                                    ->helperText('Enter common position or "Various Positions"')
-                                    ->columnSpan(1),
-                            ]),
-                        ])
-                        ->compact()
-                        ->columnSpanFull(),
-                ])->visible(fn(Forms\Get $get) => $get('travel_type') === 'batch'),
-
-                Forms\Components\Hidden::make('created_by')
-                    ->default(fn() => Auth::id()),
             ])
+            ->columns(3)
             ->collapsible()
-            ->collapsed(false)
-            ->columns(1);
+            ->collapsed(false);
     }
 
-    protected static function buildTravelDetailsSection(): Forms\Components\Section
+    protected static function buildTravelerSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Traveler Information')
+            ->description('Your personal travel details')
+            ->icon('heroicon-o-user-circle')
+            ->schema([
+                Forms\Components\Placeholder::make('employee_name_display')
+                    ->label('Employee Name')
+                    ->content(fn() => auth()->user()->name)
+                    ->columnSpan(1),
+
+                Forms\Components\Placeholder::make('position_display')
+                    ->label('Position')
+                    ->content(fn() => auth()->user()->position ?? '—')
+                    ->columnSpan(1),
+
+                Forms\Components\Hidden::make('created_by')
+                    ->default(fn() => auth()->id()),
+
+                Forms\Components\Hidden::make('name')
+                    ->default(fn() => auth()->user()->name),
+
+                Forms\Components\Hidden::make('position')
+                    ->default(fn() => auth()->user()->position),
+
+                // Column: station (per schema)
+                Forms\Components\TextInput::make('station')
+                    ->label('Work Station/Office')
+                    ->placeholder('e.g., Main Office, Branch Office')
+                    ->required()
+                    ->prefixIcon('heroicon-o-building-office')
+                    ->columnSpan(1),
+
+                // Column: salary_per_annum (per schema)
+                Forms\Components\TextInput::make('salary_per_annum')
+                    ->label('Annual Salary')
+                    ->numeric()
+                    ->prefix('₱')
+                    ->placeholder('0.00')
+                    ->helperText('Enter your annual salary')
+                    ->columnSpan(1),
+            ])
+            ->columns(2)
+            ->collapsible()
+            ->collapsed(false);
+    }
+
+    protected static function buildItinerarySection(): Forms\Components\Section
     {
         return Forms\Components\Section::make('Travel Itinerary & Purpose')
             ->description('Specify travel dates, destination, and purpose')
             ->icon('heroicon-o-calendar-days')
             ->schema([
-                Forms\Components\Grid::make(2)->schema([
-                    Forms\Components\DatePicker::make('departure_date')
-                        ->label('Departure Date')
-                        ->required()
-                        ->native(false)
-                        ->minDate(now())
-                        ->live()
-                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                            if ($state && $get('return_date')) {
-                                $departure = Carbon::parse($state);
-                                $return    = Carbon::parse($get('return_date'));
-                                if ($return->lessThan($departure)) {
-                                    $set('return_date', null);
-                                }
-                            }
-                        }),
-                    Forms\Components\DatePicker::make('return_date')
-                        ->label('Return Date')
-                        ->required()
-                        ->native(false)
-                        ->minDate(fn(Forms\Get $get) => $get('departure_date') ?: now())
-                        ->live(),
-                ]),
+                Forms\Components\DatePicker::make('departure_date')
+                    ->label('Departure Date')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('M d, Y')
+                    ->columnSpan(1),
 
-                Forms\Components\Grid::make(2)->schema([
-                    Forms\Components\TextInput::make('destination')
-                        ->label('Destination')
-                        ->required()
-                        ->maxLength(255)
-                        ->placeholder('e.g., Manila City, Cebu Province')
-                        ->columnSpan(1),
-                    Forms\Components\TextInput::make('report_to')
-                        ->label('Report To (Authority/Office)')
-                        ->required()
-                        ->maxLength(255)
-                        ->placeholder('e.g., Regional Director, Main Office')
-                        ->columnSpan(1),
-                ]),
+                Forms\Components\DatePicker::make('return_date')
+                    ->label('Return Date')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('M d, Y')
+                    ->minDate(fn(callable $get) => $get('departure_date'))
+                    ->columnSpan(1),
 
+                Forms\Components\TextInput::make('destination')
+                    ->label('Destination')
+                    ->placeholder('e.g., Manila City, Cebu Province')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpan(1),
+
+                Forms\Components\TextInput::make('report_to')
+                    ->label('Report To (Authority/Office)')
+                    ->placeholder('e.g., Regional Director, Main Office')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpan(1),
+
+                // Column: purpose_of_trip (per schema)
                 Forms\Components\Textarea::make('purpose_of_trip')
                     ->label('Purpose of Travel')
+                    ->placeholder('Provide detailed information about the purpose, activities, and expected outcomes of this travel...')
+                    ->helperText('Be specific and comprehensive in describing the travel purpose')
                     ->required()
                     ->rows(4)
-                    ->columnSpanFull()
-                    ->placeholder('Provide detailed information about the purpose, activities, and expected outcomes of this travel...')
-                    ->helperText('Be specific and comprehensive in describing the travel purpose'),
+                    ->columnSpanFull(),
             ])
+            ->columns(2)
+            ->collapsible()
+            ->collapsed(false);
+    }
+
+    protected static function buildBatchTravelersSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Batch Travelers')
+            ->description('Select employees included in this travel order')
+            ->icon('heroicon-o-user-group')
+            ->schema([
+                // Column: employee_ids (JSON array of user IDs per schema)
+                Forms\Components\Select::make('employee_ids')
+                    ->label('Select Employees')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->options(
+                        fn() => \App\Models\User::where('role', 'employee')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->toArray()
+                    )
+                    ->required()
+                    ->native(false)
+                    ->helperText('Employees selected here will see this order in their Tagged Travel Orders tab.')
+                    ->columnSpanFull(),
+            ])
+            ->visible(fn(callable $get) => $get('travel_type') === 'batch')
             ->collapsible()
             ->collapsed(false);
     }
 
     protected static function buildApprovalSection(): Forms\Components\Section
     {
-        $isAdmin = Auth::user()->role === 'admin';
-
-        return Forms\Components\Section::make('Approval & Authorization')
-            ->description('Administrative approval and authorization details')
+        return Forms\Components\Section::make('Administrative Approval')
+            ->description('Review and process this travel order')
             ->icon('heroicon-o-shield-check')
             ->schema([
-                Forms\Components\Grid::make(2)->schema([
-                    Forms\Components\Toggle::make('recommended_by_assistant_director')
-                        ->label('Recommended by Assistant Director')
-                        ->inline(false)
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->columnSpan(1),
-                    Forms\Components\Toggle::make('approved_by_center_director')
-                        ->label('Approved by Center Director')
-                        ->inline(false)
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->columnSpan(1),
-                ]),
-                Forms\Components\Grid::make(2)->schema([
-                    Forms\Components\Select::make('recommended_by')
-                        ->label('Recommended By (Name)')
-                        ->relationship('recommender', 'name')
-                        ->searchable()
-                        ->preload()
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->placeholder('Select recommender')
-                        ->columnSpan(1),
-                    Forms\Components\Select::make('approved_by')
-                        ->label('Approved By (Name)')
-                        ->relationship('approver', 'name')
-                        ->searchable()
-                        ->preload()
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->placeholder('Select approver')
-                        ->columnSpan(1),
-                ]),
-                Forms\Components\Grid::make(2)->schema([
-                    Forms\Components\DateTimePicker::make('recommended_at')
-                        ->label('Recommendation Date & Time')
-                        ->native(false)
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->columnSpan(1),
-                    Forms\Components\DateTimePicker::make('approved_at')
-                        ->label('Approval Date & Time')
-                        ->native(false)
-                        ->disabled(!$isAdmin)
-                        ->dehydrated($isAdmin)
-                        ->columnSpan(1),
-                ]),
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending Review',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                    ])
+                    ->required()
+                    ->native(false)
+                    ->live(),
+
+                Forms\Components\TextInput::make('approved_by')
+                    ->label('Processed By')
+                    ->disabled()
+                    ->afterStateHydrated(fn($component) => $component->state(auth()->user()->name))
+                    ->dehydrated(),
+
+                Forms\Components\Textarea::make('rejection_remark')
+                    ->label('Reason for Rejection')
+                    ->placeholder('Provide a clear reason for rejecting this travel order...')
+                    ->rows(3)
+                    ->visible(fn(callable $get) => $get('status') === 'rejected'),
             ])
             ->visible(fn() => Auth::user()->role === 'admin')
             ->collapsible()
             ->collapsed(true);
     }
 
-    /* ============================================================
-       TABLE DEFINITION
-       ============================================================ */
+    // =========================================================================
+    //  TABLE
+    // =========================================================================
 
     public static function table(Table $table): Table
     {
+        // Computed once — prevents repeated auth lookups in every closure.
+        $isAdmin = Auth::user()->role === 'admin';
+
         return $table
-            ->columns(self::getTimelineTableColumns())
-            ->filters(self::getEnhancedFilters())
-            ->actions(self::getContextualActions())
+            ->columns(self::getTableColumns($isAdmin))
+            ->filters(
+                self::getEnhancedFilters($isAdmin),
+                layout: FiltersLayout::AboveContentCollapsible
+            )
+            ->filtersFormColumns($isAdmin ? 3 : 1)
+            ->filtersFormWidth(\Filament\Support\Enums\MaxWidth::FourExtraLarge)
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => Auth::user()->role === 'admin'),
+                        ->visible(fn() => $isAdmin),
                 ]),
             ])
+            ->modifyQueryUsing(fn(Builder $query) => self::applyScope($query, $isAdmin))
             ->defaultSort('created_at', 'desc')
             ->poll('30s')
             ->striped()
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(10)
             ->emptyStateHeading('No travel orders found')
-            ->emptyStateDescription('Create your first travel order to get started.')
+            ->emptyStateDescription('Submit your first travel order to get started.')
             ->emptyStateIcon('heroicon-o-map')
             ->emptyStateActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Create Travel Order')
+                    ->label('New Travel Order')
                     ->icon('heroicon-o-plus')
-                    ->visible(fn() => Auth::user()->role === 'employee'),
+                    ->visible(fn() => !$isAdmin),
             ]);
     }
 
-    /* ============================================================
-       CARD-STYLE TABLE COLUMNS
-       ============================================================ */
+    // =========================================================================
+    //  TABLE COLUMNS
+    // =========================================================================
 
-    protected static function getTimelineTableColumns(): array
+    protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            Tables\Columns\Layout\Split::make([
+            // ── Order No. ─────────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('travel_order_no')
+                ->label('Order No.')
+                ->searchable()
+                ->sortable()
+                ->weight(FontWeight::Bold)
+                ->color('primary')
+                ->icon('heroicon-o-hashtag')
+                ->iconColor('primary')
+                ->copyable()
+                ->copyMessage('Copied!')
+                ->copyMessageDuration(1200),
 
-                // LEFT: Order number, traveler, position, type badge
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('travel_order_no')
-                        ->label('Order No.')
-                        ->searchable()
-                        ->sortable()
-                        ->weight('bold')
-                        ->size('lg')
-                        ->icon('heroicon-o-hashtag')
-                        ->iconColor('primary')
-                        ->copyable()
-                        ->copyMessage('Order number copied!')
-                        ->copyMessageDuration(1500),
+            // ── Traveler — admin only ──────────────────────────────────────────
+            Tables\Columns\TextColumn::make('name')
+                ->label('Traveler(s)')
+                ->searchable()
+                ->limit(30)
+                ->tooltip(fn($record) => $record->name)
+                ->icon('heroicon-o-user-circle')
+                ->iconColor('primary')
+                ->visible($isAdmin),
 
-                    Tables\Columns\TextColumn::make('name')
-                        ->label('Traveler(s)')
-                        ->searchable()
-                        ->weight('medium')
-                        ->icon('heroicon-o-user-circle')
-                        ->iconColor('info')
-                        ->formatStateUsing(function ($state, $record) {
-                            if (empty($record->name)) return 'Not specified';
-                            $names = explode(', ', $record->name);
-                            $count = count($names);
-                            if ($count <= 2) return $record->name;
-                            return implode(', ', array_slice($names, 0, 2)) . ' +' . ($count - 2) . ' more';
-                        })
-                        ->tooltip(fn($record) => $record->name)
-                        ->limit(50),
+            // ── Destination ───────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('destination')
+                ->label('Destination')
+                ->searchable()
+                ->limit(28)
+                ->tooltip(fn($record) => $record->destination)
+                ->icon('heroicon-o-map-pin')
+                ->iconColor('warning'),
 
-                    Tables\Columns\TextColumn::make('position')
-                        ->label('Position')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-briefcase')
-                        ->iconColor('gray')
-                        ->limit(40),
+            // ── Travel Period (Departure → Return) ────────────────────────────
+            Tables\Columns\TextColumn::make('departure_date')
+                ->label('Travel Period')
+                ->sortable()
+                ->icon('heroicon-o-calendar-days')
+                ->iconColor('info')
+                ->formatStateUsing(
+                    fn($state, $record) =>
+                    Carbon::parse($record->departure_date)->format('M d, Y')
+                    . ' → '
+                    . Carbon::parse($record->return_date)->format('M d, Y')
+                ),
 
-                    Tables\Columns\BadgeColumn::make('travel_type_badge')
-                        ->label('Type')
-                        ->state(fn($record) => $record->employee_ids && is_array($record->employee_ids) ?
-                            (count($record->employee_ids) > 1 ? 'batch' : 'solo') : 'solo')
-                        ->colors(['primary' => 'solo', 'success' => 'batch'])
-                        ->icons(['heroicon-o-user' => 'solo', 'heroicon-o-user-group' => 'batch'])
-                        ->formatStateUsing(fn(string $state): string => match ($state) {
-                            'solo'  => 'Solo',
-                            'batch' => 'Batch',
-                            default => 'Solo',
-                        }),
-                ])->space(1),
-
-                // MIDDLE: Destination, travel period, duration, issued date
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\TextColumn::make('destination')
-                        ->label('Destination')
-                        ->searchable()
-                        ->weight('medium')
-                        ->icon('heroicon-o-map-pin')
-                        ->iconColor('danger')
-                        ->limit(40)
-                        ->tooltip(fn($record) => $record->destination),
-
-                    Tables\Columns\TextColumn::make('travel_period')
-                        ->label('Travel Period')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-calendar-days')
-                        ->iconColor('warning')
-                        ->formatStateUsing(fn($record) =>
-                            Carbon::parse($record->departure_date)->format('M d') .
-                            ' - ' .
-                            Carbon::parse($record->return_date)->format('M d, Y')
-                        ),
-
-                    Tables\Columns\TextColumn::make('duration')
-                        ->label('Duration')
-                        ->size('sm')
-                        ->badge()
-                        ->color('info')
-                        ->formatStateUsing(fn($record) =>
-                            Carbon::parse($record->departure_date)
-                                ->diffInDays(Carbon::parse($record->return_date)) + 1 . ' days'
-                        ),
-
-                    Tables\Columns\TextColumn::make('date')
-                        ->label('Issued')
-                        ->date('M d, Y')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-document-text')
-                        ->iconColor('gray'),
-                ])->space(1),
-
-                // RIGHT: Status badge, creator
-                Tables\Columns\Layout\Stack::make([
-                    Tables\Columns\BadgeColumn::make('status')
-                        ->label('Status')
-                        ->colors([
-                            'warning' => 'pending',
-                            'info'    => 'recommended',
-                            'success' => 'approved',
-                            'danger'  => 'rejected',
-                        ])
-                        ->icons([
-                            'heroicon-o-clock'         => 'pending',
-                            'heroicon-o-hand-thumb-up' => 'recommended',
-                            'heroicon-o-check-badge'   => 'approved',
-                            'heroicon-o-x-circle'      => 'rejected',
-                        ])
-                        ->formatStateUsing(fn(string $state): string => ucfirst($state))
-                        ->size('md'),
-
-                    Tables\Columns\TextColumn::make('creator.name')
-                        ->label('Created By')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-user')
-                        ->iconColor('gray')
-                        ->limit(20),
-                ])->space(2)->alignment('end'),
-
-            ])->from('md'),
-
-            // PANEL: Approval progress + rejection remark (collapsible)
-            Tables\Columns\Layout\Panel::make([
-                Tables\Columns\Layout\Split::make([
-                    Tables\Columns\TextColumn::make('approval_progress')
-                        ->label('Approval Progress')
-                        ->formatStateUsing(function ($record) {
-                            $steps = [];
-                            if ($record->recommended_by_assistant_director) {
-                                $recommender = $record->recommender?->name ?? 'Assistant Director';
-                                $steps[]     = '✓ Recommended by ' . $recommender;
-                            }
-                            if ($record->approved_by_center_director) {
-                                $approver = $record->approver?->name ?? 'Center Director';
-                                $steps[]  = '✓ Approved by ' . $approver;
-                            }
-                            // Uses the dedicated rejection_remark column
-                            if ($record->status === 'rejected' && $record->rejection_remark) {
-                                $steps[] = '✗ Remark: ' . $record->rejection_remark;
-                            }
-                            if (empty($steps)) return '⏳ Awaiting review';
-                            return implode(' • ', $steps);
-                        })
-                        ->size('sm')
-                        ->color('gray'),
-
-                    Tables\Columns\TextColumn::make('station')
-                        ->label('Station')
-                        ->size('sm')
-                        ->color('gray')
-                        ->icon('heroicon-o-building-office')
-                        ->iconColor('gray')
-                        ->limit(30),
-                ]),
-            ])->collapsible(),
-        ];
-    }
-
-    /* ============================================================
-       ENHANCED FILTERS
-       ============================================================ */
-
-    protected static function getEnhancedFilters(): array
-    {
-        return [
-            Tables\Filters\SelectFilter::make('status')
-                ->label('Status')
-                ->options([
-                    'pending'     => 'Pending Review',
-                    'recommended' => 'Recommended',
-                    'approved'    => 'Approved',
-                    'rejected'    => 'Rejected',
-                ])
-                ->native(false)
-                ->indicator('Status'),
-
-            Tables\Filters\SelectFilter::make('travel_type')
-                ->label('Travel Type')
-                ->options(['solo' => 'Solo Travel', 'batch' => 'Batch Travel'])
-                ->query(fn(Builder $query, array $data): Builder => match ($data['value'] ?? null) {
-                    'solo'  => $query->whereRaw('JSON_LENGTH(employee_ids) = 1 OR employee_ids IS NULL'),
-                    'batch' => $query->whereRaw('JSON_LENGTH(employee_ids) > 1'),
-                    default => $query,
+            // ── Travel Type badge ──────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('travel_type')
+                ->label('Type')
+                ->badge()
+                ->color(fn(string $state) => match ($state) {
+                    'solo' => 'info',
+                    'batch' => 'warning',
+                    default => 'gray',
                 })
-                ->native(false)
-                ->indicator('Type'),
-
-            Tables\Filters\Filter::make('departure_period')
-                ->form([
-                    Forms\Components\DatePicker::make('departure_from')
-                        ->label('Departure From')
-                        ->native(false),
-                    Forms\Components\DatePicker::make('departure_until')
-                        ->label('Departure Until')
-                        ->native(false),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when($data['departure_from'], fn(Builder $query, $date) => $query->whereDate('departure_date', '>=', $date))
-                        ->when($data['departure_until'], fn(Builder $query, $date) => $query->whereDate('departure_date', '<=', $date));
+                ->icon(fn(string $state) => match ($state) {
+                    'solo' => 'heroicon-o-user',
+                    'batch' => 'heroicon-o-user-group',
+                    default => null,
                 })
-                ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-                    if ($data['departure_from'] ?? null) $indicators['from']  = 'Departing from ' . Carbon::parse($data['departure_from'])->toFormattedDateString();
-                    if ($data['departure_until'] ?? null) $indicators['until'] = 'Departing until ' . Carbon::parse($data['departure_until'])->toFormattedDateString();
-                    return $indicators;
+                ->formatStateUsing(fn(string $state) => match ($state) {
+                    'solo' => 'Solo',
+                    'batch' => 'Batch',
+                    default => ucfirst($state),
                 }),
 
-            Tables\Filters\TernaryFilter::make('recommended_by_assistant_director')
-                ->label('Recommended')
-                ->placeholder('All orders')
-                ->trueLabel('Recommended orders')
-                ->falseLabel('Not recommended')
-                ->indicator('Recommendation'),
+            // ── Status badge ───────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('status')
+                ->label('Status')
+                ->badge()
+                ->sortable()
+                ->color(fn(string $state) => match ($state) {
+                    'pending' => 'warning',
+                    'approved' => 'success',
+                    'rejected' => 'danger',
+                    default => 'gray',
+                })
+                ->icon(fn(string $state) => match ($state) {
+                    'pending' => 'heroicon-m-clock',
+                    'approved' => 'heroicon-m-check-circle',
+                    'rejected' => 'heroicon-m-x-circle',
+                    default => null,
+                })
+                ->formatStateUsing(fn(string $state) => ucfirst($state)),
 
-            Tables\Filters\TernaryFilter::make('approved_by_center_director')
-                ->label('Approved')
-                ->placeholder('All orders')
-                ->trueLabel('Approved orders')
-                ->falseLabel('Not approved')
-                ->indicator('Approval'),
+            // ── Submitted ─────────────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Submitted')
+                ->since()
+                ->sortable()
+                ->tooltip(fn($record) => $record->created_at->format('M d, Y h:i A'))
+                ->color('gray')
+                ->icon('heroicon-o-paper-airplane')
+                ->iconColor('gray'),
+
+            // ── Processed By ──────────────────────────────────────────────────
+            // WHY: approved_by is a FK integer. Resolved via approver() relation.
+            Tables\Columns\TextColumn::make('approver.name')
+                ->label('Processed By')
+                ->placeholder('Awaiting Review')
+                ->color('gray')
+                ->icon('heroicon-o-check-badge')
+                ->iconColor('gray')
+                ->limit(22)
+                ->tooltip(fn($record) => $record->approver?->name),
+
+            // ── Rejection remark ───────────────────────────────────────────────
+            Tables\Columns\TextColumn::make('rejection_remark')
+                ->label('Rejection Reason')
+                ->limit(40)
+                ->wrap()
+                ->placeholder('—')
+                ->color(fn($record) => filled($record?->rejection_remark) ? 'danger' : 'gray')
+                ->icon(fn($record) => filled($record?->rejection_remark) ? 'heroicon-o-exclamation-triangle' : null)
+                ->iconColor('danger')
+                ->tooltip(fn($record) => $record?->rejection_remark)
+                ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
 
-    /* ============================================================
-       CONTEXTUAL ACTIONS
-       ============================================================
-       Employee action visibility per status:
-         pending   → View
-         approved  → View, Print
-         rejected  → View, Remarks, Delete
-       Admin action visibility:
-         any       → View, Print (approved), Delete
-    */
+    // =========================================================================
+    //  FILTERS
+    //
+    //  EMPLOYEE view (1 filter card, spans full width):
+    //    All fields in one card: Status | Travel Type | Quick Select | From | To
+    //    WHY: With only 1-2 filter objects, AboveContentCollapsible renders them
+    //    vertically. Using a single card with an internal grid keeps everything
+    //    on one clean row matching the screenshot layout.
+    //
+    //  ADMIN view (3 filter cards, 3 columns):
+    //    Col 1: Employee picker
+    //    Col 2: Status & Type
+    //    Col 3: Departure Period (Quick Select + From/To)
+    // =========================================================================
 
-    protected static function getContextualActions(): array
+    protected static function getEnhancedFilters(bool $isAdmin): array
+    {
+        if (!$isAdmin) {
+            // ── EMPLOYEE: one unified card — all fields in a 2-row internal grid ─
+            return [
+                Tables\Filters\Filter::make('all_filters')
+                    ->label('Filters')
+                    ->columnSpanFull()
+                    ->form([
+                        Forms\Components\Grid::make(4)->schema([
+                            Forms\Components\Select::make('status')
+                                ->label('Status')
+                                ->native(false)
+                                ->placeholder('All statuses')
+                                ->options([
+                                    'pending' => '🕐  Pending',
+                                    'approved' => '✅  Approved',
+                                    'rejected' => '❌  Rejected',
+                                ]),
+
+                            Forms\Components\Select::make('travel_type')
+                                ->label('Travel Type')
+                                ->native(false)
+                                ->placeholder('All types')
+                                ->options([
+                                    'solo' => '👤  Solo Travel',
+                                    'batch' => '👥  Batch Travel',
+                                ]),
+
+                            Forms\Components\Select::make('preset')
+                                ->label('Quick Select')
+                                ->placeholder('— pick a period —')
+                                ->native(false)
+                                ->options([
+                                    'this_week' => '📅  This Week',
+                                    'this_month' => '📅  This Month',
+                                    'last_month' => '📅  Last Month',
+                                    'this_year' => '📅  This Year',
+                                ])
+                                ->live()
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    [$from, $to] = match ($state) {
+                                        'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                                        'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+                                        'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+                                        'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                                        default => [null, null],
+                                    };
+                                    $set('from', $from);
+                                    $set('to', $to);
+                                }),
+
+                            // spacer for 4th slot — From/To sit on the row below
+                            Forms\Components\Placeholder::make('')->label('')->columnSpan(1),
+
+                            Forms\Components\DatePicker::make('from')
+                                ->label('From')
+                                ->native(false)
+                                ->displayFormat('M d, Y')
+                                ->maxDate(fn(callable $get) => $get('to') ?? now()),
+
+                            Forms\Components\DatePicker::make('to')
+                                ->label('To')
+                                ->native(false)
+                                ->displayFormat('M d, Y')
+                                ->minDate(fn(callable $get) => $get('from')),
+                        ]),
+                    ])
+                    ->query(
+                        fn(Builder $query, array $data) => $query
+                            ->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v))
+                            ->when($data['travel_type'] ?? null, fn($q, $v) => $q->where('travel_type', $v))
+                            ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('departure_date', '>=', $d))
+                            ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('departure_date', '<=', $d))
+                    )
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        $presetLabels = [
+                            'this_week' => 'This Week',
+                            'this_month' => 'This Month',
+                            'last_month' => 'Last Month',
+                            'this_year' => 'This Year',
+                        ];
+
+                        if ($data['status'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))->removeField('status');
+                        }
+                        if ($data['travel_type'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Type: ' . ucfirst($data['travel_type']))->removeField('travel_type');
+                        }
+                        $preset = $data['preset'] ?? null;
+                        if (($data['from'] ?? null) || ($data['to'] ?? null)) {
+                            if ($preset && isset($presetLabels[$preset])) {
+                                $indicators[] = Tables\Filters\Indicator::make('Departure: ' . $presetLabels[$preset])->removeField('preset');
+                            } else {
+                                if ($data['from'] ?? null) {
+                                    $indicators[] = Tables\Filters\Indicator::make('From: ' . Carbon::parse($data['from'])->format('M d, Y'))->removeField('from');
+                                }
+                                if ($data['to'] ?? null) {
+                                    $indicators[] = Tables\Filters\Indicator::make('To: ' . Carbon::parse($data['to'])->format('M d, Y'))->removeField('to');
+                                }
+                            }
+                        }
+                        return $indicators;
+                    }),
+            ];
+        }
+
+        // ── ADMIN: 3 separate cards, one per column ────────────────────────────
+
+        // Column 1: Employee picker — filters by `name` column (not employee_name)
+        $employeeFilter = Tables\Filters\Filter::make('employee_filter')
+            ->label('Employee')
+            ->columnSpan(1)
+            ->form([
+                Forms\Components\Select::make('traveler_name')
+                    ->label('Employee')
+                    ->options(
+                        fn() => \App\Models\User::where('role', 'employee')
+                            ->orderBy('name')
+                            ->pluck('name', 'name')
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->native(false)
+                    ->placeholder('All employees'),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    // WHY: `name` is the correct column per schema (stores traveler name(s))
+                    ->when($data['traveler_name'] ?? null, fn($q, $v) => $q->where('name', 'like', "%{$v}%"))
+            )
+            ->indicateUsing(function (array $data): array {
+                if (!($data['traveler_name'] ?? null))
+                    return [];
+                return [
+                    Tables\Filters\Indicator::make('Employee: ' . $data['traveler_name'])
+                        ->removeField('traveler_name'),
+                ];
+            });
+
+        // Column 2: Status & Type
+        $statusTypeFilter = Tables\Filters\Filter::make('status_and_type')
+            ->label('Status & Type')
+            ->columnSpan(1)
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->native(false)
+                    ->placeholder('All statuses')
+                    ->options([
+                        'pending' => '🕐  Pending',
+                        'approved' => '✅  Approved',
+                        'rejected' => '❌  Rejected',
+                    ]),
+
+                Forms\Components\Select::make('travel_type')
+                    ->label('Travel Type')
+                    ->native(false)
+                    ->placeholder('All types')
+                    ->options([
+                        'solo' => '👤  Solo Travel',
+                        'batch' => '👥  Batch Travel',
+                    ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v))
+                    ->when($data['travel_type'] ?? null, fn($q, $v) => $q->where('travel_type', $v))
+            )
+            ->indicateUsing(function (array $data): array {
+                $indicators = [];
+                if ($data['status'] ?? null) {
+                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))->removeField('status');
+                }
+                if ($data['travel_type'] ?? null) {
+                    $indicators[] = Tables\Filters\Indicator::make('Type: ' . ucfirst($data['travel_type']))->removeField('travel_type');
+                }
+                return $indicators;
+            });
+
+        // Column 3: Departure Period (Quick Select + date pickers)
+        $periodFilter = Tables\Filters\Filter::make('departure_period')
+            ->label('Departure Period')
+            ->columnSpan(1)
+            ->form([
+                Forms\Components\Select::make('preset')
+                    ->label('Quick Select')
+                    ->placeholder('— pick a period —')
+                    ->native(false)
+                    ->options([
+                        'this_week' => '📅  This Week',
+                        'this_month' => '📅  This Month',
+                        'last_month' => '📅  Last Month',
+                        'this_year' => '📅  This Year',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        [$from, $to] = match ($state) {
+                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+                            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                            default => [null, null],
+                        };
+                        $set('from', $from);
+                        $set('to', $to);
+                    }),
+
+                Forms\Components\Grid::make(2)->schema([
+                    Forms\Components\DatePicker::make('from')
+                        ->label('From')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->maxDate(fn(callable $get) => $get('to') ?? now()),
+                    Forms\Components\DatePicker::make('to')
+                        ->label('To')
+                        ->native(false)
+                        ->displayFormat('M d, Y')
+                        ->minDate(fn(callable $get) => $get('from')),
+                ]),
+            ])
+            ->query(
+                fn(Builder $query, array $data) => $query
+                    ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('departure_date', '>=', $d))
+                    ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('departure_date', '<=', $d))
+            )
+            ->indicateUsing(function (array $data): array {
+                $presetLabels = [
+                    'this_week' => 'This Week',
+                    'this_month' => 'This Month',
+                    'last_month' => 'Last Month',
+                    'this_year' => 'This Year',
+                ];
+                $indicators = [];
+                $preset = $data['preset'] ?? null;
+
+                if (($data['from'] ?? null) || ($data['to'] ?? null)) {
+                    if ($preset && isset($presetLabels[$preset])) {
+                        $indicators[] = Tables\Filters\Indicator::make('Departure: ' . $presetLabels[$preset])->removeField('preset');
+                    } else {
+                        if ($data['from'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('From: ' . Carbon::parse($data['from'])->format('M d, Y'))->removeField('from');
+                        }
+                        if ($data['to'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('To: ' . Carbon::parse($data['to'])->format('M d, Y'))->removeField('to');
+                        }
+                    }
+                }
+                return $indicators;
+            });
+
+        return [$employeeFilter, $statusTypeFilter, $periodFilter];
+    }
+
+    // =========================================================================
+    //  ACTIONS
+    // =========================================================================
+
+    protected static function getContextualActions(bool $isAdmin): array
     {
         return [
             Tables\Actions\ActionGroup::make([
-
-                // ── VIEW (all roles, all statuses) ────────────────────
                 Tables\Actions\ViewAction::make()
-                    ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info'),
 
-                // ── PRINT (approved orders only) ──────────────────────
+                Tables\Actions\EditAction::make()
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->label(fn(TravelOrder $record) => $record->status === 'rejected' ? 'Revise & Resubmit' : 'Edit')
+                    ->visible(
+                        fn(TravelOrder $record) =>
+                            // Admins can edit any pending order.
+                            // Employees can only edit/revise their own rejected orders.
+                        ($isAdmin && $record->status === 'pending') ||
+                        (!$isAdmin && $record->created_by === Auth::id() && $record->status === 'rejected')
+                    ),
+
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
                     ->color('success')
-                    ->url(fn(TravelOrder $record) => route('travel-order.print', $record))
+                    ->url(fn($record) => route('travel-order.print', $record->id))
                     ->openUrlInNewTab()
                     ->visible(fn(TravelOrder $record) => $record->status === 'approved'),
 
-                // ── REMARKS (rejected orders, employee only) ──────────
-                // Read-only modal displaying the dedicated rejection_remark column.
-                Tables\Actions\Action::make('remarks')
-                    ->label('Remarks')
-                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                    ->color('danger')
-                    ->modalHeading('Rejection Remarks')
-                    ->modalDescription('The following reason was provided by the administrator for rejecting this travel order.')
-                    ->modalWidth('lg')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Close')
-                    ->form([
-                        Forms\Components\Placeholder::make('rejection_remark')
-                            ->label('Reason for Rejection')
-                            ->content(fn(TravelOrder $record) =>
-                                $record->rejection_remark ?? 'No remarks provided.'
-                            ),
-                    ])
-                    ->visible(fn(TravelOrder $record) =>
-                        Auth::user()->role === 'employee' &&
-                        $record->status === 'rejected'
-                    ),
-
-                // ── EMPLOYEE: Delete own rejected orders ───────────────
                 Tables\Actions\DeleteAction::make()
-                    ->label('Delete')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn(TravelOrder $record) =>
-                        Auth::user()->role === 'employee' &&
-                        $record->created_by === Auth::id() &&
-                        $record->status === 'rejected'
+                    ->visible(
+                        fn(TravelOrder $record) =>
+                        $isAdmin ||
+                        ($record->created_by === Auth::id() && $record->status === 'pending')
                     ),
-
-                // ── ADMIN: Delete any record ───────────────────────────
-                Tables\Actions\DeleteAction::make('adminDelete')
-                    ->label('Delete')
-                    ->icon('heroicon-o-trash')
-                    ->visible(fn(TravelOrder $record) =>
-                        Auth::user()->role === 'admin'
-                    ),
-
             ])
                 ->label('Actions')
                 ->icon('heroicon-o-ellipsis-vertical')
-                ->size('sm')
+                ->size(\Filament\Support\Enums\ActionSize::Small)
                 ->color('gray')
                 ->button(),
         ];
     }
 
-    /* ============================================================
-       HELPER METHODS
-       ============================================================ */
+    // =========================================================================
+    //  QUERY SCOPING
+    // =========================================================================
 
-    protected static function generateTravelOrderNumber(): string
+    protected static function applyScope(Builder $query, bool $isAdmin): Builder
     {
-        $monthYear  = now()->format('m-Y');
-        $lastRecord = TravelOrder::whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->latest()
-            ->first();
-        $nextNumber = $lastRecord ? ((int) substr($lastRecord->travel_order_no, -3)) + 1 : 1;
-        $number     = str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
-        return "{$monthYear}-{$number}";
+        return $isAdmin
+            ? $query->with(['creator', 'approver'])
+            : $query->with(['creator', 'approver'])->where('created_by', Auth::id());
     }
 
-    /* ============================================================
-       RESOURCE CONFIGURATION
-       ============================================================ */
+    // =========================================================================
+    //  AUTHORIZATION
+    // =========================================================================
 
-    public static function getRelations(): array
+    public static function canCreate(): bool
     {
-        return [];
+        return Auth::user()->role === 'employee';
     }
 
-    public static function getPages(): array
+    public static function canEdit($record): bool
     {
-        return [
-            'index'  => Pages\ListTravelOrders::route('/'),
-            'create' => Pages\CreateTravelOrder::route('/create'),
-            'edit'   => Pages\EditTravelOrder::route('/{record}/edit'),
-            'view'   => Pages\ViewTravelOrder::route('/{record}'),
-        ];
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return $record->status === 'pending';
+        return $record->created_by === $user->id && $record->status === 'rejected';
     }
+
+    public static function canDelete($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return true;
+        return $record->created_by === $user->id && $record->status === 'pending';
+    }
+
+    // =========================================================================
+    //  NAVIGATION BADGE
+    // =========================================================================
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin') return null;
+        if (auth()->user()?->role !== 'admin')
+            return null;
         $count = TravelOrder::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return auth()->user()?->role === 'admin' &&
-            TravelOrder::where('status', 'pending')->count() > 0
-            ? 'warning'
-            : null;
+        if (auth()->user()?->role !== 'admin')
+            return null;
+        return TravelOrder::where('status', 'pending')->count() > 0 ? 'warning' : 'success';
     }
 
-    public static function getEloquentQuery(): Builder
+    // =========================================================================
+    //  PAGES
+    // =========================================================================
+
+    public static function getPages(): array
     {
-        if (Auth::user()->role === 'admin') {
-            return parent::getEloquentQuery();
-        }
-        return parent::getEloquentQuery()->where('created_by', Auth::id());
+        return [
+            'index' => Pages\ListTravelOrders::route('/'),
+            'create' => Pages\CreateTravelOrder::route('/create'),
+            'edit' => Pages\EditTravelOrder::route('/{record}/edit'),
+            'view' => Pages\ViewTravelOrder::route('/{record}'),
+        ];
     }
 }

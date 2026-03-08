@@ -23,14 +23,11 @@ class CreateEvent extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Send notification to all employees about the new event
         $users = User::where('id', '!=', Auth::id())->get();
-
         Notification::send($users, new EventCreated($this->record));
 
-        // Optional: Send to specific users for deadline or meeting types
         if (in_array($this->record->type, ['deadline', 'meeting'])) {
-            // You can add specific logic here for urgent event types
+            // extra logic for urgent event types here if needed
         }
     }
 
@@ -39,6 +36,8 @@ class CreateEvent extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 
+    // WHY: Hide the default footer Create button and expose a header action
+    // instead — keeps the UX consistent with the rest of the project.
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()->hidden();
@@ -51,7 +50,9 @@ class CreateEvent extends CreateRecord
 
     protected function getCancelFormAction(): Action
     {
-        return parent::getCancelFormAction()->label('Cancel');
+        return parent::getCancelFormAction()
+            ->label('Cancel')
+            ->color('gray');
     }
 
     protected function getHeaderActions(): array
@@ -59,11 +60,9 @@ class CreateEvent extends CreateRecord
         return [
             Action::make('saveEvent')
                 ->label('Save Event')
-                ->icon('heroicon-o-check')
+                ->icon('heroicon-o-paper-airplane')
                 ->color('primary')
-                ->action(function () {
-                    $this->create();
-                }),
+                ->action(fn () => $this->create()),
         ];
     }
 

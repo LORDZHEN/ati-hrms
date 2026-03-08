@@ -18,17 +18,20 @@ class CreateLocatorSlip extends CreateRecord
             Actions\Action::make('create')
                 ->label('Send')
                 ->submit('create')
-                ->color('primary'),
+                ->color('primary')
+                ->icon('heroicon-o-paper-airplane'),
 
             Actions\Action::make('cancel')
                 ->label('Cancel')
                 ->url($this->getResource()::getUrl('index'))
-                ->color('secondary'),
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
         ];
     }
 
     protected function afterCreate(): void
     {
+        // Notify all admins after the record is confirmed persisted.
         $admins = User::where('role', 'admin')->get();
 
         foreach ($admins as $admin) {

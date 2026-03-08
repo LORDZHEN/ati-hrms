@@ -24,13 +24,27 @@ class CreateSaln extends CreateRecord
             Actions\Action::make('cancel')
                 ->label('Cancel')
                 ->url($this->getResource()::getUrl('index'))
-                ->color('secondary'),
+                ->color('gray'),
         ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = auth()->id();
+
+        // Normalize date_of_birth on every child so we always store Y-m-d,
+        // never the full ISO datetime Filament may pass through.
+        if (!empty($data['children'])) {
+            foreach ($data['children'] as &$child) {
+                if (!empty($child['date_of_birth'])) {
+                    try {
+                        $child['date_of_birth'] = \Carbon\Carbon::parse($child['date_of_birth'])->format('Y-m-d');
+                    } catch (\Exception $e) {
+                    }
+                }
+            }
+            unset($child);
+        }
 
         $realPropertiesTotal = collect($data['realProperties'] ?? [])->sum('current_fair_market_value');
         $personalPropertiesTotal = collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
@@ -46,13 +60,11 @@ class CreateSaln extends CreateRecord
     {
         $this->record->calculateTotals();
 
-        // Notify all admins — stored in their bell via toDatabase()
         $admins = User::where('role', 'admin')->get();
         foreach ($admins as $admin) {
             $admin->notify(new NewSalnFiled($this->record));
         }
 
-        // Flash confirmation only for the employee submitting
         \Filament\Notifications\Notification::make()
             ->title('SALN Submitted Successfully')
             ->body('Your Statement of Assets, Liabilities and Net Worth has been filed.')
@@ -64,10 +76,6 @@ class CreateSaln extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
-
-    // ============================================================
-    // LIVEWIRE METHODS FOR CHILDREN
-    // ============================================================
 
     public function addChild(): void
     {
@@ -83,23 +91,10 @@ class CreateSaln extends CreateRecord
         $this->data['children'] = array_values($children);
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR REAL PROPERTIES
-    // ============================================================
-
     public function addRealProperty(): void
     {
         $items = $this->data['realProperties'] ?? [];
-        $items[] = [
-            'description' => '',
-            'kind' => '',
-            'exact_location' => '',
-            'assessed_value' => '',
-            'current_fair_market_value' => '',
-            'acquisition_year' => '',
-            'mode_of_acquisition' => '',
-            'acquisition_cost' => '',
-        ];
+        $items[] = ['description' => '', 'kind' => '', 'exact_location' => '', 'assessed_value' => '', 'current_fair_market_value' => '', 'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => ''];
         $this->data['realProperties'] = $items;
     }
 
@@ -110,18 +105,10 @@ class CreateSaln extends CreateRecord
         $this->data['realProperties'] = array_values($items);
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR PERSONAL PROPERTIES
-    // ============================================================
-
     public function addPersonalProperty(): void
     {
         $items = $this->data['personalProperties'] ?? [];
-        $items[] = [
-            'description' => '',
-            'year_acquired' => '',
-            'acquisition_cost' => '',
-        ];
+        $items[] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
         $this->data['personalProperties'] = $items;
     }
 
@@ -132,18 +119,10 @@ class CreateSaln extends CreateRecord
         $this->data['personalProperties'] = array_values($items);
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR LIABILITIES
-    // ============================================================
-
     public function addLiability(): void
     {
         $items = $this->data['liabilities'] ?? [];
-        $items[] = [
-            'nature' => '',
-            'name_of_creditors' => '',
-            'outstanding_balance' => '',
-        ];
+        $items[] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
         $this->data['liabilities'] = $items;
     }
 
@@ -154,19 +133,10 @@ class CreateSaln extends CreateRecord
         $this->data['liabilities'] = array_values($items);
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR BUSINESS INTERESTS
-    // ============================================================
-
     public function addBusinessInterest(): void
     {
         $items = $this->data['businessInterests'] ?? [];
-        $items[] = [
-            'name_of_entity' => '',
-            'business_address' => '',
-            'nature_of_business_interest' => '',
-            'date_of_acquisition' => '',
-        ];
+        $items[] = ['name_of_entity' => '', 'business_address' => '', 'nature_of_business_interest' => '', 'date_of_acquisition' => ''];
         $this->data['businessInterests'] = $items;
     }
 
@@ -177,19 +147,10 @@ class CreateSaln extends CreateRecord
         $this->data['businessInterests'] = array_values($items);
     }
 
-    // ============================================================
-    // LIVEWIRE METHODS FOR RELATIVES IN GOVERNMENT
-    // ============================================================
-
     public function addRelativeInGovernment(): void
     {
         $items = $this->data['relativesInGovernment'] ?? [];
-        $items[] = [
-            'name_of_relative' => '',
-            'relationship' => '',
-            'position' => '',
-            'name_of_agency_office_address' => '',
-        ];
+        $items[] = ['name_of_relative' => '', 'relationship' => '', 'position' => '', 'name_of_agency_office_address' => ''];
         $this->data['relativesInGovernment'] = $items;
     }
 

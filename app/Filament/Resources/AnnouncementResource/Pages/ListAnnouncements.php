@@ -37,19 +37,19 @@ class ListAnnouncements extends ListRecords
 
             'active' => Tab::make('Active')
                 ->icon('heroicon-o-eye')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('is_active', true))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_active', true))
                 ->badge(Announcement::where('is_active', true)->count())
                 ->badgeColor('success'),
 
             'inactive' => Tab::make('Inactive')
                 ->icon('heroicon-o-eye-slash')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('is_active', false))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('is_active', false))
                 ->badge(Announcement::where('is_active', false)->count())
                 ->badgeColor('gray'),
 
             'high_priority' => Tab::make('High Priority')
                 ->icon('heroicon-o-flag')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('priority', 'high'))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('priority', 'high'))
                 ->badge(Announcement::where('priority', 'high')->count())
                 ->badgeColor('danger'),
         ];

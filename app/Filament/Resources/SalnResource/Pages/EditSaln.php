@@ -3,8 +3,12 @@
 namespace App\Filament\Resources\SalnResource\Pages;
 
 use App\Filament\Resources\SalnResource;
+use App\Models\User;
+use App\Notifications\NewSalnFiled;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Auth;
 
 class EditSaln extends EditRecord
 {
@@ -27,17 +31,33 @@ class EditSaln extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Strip admin-only fields for employees
         if (auth()->user()?->role !== 'admin') {
             unset($data['person_administering_oath']);
             unset($data['subscribed_sworn_date']);
         }
 
-        $realPropertiesTotal     = collect($data['realProperties'] ?? [])->sum('current_fair_market_value');
+        // Normalize date_of_birth on every child — the DB may store a full ISO
+        // datetime string ("2015-06-16T00:00:00.000000Z"); we always save Y-m-d.
+        if (!empty($data['children'])) {
+            foreach ($data['children'] as &$child) {
+                if (!empty($child['date_of_birth'])) {
+                    try {
+                        $child['date_of_birth'] = \Carbon\Carbon::parse($child['date_of_birth'])->format('Y-m-d');
+                    } catch (\Exception $e) {
+                    }
+                }
+            }
+            unset($child);
+        }
+
+        // Recalculate financial totals on every save
+        $realPropertiesTotal = collect($data['realProperties'] ?? [])->sum('current_fair_market_value');
         $personalPropertiesTotal = collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
 
-        $data['total_assets']      = $realPropertiesTotal + $personalPropertiesTotal;
+        $data['total_assets'] = $realPropertiesTotal + $personalPropertiesTotal;
         $data['total_liabilities'] = collect($data['liabilities'] ?? [])->sum('outstanding_balance');
-        $data['net_worth']         = $data['total_assets'] - $data['total_liabilities'];
+        $data['net_worth'] = $data['total_assets'] - $data['total_liabilities'];
 
         return $data;
     }
@@ -46,10 +66,49 @@ class EditSaln extends EditRecord
     {
         $this->record->calculateTotals();
 
-        \Filament\Notifications\Notification::make()
-            ->title('SALN Updated Successfully')
+        // -----------------------------------------------------------------------
+        //  Stamp resubmission time on BOTH columns:
+        //
+        //  resubmitted_at  — dedicated column; used by the table "Last Resubmitted"
+        //                    column and the admin notification badge.
+        //                    Requires migration: $table->timestamp('resubmitted_at')->nullable();
+        //
+        //  created_at      — also updated so any legacy "Filed" sort still works.
+        //                    updateQuietly() skips model events.
+        // -----------------------------------------------------------------------
+        $this->record->updateQuietly([
+            'resubmitted_at' => now(),
+            'created_at' => now(),
+        ]);
+
+        // Notify all admins of the updated SALN
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new NewSalnFiled($this->record));
+        }
+
+        Notification::make()
+            ->title('SALN Resubmitted Successfully')
+            ->body('Your Statement of Assets, Liabilities and Net Worth has been updated and filed.')
             ->success()
             ->send();
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Resubmit SALN')
+                ->submit('save')
+                ->color('primary')
+                ->icon('heroicon-o-paper-airplane'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
+        ];
     }
 
     protected function getRedirectUrl(): string
@@ -63,7 +122,7 @@ class EditSaln extends EditRecord
 
     public function addChild(): void
     {
-        $children   = $this->data['children'] ?? [];
+        $children = $this->data['children'] ?? [];
         $children[] = ['name' => '', 'date_of_birth' => '', 'age' => ''];
         $this->data['children'] = $children;
     }
@@ -81,17 +140,8 @@ class EditSaln extends EditRecord
 
     public function addRealProperty(): void
     {
-        $items   = $this->data['realProperties'] ?? [];
-        $items[] = [
-            'description'               => '',
-            'kind'                      => '',
-            'exact_location'            => '',
-            'assessed_value'            => '',
-            'current_fair_market_value' => '',
-            'acquisition_year'          => '',
-            'mode_of_acquisition'       => '',
-            'acquisition_cost'          => '',
-        ];
+        $items = $this->data['realProperties'] ?? [];
+        $items[] = ['description' => '', 'kind' => '', 'exact_location' => '', 'assessed_value' => '', 'current_fair_market_value' => '', 'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => ''];
         $this->data['realProperties'] = $items;
     }
 
@@ -108,12 +158,8 @@ class EditSaln extends EditRecord
 
     public function addPersonalProperty(): void
     {
-        $items   = $this->data['personalProperties'] ?? [];
-        $items[] = [
-            'description'      => '',
-            'year_acquired'    => '',
-            'acquisition_cost' => '',
-        ];
+        $items = $this->data['personalProperties'] ?? [];
+        $items[] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
         $this->data['personalProperties'] = $items;
     }
 
@@ -130,12 +176,8 @@ class EditSaln extends EditRecord
 
     public function addLiability(): void
     {
-        $items   = $this->data['liabilities'] ?? [];
-        $items[] = [
-            'nature'              => '',
-            'name_of_creditors'   => '',
-            'outstanding_balance' => '',
-        ];
+        $items = $this->data['liabilities'] ?? [];
+        $items[] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
         $this->data['liabilities'] = $items;
     }
 
@@ -152,13 +194,8 @@ class EditSaln extends EditRecord
 
     public function addBusinessInterest(): void
     {
-        $items   = $this->data['businessInterests'] ?? [];
-        $items[] = [
-            'name_of_entity'              => '',
-            'business_address'            => '',
-            'nature_of_business_interest' => '',
-            'date_of_acquisition'         => '',
-        ];
+        $items = $this->data['businessInterests'] ?? [];
+        $items[] = ['name_of_entity' => '', 'business_address' => '', 'nature_of_business_interest' => '', 'date_of_acquisition' => ''];
         $this->data['businessInterests'] = $items;
     }
 
@@ -175,13 +212,8 @@ class EditSaln extends EditRecord
 
     public function addRelativeInGovernment(): void
     {
-        $items   = $this->data['relativesInGovernment'] ?? [];
-        $items[] = [
-            'name_of_relative'              => '',
-            'relationship'                  => '',
-            'position'                      => '',
-            'name_of_agency_office_address' => '',
-        ];
+        $items = $this->data['relativesInGovernment'] ?? [];
+        $items[] = ['name_of_relative' => '', 'relationship' => '', 'position' => '', 'name_of_agency_office_address' => ''];
         $this->data['relativesInGovernment'] = $items;
     }
 

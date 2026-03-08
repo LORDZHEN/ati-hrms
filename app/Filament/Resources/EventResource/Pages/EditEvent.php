@@ -57,9 +57,9 @@ class EditEvent extends EditRecord
 
         return [
             Actions\Action::make('toggle_active')
-                ->label(fn() => $this->record->is_active ? 'Deactivate' : 'Activate')
-                ->icon(fn() => $this->record->is_active ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
-                ->color(fn() => $this->record->is_active ? 'warning' : 'success')
+                ->label(fn () => $this->record->is_active ? 'Deactivate' : 'Activate')
+                ->icon(fn () => $this->record->is_active ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
+                ->color(fn () => $this->record->is_active ? 'warning' : 'success')
                 ->action(function () {
                     $newStatus = ! $this->record->is_active;
                     $this->record->update(['is_active' => $newStatus]);
@@ -70,20 +70,17 @@ class EditEvent extends EditRecord
                     $this->refreshFormData(['is_active']);
                 })
                 ->requiresConfirmation()
-                ->modalHeading(fn() => $this->record->is_active ? 'Deactivate Event' : 'Activate Event')
-                ->modalDescription(fn() => $this->record->is_active
+                ->modalHeading(fn () => $this->record->is_active ? 'Deactivate Event' : 'Activate Event')
+                ->modalDescription(fn () => $this->record->is_active
                     ? 'This event will no longer appear on the dashboard.'
                     : 'This event will become visible on the dashboard.')
-                ->modalSubmitActionLabel(fn() => $this->record->is_active ? 'Deactivate' : 'Activate'),
+                ->modalSubmitActionLabel(fn () => $this->record->is_active ? 'Deactivate' : 'Activate'),
 
             Actions\DeleteAction::make()
                 ->icon('heroicon-o-trash'),
         ];
     }
 
-    /**
-     * Hide the "Save changes" footer button for employees.
-     */
     protected function getFormActions(): array
     {
         if (! (Auth::user()?->isAdmin() ?? false)) {

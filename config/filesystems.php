@@ -60,6 +60,19 @@ return [
             'report' => false,
         ],
 
+        // ✅ Dedicated disk for biometric CSV uploads.
+        // Writes directly to public/biometric_temp/ on disk — no symlink involved.
+        // This fixes the Windows/XAMPP issue where Storage::disk('public') fails
+        // because the storage symlink returns wrong paths for temp uploads.
+        'biometric_upload' => [
+            'driver' => 'local',
+            'root'   => public_path('biometric_temp'),
+            'url'    => env('APP_URL') . '/biometric_temp',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

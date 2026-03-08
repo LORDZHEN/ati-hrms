@@ -38,10 +38,10 @@
     /* ── BASE ── */
     .hd-root {
         font-family: 'DM Sans', sans-serif;
-        font-size: 14px;           /* FIX: anchor all rem values to 14px base */
+        font-size: 14px;
         background: var(--paper);
         min-height: 100vh;
-        padding: 1.25rem;          /* FIX: slightly tighter than 1.5rem */
+        padding: 1.25rem;
         color: var(--ink);
     }
 
@@ -54,7 +54,7 @@
         overflow: hidden;
         margin-bottom: 1.25rem;
         background: var(--ink);
-        min-height: 160px;         /* FIX: was unbounded, now capped */
+        min-height: 160px;
     }
 
     .hd-hero-bg {
@@ -97,7 +97,7 @@
     .hd-hero-content {
         position: relative;
         z-index: 2;
-        padding: 1.75rem 2rem;     /* FIX: tighter padding matching old UI */
+        padding: 1.75rem 2rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -123,7 +123,7 @@
 
     .hd-hero-name {
         font-family: 'Playfair Display', serif;
-        font-size: 1.875rem;       /* FIX: was 2.25rem — closer to old UI size */
+        font-size: 1.875rem;
         font-weight: 800;
         color: #ffffff;
         line-height: 1.15;
@@ -132,7 +132,7 @@
     }
 
     .hd-hero-sub {
-        font-size: 0.875rem;       /* FIX: was 0.9375rem */
+        font-size: 0.875rem;
         color: rgba(255,255,255,0.55);
         font-weight: 400;
     }
@@ -158,8 +158,8 @@
         background: rgba(255,255,255,0.07);
         border: 1px solid rgba(255,255,255,0.12);
         color: rgba(255,255,255,0.8);
-        font-family: 'DM Sans', sans-serif;  /* FIX: explicit font */
-        font-size: 0.75rem;        /* FIX: slightly smaller for old-UI match */
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem;
         font-weight: 600;
         padding: 0.4rem 0.875rem;
         border-radius: 999px;
@@ -190,11 +190,11 @@
         display: flex;
         align-items: center;
         gap: 0.625rem;
-        margin-bottom: 0.75rem;    /* FIX: tighter */
+        margin-bottom: 0.75rem;
     }
 
     .hd-section-icon {
-        width: 28px;               /* FIX: was 32px */
+        width: 28px;
         height: 28px;
         border-radius: 7px;
         background: linear-gradient(135deg, var(--g3), #bbf7d0);
@@ -209,10 +209,10 @@
     }
 
     .hd-section-title {
-        font-family: 'DM Sans', sans-serif;  /* FIX: was Playfair — match old UI */
-        font-size: 0.9375rem;      /* FIX: consistent with old UI */
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.9375rem;
         font-weight: 700;
-        color: var(--g);           /* FIX: green like old UI */
+        color: var(--g);
         letter-spacing: -0.01em;
     }
 
@@ -252,7 +252,7 @@
         border-radius: var(--radius);
         border: 1.5px solid var(--border);
         box-shadow: var(--shadow-sm);
-        padding: 1.25rem;          /* FIX: was 1.5rem — tighter for old-UI look */
+        padding: 1.25rem;
         transition: box-shadow 0.25s ease, border-color 0.25s ease;
     }
 
@@ -261,14 +261,14 @@
     }
 
     /* ═══════════════════════════════════════
-       WIDGET GRID (Announcements + Events row)
+       WIDGET GRID
     ═══════════════════════════════════════ */
     .hd-widget-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);  /* FIX: force 2 equal cols like old UI */
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
         margin-bottom: 1.25rem;
-        align-items: start;        /* FIX: cards don't stretch to match each other */
+        align-items: start;
     }
 
     .hd-three-grid {
@@ -281,9 +281,6 @@
 
     /* ═══════════════════════════════════════
        ADMIN OUTER LAYOUT
-       Left col (Activities + Pending) |
-       Right col (Announcements + Events)
-       Ratio: 3:2 — left gets more space
     ═══════════════════════════════════════ */
     .hd-admin-outer {
         display: grid;
@@ -306,7 +303,7 @@
     ═══════════════════════════════════════ */
     .hd-modules-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));  /* FIX: was 240px */
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 0.875rem;
         margin-bottom: 1.25rem;
     }
@@ -315,7 +312,7 @@
         background: var(--card);
         border-radius: var(--radius);
         border: 1.5px solid var(--border);
-        padding: 1.125rem;         /* FIX: was 1.375rem */
+        padding: 1.125rem;
         text-decoration: none;
         display: block;
         position: relative;
@@ -351,7 +348,7 @@
     }
 
     .hd-module-icon {
-        width: 40px;               /* FIX: was 46px */
+        width: 40px;
         height: 40px;
         border-radius: 10px;
         display: flex;
@@ -366,16 +363,16 @@
     }
 
     .hd-module-stat-badge {
-        font-size: 1.375rem;       /* FIX: was 1.5rem */
+        font-size: 1.375rem;
         font-weight: 900;
         color: var(--ink);
-        font-family: 'DM Sans', sans-serif;  /* FIX: DM Sans matches old UI numbers */
+        font-family: 'DM Sans', sans-serif;
         line-height: 1;
     }
 
     .hd-module-name {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.875rem;       /* FIX: was 0.9375rem */
+        font-size: 0.875rem;
         font-weight: 700;
         color: var(--ink);
         margin-bottom: 0.25rem;
@@ -384,7 +381,7 @@
 
     .hd-module-desc {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;        /* FIX: was 0.78125rem */
+        font-size: 0.75rem;
         color: var(--ink3);
         line-height: 1.4;
     }
@@ -408,7 +405,7 @@
     }
 
     .hd-module-arrow {
-        width: 26px;               /* FIX: was 28px */
+        width: 26px;
         height: 26px;
         border-radius: 7px;
         background: var(--g);
@@ -430,7 +427,7 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.625rem 0.75rem;  /* FIX: tighter padding */
+        padding: 0.625rem 0.75rem;
         border-radius: var(--radius-sm);
         text-decoration: none;
         transition: all 0.2s ease;
@@ -449,7 +446,7 @@
     .dark .hd-activity:hover { background: rgba(16,185,129,0.05); }
 
     .hd-activity-ico {
-        width: 34px;               /* FIX: was 38px */
+        width: 34px;
         height: 34px;
         border-radius: 9px;
         display: flex;
@@ -458,11 +455,15 @@
         flex-shrink: 0;
     }
 
+    /* FIX: Use explicit hex backgrounds (not Tailwind dynamic classes) */
     .hd-activity-ico.blue   { background: #dbeafe; }
     .hd-activity-ico.amber  { background: #fef3c7; }
     .hd-activity-ico.purple { background: #ede9fe; }
     .hd-activity-ico.rose   { background: #ffe4e6; }
     .hd-activity-ico.green  { background: #d1fae5; }
+    .hd-activity-ico.gray   { background: #f3f4f6; }
+    .hd-activity-ico.teal   { background: #ccfbf1; }
+    .hd-activity-ico.red    { background: #fee2e2; }
 
     .hd-activity-body { flex: 1; min-width: 0; }
 
@@ -501,6 +502,9 @@
     .hd-chip.purple { background: #ede9fe; color: #6d28d9; }
     .hd-chip.rose   { background: #ffe4e6; color: #9f1239; }
     .hd-chip.green  { background: #d1fae5; color: #065f46; }
+    .hd-chip.gray   { background: #f3f4f6; color: #374151; }
+    .hd-chip.teal   { background: #ccfbf1; color: #115e59; }
+    .hd-chip.red    { background: #fee2e2; color: #991b1b; }
 
     .hd-activity-date {
         font-family: 'DM Sans', sans-serif;
@@ -530,7 +534,6 @@
 
     /* ═══════════════════════════════════════
        ANNOUNCEMENT ITEMS
-       FIX: consistent font + compact padding
     ═══════════════════════════════════════ */
     .hd-announce {
         display: block;
@@ -602,7 +605,7 @@
     .hd-event {
         display: flex;
         gap: 0.75rem;
-        padding: 0.5rem 0.75rem;   /* FIX: tighter padding */
+        padding: 0.5rem 0.75rem;
         border-radius: 8px;
         text-decoration: none;
         transition: all 0.25s ease;
@@ -623,7 +626,7 @@
 
     .hd-event-cal {
         flex-shrink: 0;
-        width: 38px;               /* FIX: was 42px */
+        width: 38px;
         border-radius: 7px;
         background: linear-gradient(160deg, var(--g), #047857);
         text-align: center;
@@ -651,7 +654,7 @@
 
     .hd-event-day {
         font-family: 'DM Sans', sans-serif;
-        font-size: 1rem;           /* FIX: was 1.125rem with Playfair — use DM Sans */
+        font-size: 1rem;
         font-weight: 800;
         line-height: 1.1;
     }
@@ -686,7 +689,7 @@
         display: flex;
         align-items: center;
         gap: 0.875rem;
-        padding: 0.75rem 0.875rem;  /* FIX: tighter */
+        padding: 0.75rem 0.875rem;
         border-radius: var(--radius-sm);
         text-decoration: none;
         background: var(--paper);
@@ -715,11 +718,15 @@
         flex-shrink: 0;
     }
 
+    /* FIX: Use explicit hex backgrounds */
     .hd-pending-ico.blue   { background: #dbeafe; }
     .hd-pending-ico.amber  { background: #fef3c7; }
     .hd-pending-ico.purple { background: #ede9fe; }
     .hd-pending-ico.green  { background: #d1fae5; }
     .hd-pending-ico.rose   { background: #ffe4e6; }
+    .hd-pending-ico.gray   { background: #f3f4f6; }
+    .hd-pending-ico.teal   { background: #ccfbf1; }
+    .hd-pending-ico.red    { background: #fee2e2; }
 
     .hd-pending-body { flex: 1; }
 
@@ -760,7 +767,7 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.625rem 0.75rem;  /* FIX: tighter */
+        padding: 0.625rem 0.75rem;
         border-radius: var(--radius-sm);
         background: var(--paper);
         transition: all 0.2s ease;
@@ -787,7 +794,7 @@
     }
 
     .hd-bday-ava {
-        width: 34px;               /* FIX: was 38px */
+        width: 34px;
         height: 34px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--g2), var(--a2));
@@ -825,12 +832,10 @@
 
     /* ═══════════════════════════════════════
        EMPTY STATE
-       KEY FIX: shrink padding + icon so cards
-       don't balloon when empty (e.g. Events)
     ═══════════════════════════════════════ */
     .hd-empty {
         text-align: center;
-        padding: 1.5rem 1rem;      /* FIX: was 2.5rem 1.5rem — was doubling card height */
+        padding: 1.5rem 1rem;
         border-radius: var(--radius-sm);
         background: var(--paper);
         border: 2px dashed var(--border);
@@ -841,7 +846,7 @@
     .hd-empty-icon {
         opacity: 0.2;
         margin: 0 auto 0.625rem;
-        width: 2rem !important;    /* FIX: was w-12 (3rem) — tiny icon keeps card compact */
+        width: 2rem !important;
         height: 2rem !important;
     }
 
@@ -1030,6 +1035,25 @@
 {{-- ════════════════════════════════
      MAIN DASHBOARD
 ════════════════════════════════ --}}
+
+{{--
+    FIX: Icon color map for activity & pending icons.
+    Tailwind JIT purges dynamic class strings like "text-blue-600" built at
+    runtime. We use a PHP map instead and pass colors via inline style.
+--}}
+@php
+    $iconColorMap = [
+        'blue'   => '#2563eb',
+        'amber'  => '#d97706',
+        'purple' => '#7c3aed',
+        'rose'   => '#e11d48',
+        'green'  => '#059669',
+        'gray'   => '#6b7280',
+        'teal'   => '#0d9488',
+        'red'    => '#dc2626',
+    ];
+@endphp
+
 <div class="hd-root">
 
     {{-- ── HERO ── --}}
@@ -1158,11 +1182,9 @@
 
     {{-- ════════════════════════════════
          ADMIN VIEW
-         Layout: [Recent Activities] [Pending Actions] | [Announcements + Events stacked]
     ════════════════════════════════ --}}
     @if($user->isAdmin())
 
-        {{-- 3-col grid: activities | pending | [announcements / events] --}}
         <div class="hd-admin-outer hd-in hd-d1">
 
             {{-- Col 1: Recent Activities --}}
@@ -1175,10 +1197,13 @@
                 </div>
                 <div class="hd-section-divider"></div>
                 @forelse($recentActivities as $activity)
+                    @php $iconColor = $iconColorMap[$activity['color']] ?? '#6b7280'; @endphp
                     <a href="{{ $activity['url'] }}" class="hd-activity">
+                        {{-- FIX: icon color via inline style — avoids Tailwind purge of dynamic class strings --}}
                         <div class="hd-activity-ico {{ $activity['color'] }}">
-                            <x-dynamic-component :component="$activity['icon']"
-                                class="w-4 h-4 text-{{ $activity['color'] }}-600" />
+                            <x-dynamic-component
+                                :component="$activity['icon']"
+                                style="width:1rem;height:1rem;color:{{ $iconColor }};flex-shrink:0;" />
                         </div>
                         <div class="hd-activity-body">
                             <div class="hd-activity-name">{{ $activity['employee'] }}</div>
@@ -1210,10 +1235,13 @@
                 </div>
                 <div class="hd-section-divider"></div>
                 @forelse($pendingActions as $action)
+                    @php $iconColor = $iconColorMap[$action['color']] ?? '#6b7280'; @endphp
                     <a href="{{ route($action['route']) }}" class="hd-pending">
+                        {{-- FIX: icon color via inline style --}}
                         <div class="hd-pending-ico {{ $action['color'] }}">
-                            <x-dynamic-component :component="$action['icon']"
-                                class="w-5 h-5 text-{{ $action['color'] }}-600" />
+                            <x-dynamic-component
+                                :component="$action['icon']"
+                                style="width:1.25rem;height:1.25rem;color:{{ $iconColor }};flex-shrink:0;" />
                         </div>
                         <div class="hd-pending-body">
                             <div class="hd-pending-title">{{ $action['title'] }}</div>

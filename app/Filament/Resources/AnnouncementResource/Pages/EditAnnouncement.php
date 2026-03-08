@@ -21,8 +21,9 @@ class EditAnnouncement extends EditRecord
      */
     protected function authorizeAccess(): void
     {
-        // Let everyone through — canEdit() on the resource already returns true for all.
-        // We just skip the default Filament authorization so employees aren't bounced.
+        // Let everyone through — canEdit() on the resource already returns
+        // true for all authenticated users. Employees are blocked server-side
+        // inside mutateFormDataBeforeSave() below.
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -102,9 +103,6 @@ class EditAnnouncement extends EditRecord
         ];
     }
 
-    /**
-     * Hide the default "Save changes" footer button for employees.
-     */
     protected function getFormActions(): array
     {
         if (!(Auth::user()?->isAdmin() ?? false)) {

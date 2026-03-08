@@ -52,12 +52,12 @@ class AnnouncementResource extends Resource
     }
 
     /* ============================================================
-       FORM
+       FORM  (unchanged)
        ============================================================ */
 
     public static function form(Form $form): Form
     {
-        $isEmployee = ! (Auth::user()?->isAdmin() ?? false);
+        $isEmployee = !(Auth::user()?->isAdmin() ?? false);
 
         return $form->schema([
             Forms\Components\Placeholder::make('readonly_notice')
@@ -70,15 +70,36 @@ class AnnouncementResource extends Resource
                         Forms\Components\TextInput::make('title')->required()->maxLength(255)->placeholder('Enter announcement title...')->columnSpanFull()->disabled($isEmployee),
                         Forms\Components\Textarea::make('message')->required()->rows(6)->placeholder('Write your announcement message here...')->columnSpanFull()->disabled($isEmployee),
                     ])
-                    ->heading('Announcement Content')
-                    ->description($isEmployee ? 'This announcement was posted by an administrator.' : 'Write a clear and concise announcement for your employees.')
-                    ->icon('heroicon-o-pencil-square'),
+                        ->heading('Announcement Content')
+                        ->description($isEmployee ? 'This announcement was posted by an administrator.' : 'Write a clear and concise announcement for your employees.')
+                        ->icon('heroicon-o-pencil-square'),
 
                     Forms\Components\Section::make()->schema([
-                        Forms\Components\DatePicker::make('publish_date')->label('Publish Date')->placeholder('Publish immediately')->helperText('Leave empty to publish right away.')->prefixIcon('heroicon-o-calendar')->disabled($isEmployee),
-                        Forms\Components\DatePicker::make('expiry_date')->label('Expiry Date')->placeholder('No expiration')->helperText('Leave empty to keep it active indefinitely.')->prefixIcon('heroicon-o-calendar-days')->after('publish_date')->disabled($isEmployee),
+                        Forms\Components\DatePicker::make('publish_date')
+                            ->label('Publish Date')
+                            ->placeholder('Publish immediately')
+                            ->helperText('Leave empty to publish right away.')
+                            ->prefixIcon('heroicon-o-calendar')
+                            ->disabled($isEmployee)
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                // Auto-set expiry to the day after publish date.
+                                // The user can still change it manually afterwards.
+                                if ($state) {
+                                    $set('expiry_date', \Carbon\Carbon::parse($state)->addDay()->toDateString());
+                                }
+                            }),
+                        Forms\Components\DatePicker::make('expiry_date')
+                            ->label('Expiry Date')
+                            ->placeholder('No expiration')
+                            ->helperText('Auto-set to 1 day after publish date. Adjust as needed.')
+                            ->prefixIcon('heroicon-o-calendar-days')
+                            ->after('publish_date')
+                            ->disabled($isEmployee)
+                            ->native(false),
                     ])
-                    ->heading('Publishing Schedule')->description('Control when this announcement is visible.')->icon('heroicon-o-clock')->columns(2),
+                        ->heading('Publishing Schedule')->description('Control when this announcement is visible.')->icon('heroicon-o-clock')->columns(2),
                 ])->columnSpan(2),
 
                 Forms\Components\Group::make()->schema([
@@ -97,16 +118,19 @@ class AnnouncementResource extends Resource
                     Forms\Components\Section::make()->schema([
                         Forms\Components\Select::make('duration_hours')->label('Auto-Expire After')->options(Announcement::getDurationOptions())->default('')->native(false)->helperText('Automatically deactivate this announcement after the selected time from now.')->columnSpanFull()->dehydrated(false)
                             ->afterStateHydrated(function ($component, $record) {
-                                if ($record && $record->expires_at && $record->expires_at->isFuture()) $component->state('');
+                                if ($record && $record->expires_at && $record->expires_at->isFuture())
+                                    $component->state('');
                             }),
                         Forms\Components\Placeholder::make('expires_at_label')->label('Current Auto-Expire')
                             ->content(function ($record): string {
-                                if (!$record || !$record->expires_at) return 'Not set (manual control)';
-                                if ($record->expires_at->isPast()) return '⛔ Expired — ' . $record->expires_at->format('M d, Y g:i A');
+                                if (!$record || !$record->expires_at)
+                                    return 'Not set (manual control)';
+                                if ($record->expires_at->isPast())
+                                    return '⛔ Expired — ' . $record->expires_at->format('M d, Y g:i A');
                                 return '⏱ ' . $record->expires_at->diffForHumans() . ' (' . $record->expires_at->format('M d, Y g:i A') . ')';
                             })
                             ->visible(fn($record) => $record !== null),
-                ])->heading('Auto-Expire')->description('Set a countdown timer to deactivate automatically.')->icon('heroicon-o-clock')->hidden($isEmployee),
+                    ])->heading('Auto-Expire')->description('Set a countdown timer to deactivate automatically.')->icon('heroicon-o-clock')->hidden($isEmployee),
                 ])->columnSpan(1),
             ]),
         ]);
@@ -176,7 +200,7 @@ class AnnouncementResource extends Resource
 
                     Tables\Actions\DeleteAction::make()
                         ->icon('heroicon-o-trash')->visible($isAdmin),
-                ])->label('Actions')->icon('heroicon-o-ellipsis-vertical')->size('sm')->color('gray')->button(),
+                ])->label('Actions')->icon('heroicon-o-ellipsis-vertical')->size(\Filament\Support\Enums\ActionSize::Small)->color('gray')->button(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -210,21 +234,36 @@ class AnnouncementResource extends Resource
                     Tables\Columns\TextColumn::make('title')
                         ->label('Title')
                         ->searchable()->sortable()
-                        ->weight('bold')
+                        ->weight(\Filament\Support\Enums\FontWeight::Bold)
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Large)
                         ->icon('heroicon-o-megaphone')->iconColor('primary'),
 
                     Tables\Columns\TextColumn::make('message')
                         ->label('Message')
-                        ->size('sm')->color('gray')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')
                         ->limit(80)->wrap()
                         ->formatStateUsing(fn($state) => Str::limit($state, 80)),
 
-                    Tables\Columns\BadgeColumn::make('priority')
+                    // WHY: BadgeColumn was removed in Filament v3. Use
+                    // TextColumn->badge() with ->color() and ->icon() closures.
+                    Tables\Columns\TextColumn::make('priority')
                         ->label('Priority')
-                        ->colors(['danger' => 'high', 'warning' => 'medium', 'success' => 'low'])
-                        ->icons(['heroicon-m-arrow-up' => 'high', 'heroicon-m-minus' => 'medium', 'heroicon-m-arrow-down' => 'low'])
-                        ->sortable(),
+                        ->badge()
+                        ->sortable()
+                        ->color(fn(string $state) => match ($state) {
+                            'high' => 'danger',
+                            'medium' => 'warning',
+                            'low' => 'success',
+                            default => 'gray',
+                        })
+                        ->icon(fn(string $state) => match ($state) {
+                            'high' => 'heroicon-m-arrow-up',
+                            'medium' => 'heroicon-m-minus',
+                            'low' => 'heroicon-m-arrow-down',
+                            default => null,
+                        })
+                        ->formatStateUsing(fn(string $state) => ucfirst($state)),
                 ])->space(1),
 
                 // Middle: Schedule Info
@@ -233,20 +272,23 @@ class AnnouncementResource extends Resource
                         ->label('Published')
                         ->date('M d, Y')->placeholder('Immediately')
                         ->icon('heroicon-m-calendar')->iconColor('gray')
-                        ->size('sm')->color('gray')->sortable(),
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')->sortable(),
 
                     Tables\Columns\TextColumn::make('expiry_date')
                         ->label('Expires')
                         ->date('M d, Y')->placeholder('No expiry')
                         ->icon('heroicon-m-calendar-days')->iconColor('gray')
-                        ->size('sm')->color('gray')->sortable(),
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->color('gray')->sortable(),
 
                     Tables\Columns\TextColumn::make('expires_at')
                         ->label('Auto-Expires')
                         ->dateTime('M d, Y g:i A')->placeholder('—')
                         ->icon('heroicon-m-clock')
                         ->color(fn($record) => $record->expires_at?->isPast() ? 'danger' : 'warning')
-                        ->size('sm')->sortable()
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->sortable()
                         ->visible($isAdmin),
                 ])->space(1),
 
@@ -262,13 +304,17 @@ class AnnouncementResource extends Resource
                     Tables\Columns\TextColumn::make('creator.name')
                         ->label('Created By')
                         ->icon('heroicon-m-user-circle')->iconColor('gray')
-                        ->color('gray')->size('sm')->sortable()
+                        ->color('gray')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->sortable()
                         ->visible($isAdmin),
 
                     Tables\Columns\TextColumn::make('created_at')
                         ->label('Posted')
-                        ->since()->color('gray')->size('sm')->sortable(),
-                ])->space(1)->alignment('end'),
+                        ->since()->color('gray')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Small)
+                        ->sortable(),
+                ])->space(1)->alignment(\Filament\Support\Enums\Alignment::End),
             ])->from('md'),
         ];
     }
@@ -281,9 +327,9 @@ class AnnouncementResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListAnnouncements::route('/'),
+            'index' => Pages\ListAnnouncements::route('/'),
             'create' => Pages\CreateAnnouncement::route('/create'),
-            'edit'   => Pages\EditAnnouncement::route('/{record}/edit'),
+            'edit' => Pages\EditAnnouncement::route('/{record}/edit'),
         ];
     }
 

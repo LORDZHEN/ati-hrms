@@ -18,7 +18,6 @@ class CreateAnnouncement extends CreateRecord
     {
         $data['created_by'] = Auth::id();
 
-        // Convert the virtual duration_hours selector to a real expires_at timestamp.
         $hours = $this->form->getRawState()['duration_hours'] ?? null;
 
         if ($hours !== null && $hours !== '') {
@@ -32,15 +31,12 @@ class CreateAnnouncement extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Send notification to all employees about the new announcement
         $users = User::where('id', '!=', Auth::id())->get();
-
         Notification::send($users, new AnnouncementCreated($this->record));
 
-        // Optional: Send to admins only for high priority announcements
         if ($this->record->priority === 'high') {
             $admins = User::where('role', 'admin')->get();
-            // You can send a different notification or add extra logic here
+            // extra high-priority logic here if needed
         }
     }
 
@@ -49,6 +45,9 @@ class CreateAnnouncement extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 
+    // WHY: Hide the default footer Create button and expose a header action
+    // instead — keeps the UX consistent with the rest of the project where
+    // the primary action sits in the page header, not the form footer.
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()->hidden();
@@ -61,7 +60,9 @@ class CreateAnnouncement extends CreateRecord
 
     protected function getCancelFormAction(): Action
     {
-        return parent::getCancelFormAction()->label('Cancel');
+        return parent::getCancelFormAction()
+            ->label('Cancel')
+            ->color('gray');
     }
 
     protected function getHeaderActions(): array
@@ -69,11 +70,9 @@ class CreateAnnouncement extends CreateRecord
         return [
             Action::make('saveAnnouncement')
                 ->label('Save Announcement')
-                ->icon('heroicon-o-check')
+                ->icon('heroicon-o-paper-airplane')
                 ->color('primary')
-                ->action(function () {
-                    $this->create();
-                }),
+                ->action(fn() => $this->create()),
         ];
     }
 

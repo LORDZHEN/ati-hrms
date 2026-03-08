@@ -3,12 +3,11 @@
 namespace App\Filament\Resources\TravelOrderResource\Pages;
 
 use App\Filament\Resources\TravelOrderResource;
-use App\Models\TravelOrder;
-use App\Notifications\TravelOrderSubmitted;
 use App\Models\User;
+use App\Notifications\TravelOrderSubmitted;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
 class EditTravelOrder extends EditRecord
@@ -18,9 +17,12 @@ class EditTravelOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            // Employees can only delete their own rejected orders from the edit page
+            // WHY: Only show Delete on the edit page for employees who own a
+            // rejected order. canDelete() on the Resource enforces the same
+            // rule at the model layer (defence-in-depth).
             Actions\DeleteAction::make()
-                ->visible(fn() =>
+                ->visible(
+                    fn() =>
                     Auth::user()->role === 'employee' &&
                     $this->record->created_by === Auth::id() &&
                     $this->record->status === 'rejected'
@@ -30,8 +32,9 @@ class EditTravelOrder extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Resubmit to pending and clear the rejection remark
-        $data['status']           = 'pending';
+        // WHY: Editing a rejected order is a resubmission — reset to pending
+        // and clear the rejection remark so the admin reviews fresh.
+        $data['status'] = 'pending';
         $data['rejection_remark'] = null;
 
         return $data;
@@ -39,9 +42,10 @@ class EditTravelOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        $adminUsers = User::where('role', 'admin')->get();
+        // Notify all admins that this order has been revised and resubmitted.
+        $admins = User::where('role', 'admin')->get();
 
-        foreach ($adminUsers as $admin) {
+        foreach ($admins as $admin) {
             $admin->notify(new TravelOrderSubmitted($this->record));
         }
 
@@ -50,6 +54,23 @@ class EditTravelOrder extends EditRecord
             ->body('Your travel order has been updated and resubmitted for review.')
             ->success()
             ->send();
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Resubmit')
+                ->submit('save')
+                ->color('primary')
+                ->icon('heroicon-o-paper-airplane'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
+        ];
     }
 
     protected function getRedirectUrl(): string

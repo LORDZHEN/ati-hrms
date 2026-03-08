@@ -5,40 +5,28 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Employee Comprehensive Report</title>
     <style>
-        /*
-        ┌──────────────────────────────────────────────────────────────────┐
-        │  DomPDF CSS CONSTRAINTS                                          │
-        │  · No flexbox / CSS Grid  →  use <table> for multi-column layout │
-        │  · No @import / web fonts  →  use 'DejaVu Sans' (bundled)        │
-        │  · border-radius: partially supported                            │
-        │  · position:fixed works for repeating headers/footers            │
-        │  · Images: use public_path(), NOT asset()                        │
-        └──────────────────────────────────────────────────────────────────┘
-        */
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.6;
             color: #1f2937;
             background: #ffffff;
         }
 
-        /* ── Page wrapper ──────────────────────────────────────────── */
-        .page { padding: 28px 32px 50px; }
+        .page { padding: 28px 32px 60px; }
 
-        /* ── Running footer on every page ──────────────────────────── */
+        /* ── Running footer ──────────────────────────────────────────── */
         .page-footer {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            padding: 5px 32px;
+            padding: 6px 32px;
             border-top: 1px solid #d1d5db;
         }
 
         .page-footer table { width: 100%; }
-        .page-footer td { border: none; padding: 0; font-size: 8.5px; color: #6b7280; }
+        .page-footer td { border: none; padding: 0; font-size: 9px; color: #6b7280; }
 
         /* ── Report header ─────────────────────────────────────────── */
         .report-header {
@@ -49,24 +37,20 @@
 
         .republic-label {
             text-align: center;
-            font-size: 8.5px;
+            font-size: 9.5px;
             letter-spacing: 0.07em;
             color: #4b5563;
             text-transform: uppercase;
             margin-bottom: 8px;
         }
 
-        /* logo / title row */
         .header-layout { width: 100%; }
         .header-layout td { border: none; padding: 0; vertical-align: middle; }
-
-        .logo-cell { width: 66px; text-align: center; }
-        .logo-cell img { height: 56px; width: auto; }
 
         .title-cell { text-align: center; padding: 0 10px; }
 
         .org-name {
-            font-size: 16px;
+            font-size: 17px;
             font-weight: bold;
             color: #1a3a5c;
             letter-spacing: 0.03em;
@@ -74,23 +58,23 @@
         }
 
         .org-branch {
-            font-size: 10.5px;
+            font-size: 12px;
             font-weight: bold;
             color: #2c5f8a;
             letter-spacing: 0.04em;
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
         .header-contact {
             text-align: center;
-            font-size: 9px;
+            font-size: 10px;
             color: #4b5563;
             margin-top: 6px;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         /* ── Report title ──────────────────────────────────────────── */
-        .title-block { text-align: center; margin: 12px 0 11px; }
+        .title-block { text-align: center; margin: 12px 0 12px; }
 
         .title-block h1 {
             font-size: 15px;
@@ -111,13 +95,13 @@
         .meta-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 13px;
             border: 1px solid #d1d5db;
         }
 
         .meta-table td {
             background: #f8f9fb;
-            padding: 5px 9px;
+            padding: 6px 10px;
             text-align: center;
             border-right: 1px solid #d1d5db;
             vertical-align: middle;
@@ -125,51 +109,27 @@
 
         .meta-table td:last-child { border-right: none; }
 
-        .ml { display: block; font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 1px; }
-        .mv { font-size: 9.5px; font-weight: bold; color: #1a3a5c; }
+        .ml { display: block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; }
+        .mv { font-size: 10.5px; font-weight: bold; color: #1a3a5c; }
 
         /* ── Summary block ─────────────────────────────────────────── */
         .summary-block {
             background: #f8f9fb;
             border-left: 4px solid #1a3a5c;
-            padding: 9px 12px;
-            margin-bottom: 12px;
-            font-size: 10.5px;
-            line-height: 1.7;
+            padding: 10px 13px;
+            margin-bottom: 13px;
+            font-size: 11.5px;
+            line-height: 1.85;
+            text-align: justify;
         }
 
         .summary-block strong { color: #1a3a5c; }
 
-        /* ── Stats row ─────────────────────────────────────────────── */
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 16px;
-        }
-
-        .stats-table td {
-            border: 1px solid #d1d5db;
-            padding: 9px 6px;
-            text-align: center;
-            background: #ffffff;
-            vertical-align: middle;
-        }
-
-        /* small spacing between cells via a gap column */
-        .stats-table td.gap { border: none; width: 8px; background: transparent; }
-
-        .s-num { font-size: 22px; font-weight: bold; color: #1a3a5c; line-height: 1; }
-        .s-num.active   { color: #1a6b3a; }
-        .s-num.pending  { color: #7a4f00; }
-        .s-num.inactive { color: #8b1a1a; }
-
-        .s-lbl { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 3px; }
-
         /* ── Section header ────────────────────────────────────────── */
         .sec-hdr { width: 100%; border-collapse: collapse; border-bottom: 2px solid #1a3a5c; margin-bottom: 7px; }
         .sec-hdr td { border: none; padding: 0 0 4px; vertical-align: bottom; }
-        .sec-title { font-size: 11.5px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
-        .sec-count { font-size: 9px; font-weight: bold; color: #6b7280; text-align: right; }
+        .sec-title { font-size: 12.5px; font-weight: bold; color: #1a3a5c; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sec-count { font-size: 10px; font-weight: bold; color: #6b7280; text-align: right; }
 
         /* ── Employee table ────────────────────────────────────────── */
         .emp-table {
@@ -185,7 +145,7 @@
             color: #ffffff;
             padding: 6px 8px;
             text-align: left;
-            font-size: 8.5px;
+            font-size: 9px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -199,16 +159,16 @@
 
         .emp-table td { padding: 6px 8px; vertical-align: middle; }
 
-        .row-num  { color: #9ca3af; font-size: 8.5px; }
+        .row-num  { color: #9ca3af; font-size: 9px; }
         .emp-id   { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #2c5f8a; font-weight: bold; }
         .emp-name { font-weight: bold; color: #1f2937; }
 
         /* ── Badges ────────────────────────────────────────────────── */
         .badge {
             display: inline-block;
-            padding: 1px 6px;
+            padding: 2px 7px;
             border-radius: 8px;
-            font-size: 8px;
+            font-size: 8.5px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.03em;
@@ -228,26 +188,25 @@
             text-align: center;
             padding: 28px 20px;
             color: #6b7280;
-            font-size: 11px;
+            font-size: 11.5px;
             border: 1px dashed #d1d5db;
             margin-bottom: 22px;
         }
 
         /* ── Signature section ─────────────────────────────────────── */
-        .sig-section { margin-top: 28px; border-top: 1px solid #d1d5db; padding-top: 18px; page-break-inside: avoid; }
+        .sig-section { margin-top: 30px; border-top: 1px solid #d1d5db; padding-top: 18px; page-break-inside: avoid; }
         .sig-table { width: 100%; }
-        .sig-table td { width: 33.33%; text-align: center; padding: 0 8px; vertical-align: top; border: none; }
+        .sig-table td { width: 33.33%; text-align: center; padding: 0 10px; vertical-align: top; border: none; }
 
-        .sig-label { display: block; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 34px; }
-
-        .sig-line { border-top: 1.5px solid #374151; padding-top: 4px; margin: 0 6px; }
-        .sig-name  { font-size: 10.5px; font-weight: bold; color: #1a3a5c; }
-        .sig-title { font-size: 9px; color: #4b5563; margin-top: 2px; }
+        .sig-label { display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.07em; color: #6b7280; margin-bottom: 36px; }
+        .sig-line  { border-top: 1.5px solid #374151; padding-top: 5px; margin: 0 6px; }
+        .sig-name  { font-size: 11.5px; font-weight: bold; color: #1a3a5c; }
+        .sig-title { font-size: 10px; color: #4b5563; margin-top: 2px; }
     </style>
 </head>
 <body>
 
-{{-- ── Running page footer ─────────────────────────────────────────── --}}
+{{-- Running footer --}}
 <div class="page-footer">
     <table>
         <tr>
@@ -260,7 +219,7 @@
 
 <div class="page">
 
-    {{-- ───────────────────────── HEADER ───────────────────────────── --}}
+    {{-- HEADER --}}
     <div class="report-header">
         <div class="republic-label">Republic of the Philippines &bull; Department of Agriculture</div>
 
@@ -281,13 +240,13 @@
         </div>
     </div>
 
-    {{-- ─────────────────────── REPORT TITLE ───────────────────────── --}}
+    {{-- TITLE --}}
     <div class="title-block">
         <h1>Employee Comprehensive Report</h1>
         <hr class="title-hr">
     </div>
 
-    {{-- ──────────────────────── META BAR ──────────────────────────── --}}
+    {{-- META BAR --}}
     @if($from && $to)
     <table class="meta-table">
         <tr>
@@ -315,7 +274,7 @@
     </table>
     @endif
 
-    {{-- ──────────────────── COMPUTED COUNTS ───────────────────────── --}}
+    {{-- COMPUTED COUNTS --}}
     @php
         $count         = $employees->count();
         $activeCount   = $employees->where('status', 'active')->count();
@@ -324,64 +283,20 @@
         $verifiedCount = $employees->filter(fn($e) => !is_null($e->email_verified_at))->count();
     @endphp
 
-    {{-- ──────────────────────── SUMMARY ───────────────────────────── --}}
+    {{-- SUMMARY --}}
     <div class="summary-block">
         @if($status === 'active')
-            As of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong>, there are a total of
-            <strong>{{ $count }}</strong> active employee accounts on record.
-            These personnel are currently engaged across various departments and positions within the organization.
-            This report provides a detailed overview of the active workforce during the selected period.
+            This report presents the consolidated roster of active personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. As of the date of this report, a total of <strong>{{ $count }}</strong> employee accounts are recorded with an <strong>active</strong> status in the Human Resource Management System. These personnel are currently engaged and performing their respective duties and responsibilities across various departments and functional units within the organization. This document is prepared for official workforce monitoring, administrative reference, and compliance purposes.
         @elseif($status === 'inactive')
-            As of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong>, there are
-            <strong>{{ $count }}</strong> inactive employee accounts in the system.
-            These individuals are currently not active due to resignation, termination, or temporary deactivation.
-            This report summarizes their status within the selected period.
+            This report presents the consolidated records of inactive personnel under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. A total of <strong>{{ $count }}</strong> employee account(s) currently carry an <strong>inactive</strong> status in the Human Resource Management System. These individuals are no longer actively engaged due to resignation, retirement, termination, or administrative deactivation. This report is issued for official records management, audit trail, and human resource planning purposes.
         @elseif($status === 'pending')
-            As of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong>, there are
-            <strong>{{ $count }}</strong> employee accounts pending approval.
-            These accounts are awaiting administrative verification before system access can be granted.
+            This report presents the consolidated records of employee accounts pending administrative approval under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. As of the date of generation of this report, a total of <strong>{{ $count }}</strong> employee account(s) remain in <strong>pending</strong> status, awaiting verification and activation by the designated system administrator. The concerned Human Resource Management Officer is hereby advised to process these accounts in a timely manner in accordance with established onboarding procedures.
         @else
-            Between <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> and
-            <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>,
-            a total of <strong>{{ $count }}</strong> employee accounts are recorded in the system.
-            Of these, <strong>{{ $activeCount }}</strong> are active,
-            <strong>{{ $pendingCount }}</strong> are pending approval, and
-            <strong>{{ $inactiveCount }}</strong> are inactive.
-            The following section provides comprehensive details for each employee within this period.
+            This report presents the comprehensive roster of personnel on record under the Agricultural Training Institute — Regional Training Center XI (ATI-RTC XI) for the reference period of <strong>{{ \Carbon\Carbon::parse($from)->format('F d, Y') }}</strong> to <strong>{{ \Carbon\Carbon::parse($to)->format('F d, Y') }}</strong>. During the said period, a total of <strong>{{ $count }}</strong> employee accounts are recorded in the Human Resource Management System. Of these, <strong>{{ $activeCount }}</strong> are currently active and performing their assigned duties, <strong>{{ $pendingCount }}</strong> are pending administrative verification and activation, and <strong>{{ $inactiveCount }}</strong> have been deactivated due to separation, retirement, or other administrative grounds. Furthermore, <strong>{{ $verifiedCount }}</strong> accounts have verified email addresses on record. This document is prepared for official workforce monitoring, compliance, and administrative reference purposes.
         @endif
     </div>
 
-    {{-- ────────────────────────── STATS ───────────────────────────── --}}
-    <table class="stats-table">
-        <tr>
-            <td>
-                <div class="s-num">{{ $count }}</div>
-                <div class="s-lbl">Total</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num active">{{ $activeCount }}</div>
-                <div class="s-lbl">Active</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num pending">{{ $pendingCount }}</div>
-                <div class="s-lbl">Pending</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num inactive">{{ $inactiveCount }}</div>
-                <div class="s-lbl">Inactive</div>
-            </td>
-            <td class="gap"></td>
-            <td>
-                <div class="s-num">{{ $verifiedCount }}</div>
-                <div class="s-lbl">Verified Email</div>
-            </td>
-        </tr>
-    </table>
-
-    {{-- ─────────────────────── SECTION HEADER ─────────────────────── --}}
+    {{-- SECTION HEADER --}}
     <table class="sec-hdr">
         <tr>
             <td class="sec-title">Employee Records</td>
@@ -389,7 +304,7 @@
         </tr>
     </table>
 
-    {{-- ──────────────────────── EMPLOYEE TABLE ────────────────────── --}}
+    {{-- EMPLOYEE TABLE --}}
     @if($count > 0)
     <table class="emp-table">
         <thead>
@@ -445,7 +360,7 @@
     </div>
     @endif
 
-    {{-- ──────────────────────── SIGNATURES ───────────────────────── --}}
+    {{-- SIGNATURES --}}
     <div class="sig-section">
         <table class="sig-table">
             <tr>
@@ -474,6 +389,6 @@
         </table>
     </div>
 
-</div>{{-- /.page --}}
+</div>
 </body>
 </html>
