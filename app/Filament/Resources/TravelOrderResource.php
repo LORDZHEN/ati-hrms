@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TravelOrderResource\Pages;
 use App\Models\TravelOrder;
+use App\Models\User;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -25,6 +26,45 @@ class TravelOrderResource extends Resource
     protected static ?string $pluralModelLabel = 'Travel Orders';
     protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 4;
+
+    // =========================================================================
+    //  ACCESS CONTROL — Hide entirely from Job Order users
+    // =========================================================================
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    // =========================================================================
+    //  AUTHORIZATION
+    // =========================================================================
+
+    public static function canCreate(): bool
+    {
+        return Auth::user()->role === User::ROLE_REGULAR;
+    }
+
+    public static function canEdit($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return $record->status === 'pending';
+        return $record->created_by === $user->id && $record->status === 'rejected';
+    }
+
+    public static function canDelete($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return true;
+        return $record->created_by === $user->id && $record->status === 'pending';
+    }
 
     // =========================================================================
     //  FORM
@@ -73,7 +113,7 @@ class TravelOrderResource extends Resource
                         'rejected' => 'Rejected',
                     ])
                     ->default('pending')
-                    ->disabled(fn() => Auth::user()->role === 'employee')
+                    ->disabled(fn() => Auth::user()->role === User::ROLE_REGULAR)
                     ->native(false)
                     ->prefixIcon('heroicon-o-information-circle')
                     ->columnSpan(1),
@@ -123,7 +163,6 @@ class TravelOrderResource extends Resource
                 Forms\Components\Hidden::make('position')
                     ->default(fn() => auth()->user()->position),
 
-                // Column: station (per schema)
                 Forms\Components\TextInput::make('station')
                     ->label('Work Station/Office')
                     ->placeholder('e.g., Main Office, Branch Office')
@@ -131,7 +170,6 @@ class TravelOrderResource extends Resource
                     ->prefixIcon('heroicon-o-building-office')
                     ->columnSpan(1),
 
-                // Column: salary_per_annum (per schema)
                 Forms\Components\TextInput::make('salary_per_annum')
                     ->label('Annual Salary')
                     ->numeric()
@@ -180,7 +218,6 @@ class TravelOrderResource extends Resource
                     ->maxLength(255)
                     ->columnSpan(1),
 
-                // Column: purpose_of_trip (per schema)
                 Forms\Components\Textarea::make('purpose_of_trip')
                     ->label('Purpose of Travel')
                     ->placeholder('Provide detailed information about the purpose, activities, and expected outcomes of this travel...')
@@ -200,14 +237,13 @@ class TravelOrderResource extends Resource
             ->description('Select employees included in this travel order')
             ->icon('heroicon-o-user-group')
             ->schema([
-                // Column: employee_ids (JSON array of user IDs per schema)
                 Forms\Components\Select::make('employee_ids')
                     ->label('Select Employees')
                     ->multiple()
                     ->searchable()
                     ->preload()
                     ->options(
-                        fn() => \App\Models\User::where('role', 'employee')
+                        fn() => \App\Models\User::where('role', User::ROLE_REGULAR)
                             ->orderBy('name')
                             ->pluck('name', 'id')
                             ->toArray()
@@ -262,7 +298,6 @@ class TravelOrderResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // Computed once — prevents repeated auth lookups in every closure.
         $isAdmin = Auth::user()->role === 'admin';
 
         return $table
@@ -306,7 +341,6 @@ class TravelOrderResource extends Resource
     protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            // ── Order No. ─────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('travel_order_no')
                 ->label('Order No.')
                 ->searchable()
@@ -319,7 +353,6 @@ class TravelOrderResource extends Resource
                 ->copyMessage('Copied!')
                 ->copyMessageDuration(1200),
 
-            // ── Traveler — admin only ──────────────────────────────────────────
             Tables\Columns\TextColumn::make('name')
                 ->label('Traveler(s)')
                 ->searchable()
@@ -329,7 +362,6 @@ class TravelOrderResource extends Resource
                 ->iconColor('primary')
                 ->visible($isAdmin),
 
-            // ── Destination ───────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('destination')
                 ->label('Destination')
                 ->searchable()
@@ -338,7 +370,6 @@ class TravelOrderResource extends Resource
                 ->icon('heroicon-o-map-pin')
                 ->iconColor('warning'),
 
-            // ── Travel Period (Departure → Return) ────────────────────────────
             Tables\Columns\TextColumn::make('departure_date')
                 ->label('Travel Period')
                 ->sortable()
@@ -351,7 +382,6 @@ class TravelOrderResource extends Resource
                     . Carbon::parse($record->return_date)->format('M d, Y')
                 ),
 
-            // ── Travel Type badge ──────────────────────────────────────────────
             Tables\Columns\TextColumn::make('travel_type')
                 ->label('Type')
                 ->badge()
@@ -371,7 +401,6 @@ class TravelOrderResource extends Resource
                     default => ucfirst($state),
                 }),
 
-            // ── Status badge ───────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -390,7 +419,6 @@ class TravelOrderResource extends Resource
                 })
                 ->formatStateUsing(fn(string $state) => ucfirst($state)),
 
-            // ── Submitted ─────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Submitted')
                 ->since()
@@ -400,8 +428,6 @@ class TravelOrderResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
-            // ── Processed By ──────────────────────────────────────────────────
-            // WHY: approved_by is a FK integer. Resolved via approver() relation.
             Tables\Columns\TextColumn::make('approver.name')
                 ->label('Processed By')
                 ->placeholder('Awaiting Review')
@@ -411,7 +437,6 @@ class TravelOrderResource extends Resource
                 ->limit(22)
                 ->tooltip(fn($record) => $record->approver?->name),
 
-            // ── Rejection remark ───────────────────────────────────────────────
             Tables\Columns\TextColumn::make('rejection_remark')
                 ->label('Rejection Reason')
                 ->limit(40)
@@ -427,23 +452,11 @@ class TravelOrderResource extends Resource
 
     // =========================================================================
     //  FILTERS
-    //
-    //  EMPLOYEE view (1 filter card, spans full width):
-    //    All fields in one card: Status | Travel Type | Quick Select | From | To
-    //    WHY: With only 1-2 filter objects, AboveContentCollapsible renders them
-    //    vertically. Using a single card with an internal grid keeps everything
-    //    on one clean row matching the screenshot layout.
-    //
-    //  ADMIN view (3 filter cards, 3 columns):
-    //    Col 1: Employee picker
-    //    Col 2: Status & Type
-    //    Col 3: Departure Period (Quick Select + From/To)
     // =========================================================================
 
     protected static function getEnhancedFilters(bool $isAdmin): array
     {
         if (!$isAdmin) {
-            // ── EMPLOYEE: one unified card — all fields in a 2-row internal grid ─
             return [
                 Tables\Filters\Filter::make('all_filters')
                     ->label('Filters')
@@ -492,7 +505,6 @@ class TravelOrderResource extends Resource
                                     $set('to', $to);
                                 }),
 
-                            // spacer for 4th slot — From/To sit on the row below
                             Forms\Components\Placeholder::make('')->label('')->columnSpan(1),
 
                             Forms\Components\DatePicker::make('from')
@@ -548,9 +560,8 @@ class TravelOrderResource extends Resource
             ];
         }
 
-        // ── ADMIN: 3 separate cards, one per column ────────────────────────────
+        // ── ADMIN: 3 separate cards ────────────────────────────────────────────
 
-        // Column 1: Employee picker — filters by `name` column (not employee_name)
         $employeeFilter = Tables\Filters\Filter::make('employee_filter')
             ->label('Employee')
             ->columnSpan(1)
@@ -558,7 +569,7 @@ class TravelOrderResource extends Resource
                 Forms\Components\Select::make('traveler_name')
                     ->label('Employee')
                     ->options(
-                        fn() => \App\Models\User::where('role', 'employee')
+                        fn() => \App\Models\User::where('role', User::ROLE_REGULAR)
                             ->orderBy('name')
                             ->pluck('name', 'name')
                             ->toArray()
@@ -569,7 +580,6 @@ class TravelOrderResource extends Resource
             ])
             ->query(
                 fn(Builder $query, array $data) => $query
-                    // WHY: `name` is the correct column per schema (stores traveler name(s))
                     ->when($data['traveler_name'] ?? null, fn($q, $v) => $q->where('name', 'like', "%{$v}%"))
             )
             ->indicateUsing(function (array $data): array {
@@ -581,7 +591,6 @@ class TravelOrderResource extends Resource
                 ];
             });
 
-        // Column 2: Status & Type
         $statusTypeFilter = Tables\Filters\Filter::make('status_and_type')
             ->label('Status & Type')
             ->columnSpan(1)
@@ -621,7 +630,6 @@ class TravelOrderResource extends Resource
                 return $indicators;
             });
 
-        // Column 3: Departure Period (Quick Select + date pickers)
         $periodFilter = Tables\Filters\Filter::make('departure_period')
             ->label('Departure Period')
             ->columnSpan(1)
@@ -713,8 +721,6 @@ class TravelOrderResource extends Resource
                     ->label(fn(TravelOrder $record) => $record->status === 'rejected' ? 'Revise & Resubmit' : 'Edit')
                     ->visible(
                         fn(TravelOrder $record) =>
-                            // Admins can edit any pending order.
-                            // Employees can only edit/revise their own rejected orders.
                         ($isAdmin && $record->status === 'pending') ||
                         (!$isAdmin && $record->created_by === Auth::id() && $record->status === 'rejected')
                     ),
@@ -752,31 +758,6 @@ class TravelOrderResource extends Resource
         return $isAdmin
             ? $query->with(['creator', 'approver'])
             : $query->with(['creator', 'approver'])->where('created_by', Auth::id());
-    }
-
-    // =========================================================================
-    //  AUTHORIZATION
-    // =========================================================================
-
-    public static function canCreate(): bool
-    {
-        return Auth::user()->role === 'employee';
-    }
-
-    public static function canEdit($record): bool
-    {
-        $user = Auth::user();
-        if ($user->role === 'admin')
-            return $record->status === 'pending';
-        return $record->created_by === $user->id && $record->status === 'rejected';
-    }
-
-    public static function canDelete($record): bool
-    {
-        $user = Auth::user();
-        if ($user->role === 'admin')
-            return true;
-        return $record->created_by === $user->id && $record->status === 'pending';
     }
 
     // =========================================================================

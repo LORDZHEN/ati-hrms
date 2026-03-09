@@ -24,16 +24,16 @@ class UpdateProfile extends Component
     public ?string $employment_status = null;
     public ?string $department = null;
 
-    protected $listeners = ['openProfileModal' => 'openModal'];
+    protected $listeners = [
+        'openProfileModal' => 'openModal',
+        'profileUpdated' => '$refresh',
+    ];
 
     public function mount(): void
     {
         $this->loadUserData();
     }
 
-    /**
-     * Load current user data into component properties
-     */
     protected function loadUserData(): void
     {
         $user = Auth::user();
@@ -47,18 +47,12 @@ class UpdateProfile extends Component
         $this->department = $user->department;
     }
 
-    /**
-     * Open the profile editing modal
-     */
     public function openModal(): void
     {
         $this->loadUserData();
         $this->editingProfile = true;
     }
 
-    /**
-     * Close the modal and reset photo upload
-     */
     public function closeModal(): void
     {
         $this->editingProfile = false;
@@ -66,9 +60,6 @@ class UpdateProfile extends Component
         $this->resetValidation();
     }
 
-    /**
-     * Validation rules
-     */
     protected function rules(): array
     {
         return [
@@ -78,68 +69,59 @@ class UpdateProfile extends Component
                 'max:255',
                 Rule::unique('users', 'employee_id')->ignore(Auth::id()),
             ],
-            'first_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'suffix' => 'nullable|string|max:10',
-            'position' => 'nullable|string|max:255',
-            'employment_status' => ['nullable', 'string', Rule::in([
-                'Permanent',
-                'Contractual',
-                'Probationary',
-                'Job Order'
-            ])],
+            'first_name'        => 'required|string|max:255',
+            'middle_name'       => 'nullable|string|max:255',
+            'last_name'         => 'required|string|max:255',
+            'suffix'            => 'nullable|string|max:10',
+            'position'          => 'nullable|string|max:255',
+            'employment_status' => [
+                'nullable',
+                'string',
+                // Only two valid statuses now.
+                Rule::in(['Regular', 'Job Order']),
+            ],
             'department' => 'nullable|string|max:255',
-            'photo' => 'nullable|image|max:5120|mimes:jpeg,jpg,png,gif,webp',
+            'photo'      => 'nullable|image|max:5120|mimes:jpeg,jpg,png,gif,webp',
         ];
     }
 
-    /**
-     * Custom validation messages
-     */
     protected function messages(): array
     {
         return [
             'employee_id.required' => 'Employee ID is required.',
-            'employee_id.unique' => 'This Employee ID is already taken.',
-            'first_name.required' => 'First name is required.',
-            'last_name.required' => 'Last name is required.',
-            'photo.image' => 'The file must be an image.',
-            'photo.max' => 'Image size must not exceed 5MB.',
-            'photo.mimes' => 'Only JPEG, JPG, PNG, GIF, and WEBP images are allowed.',
+            'employee_id.unique'   => 'This Employee ID is already taken.',
+            'first_name.required'  => 'First name is required.',
+            'last_name.required'   => 'Last name is required.',
+            'photo.image'          => 'The file must be an image.',
+            'photo.max'            => 'Image size must not exceed 5MB.',
+            'photo.mimes'          => 'Only JPEG, JPG, PNG, GIF, and WEBP images are allowed.',
         ];
     }
 
-    /**
-     * Update user profile
-     */
     public function update(): void
     {
         $this->validate();
 
         $user = Auth::user();
 
-        // Handle photo upload first
         if ($this->photo) {
             $this->handlePhotoUpload($user);
         }
 
-        // Update user data
         $user->update([
-            'employee_id' => $this->employee_id,
-            'first_name' => $this->first_name,
-            'middle_name' => $this->middle_name,
-            'last_name' => $this->last_name,
-            'suffix' => $this->suffix,
-            'position' => $this->position,
+            'employee_id'       => $this->employee_id,
+            'first_name'        => $this->first_name,
+            'middle_name'       => $this->middle_name,
+            'last_name'         => $this->last_name,
+            'suffix'            => $this->suffix,
+            'position'          => $this->position,
             'employment_status' => $this->employment_status,
-            'department' => $this->department,
-            'name' => $this->buildFullName(),
+            'department'        => $this->department,
+            'name'              => $this->buildFullName(),
         ]);
 
         $this->closeModal();
 
-        // Success notification
         Notification::make()
             ->title('Profile Updated')
             ->body('Your profile information has been successfully updated.')
@@ -147,28 +129,20 @@ class UpdateProfile extends Component
             ->duration(5000)
             ->send();
 
-        // Refresh the page component to show updated data
         $this->dispatch('profileUpdated');
+        $this->dispatch('profile-updated');
     }
 
-    /**
-     * Handle profile photo upload and deletion of old photo
-     */
     protected function handlePhotoUpload($user): void
     {
-        // Delete old photo if exists
         if ($user->profile_photo_path && Storage::disk('public')->exists($user->profile_photo_path)) {
             Storage::disk('public')->delete($user->profile_photo_path);
         }
 
-        // Store new photo
         $user->profile_photo_path = $this->photo->store('profile-photos', 'public');
         $user->save();
     }
 
-    /**
-     * Build full name from name components
-     */
     protected function buildFullName(): string
     {
         return implode(' ', array_filter([
@@ -179,24 +153,19 @@ class UpdateProfile extends Component
         ]));
     }
 
-    /**
-     * Get avatar URL for modal preview
-     */
     public function getAvatarUrlProperty(): string
     {
-        // Show temporary uploaded photo
         if ($this->photo) {
             return $this->photo->temporaryUrl();
         }
 
-        // Show existing profile photo
         $user = Auth::user();
         if ($user->profile_photo_path) {
             return asset('storage/' . $user->profile_photo_path);
         }
 
-        // Fallback to UI Avatars
-        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User') . '&size=256&background=10b981&color=fff&bold=true';
+        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User')
+            . '&size=256&background=10b981&color=fff&bold=true';
     }
 
     public function render()

@@ -296,16 +296,12 @@
         box-shadow: 0 0 0 3px rgba(16,185,129,0.14);
     }
 
-    /* ── SELECT WRAPPER ─────────────────────────────────────────────
-       Positions the single custom arrow chevron.
-    ────────────────────────────────────────────────────────────────── */
     .up-select-wrap {
         position: relative;
         display: block;
         width: 100%;
     }
 
-    /* Our ONE custom arrow — pointer-events:none so clicks pass through */
     .up-select-wrap::after {
         content: '';
         position: absolute;
@@ -322,11 +318,6 @@
 
     .dark .up-select-wrap::after { border-top-color: #6ee7b7; }
 
-    /* ── SELECT ELEMENT ─────────────────────────────────────────────
-       !important beats Tailwind @tailwindcss/forms plugin which
-       injects a background-image SVG arrow via high-specificity rules.
-       Without !important the plugin arrow survives and you get doubles.
-    ────────────────────────────────────────────────────────────────── */
     .up-select {
         -webkit-appearance: none !important;
         -moz-appearance:    none !important;
@@ -336,7 +327,6 @@
 
         display: block;
         width: 100%;
-        /* right padding = space for our custom arrow */
         padding: 0.5875rem 2.5rem 0.5875rem 0.875rem;
         border-radius: 10px;
         border: 1.5px solid #e5e7eb;
@@ -349,7 +339,6 @@
         cursor: pointer;
     }
 
-    /* Hide IE/Edge native arrow */
     .up-select::-ms-expand { display: none !important; }
 
     .up-select:focus {
@@ -360,7 +349,6 @@
         outline: none;
     }
 
-    /* Dark mode overrides — all !important to beat Tailwind */
     .dark .up-select {
         background-color: #071a10 !important;
         background-image: none    !important;
@@ -648,7 +636,7 @@
                                 @error('position')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                             </div>
 
-                            {{-- EMPLOYMENT STATUS --}}
+                            {{-- EMPLOYMENT STATUS — Regular / Job Order only --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-check-badge style="width:11px;height:11px;" class="up-ico-amber" />
@@ -657,9 +645,7 @@
                                 <div class="up-select-wrap">
                                     <select wire:model.defer="employment_status" class="up-select">
                                         <option value="">Select Status</option>
-                                        <option value="Permanent">Permanent</option>
-                                        <option value="Contractual">Contractual</option>
-                                        <option value="Probationary">Probationary</option>
+                                        <option value="Regular">Regular</option>
                                         <option value="Job Order">Job Order</option>
                                     </select>
                                 </div>

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PersonalDataSheetResource\Pages;
 use App\Models\PersonalDataSheet;
+use App\Models\User;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -43,14 +44,27 @@ class PersonalDataSheetResource extends Resource
     protected static ?string $navigationGroup = 'Documents';
 
     // =========================================================================
+    //  ACCESS CONTROL — Hide entirely from Job Order users
+    // =========================================================================
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    // =========================================================================
     //  AUTHORIZATION
     // =========================================================================
 
     public static function canCreate(): bool
     {
-        // Employees can only CREATE a PDS if they don't have one yet.
-        // Admins never create PDS records.
-        if (Auth::user()->role !== 'employee') {
+        // Only regular employees can create a PDS, and only if they don't have one yet.
+        if (Auth::user()->role !== User::ROLE_REGULAR) {
             return false;
         }
 
@@ -61,14 +75,21 @@ class PersonalDataSheetResource extends Resource
     {
         $user = Auth::user();
 
-        // Admins CANNOT edit — they use the table actions (approve/disapprove/remarks).
-        // Keeping admins out of the edit page prevents accidental data changes.
+        // Admins CANNOT edit — they use table actions (approve/disapprove/remarks).
         if ($user->role === 'admin') {
             return false;
         }
 
-        // Employees can always access their own PDS edit page.
-        // Fields are locked on the form when approved via $isLocked.
+        // Regular employees can access their own PDS edit page.
+        return $record->user_id === $user->id;
+    }
+
+    public static function canView($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return true;
+        }
         return $record->user_id === $user->id;
     }
 
@@ -78,9 +99,8 @@ class PersonalDataSheetResource extends Resource
 
     public static function form(Form $form): Form
     {
-        // Lock all fields only when the record is approved.
         $isLocked = fn($record) =>
-            Auth::user()->role === 'employee' &&
+            Auth::user()->role === User::ROLE_REGULAR &&
             $record?->status === 'approved';
 
         return $form->schema([
@@ -409,7 +429,6 @@ class PersonalDataSheetResource extends Resource
                         ->action(function (Collection $records, array $data) {
                             $count = 0;
                             foreach ($records as $record) {
-                                // Only disapprove records that are NOT already approved
                                 if ($record->status === 'submitted') {
                                     $record->update([
                                         'status' => 'disapproved',
@@ -448,7 +467,7 @@ class PersonalDataSheetResource extends Resource
                     ->icon('heroicon-o-plus')
                     ->visible(
                         fn() =>
-                        Auth::user()->role === 'employee' &&
+                        Auth::user()->role === User::ROLE_REGULAR &&
                         !PersonalDataSheet::where('user_id', Auth::id())->exists()
                     ),
             ]);
@@ -744,12 +763,6 @@ class PersonalDataSheetResource extends Resource
 
     // =========================================================================
     //  CONTEXTUAL ACTIONS
-    //
-    //  ADMIN actions:  Approve | Disapprove | Add/Edit Remarks | Print | Delete
-    //  EMPLOYEE actions: Edit/Resubmit (submitted/disapproved) | View PDS (approved) | Print (approved)
-    //
-    //  Removed: Quick View, Reset Status
-    //  Approved records: Disapprove button hidden for both admin and employee
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
@@ -757,23 +770,12 @@ class PersonalDataSheetResource extends Resource
         return [
             Tables\Actions\ActionGroup::make([
 
-                // ---------------------------------------------------------------
-                //  ADMIN: View PDS
-                //  Opens the edit page in read-only mode — canEdit() returns false
-                //  for admins so Filament renders all fields as disabled.
-                //  This gives admins full visibility of the PDS content without
-                //  any risk of accidentally modifying employee data.
-                // ---------------------------------------------------------------
                 Tables\Actions\ViewAction::make()
                     ->label('View PDS')
                     ->icon('heroicon-m-eye')
                     ->color('info')
                     ->visible(fn() => $isAdmin),
 
-                // ---------------------------------------------------------------
-                //  ADMIN: Approve
-                //  Hidden when already approved.
-                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
@@ -792,11 +794,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // ---------------------------------------------------------------
-                //  ADMIN: Disapprove
-                //  Hidden when already approved — once approved, it stays approved.
-                //  Hidden when already disapproved — no need to disapprove twice.
-                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('disapprove')
                     ->label('Disapprove')
                     ->icon('heroicon-o-x-circle')
@@ -823,10 +820,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // ---------------------------------------------------------------
-                //  ADMIN: Add / Edit Remarks
-                //  Available at any status — admins can always leave notes.
-                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('remarks')
                     ->label(fn($record) => blank($record->remarks) ? 'Add Remarks' : 'Edit Remarks')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -850,10 +843,6 @@ class PersonalDataSheetResource extends Resource
                             ->send();
                     }),
 
-                // ---------------------------------------------------------------
-                //  SHARED: Print
-                //  Visible to both admin and employee, only when approved.
-                // ---------------------------------------------------------------
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')
@@ -862,10 +851,6 @@ class PersonalDataSheetResource extends Resource
                     ->url(fn($record) => route('pds.print', $record))
                     ->openUrlInNewTab(),
 
-                // ---------------------------------------------------------------
-                //  EMPLOYEE: Edit / Resubmit (submitted or disapproved only)
-                //  EMPLOYEE: View PDS (approved — read-only, fields locked in form)
-                // ---------------------------------------------------------------
                 Tables\Actions\EditAction::make()
                     ->label(
                         fn($record) => $record->status === 'approved'
@@ -884,13 +869,10 @@ class PersonalDataSheetResource extends Resource
                     )
                     ->visible(
                         fn($record) =>
-                        Auth::user()->role === 'employee' &&
+                        Auth::user()->role === User::ROLE_REGULAR &&
                         $record->user_id === Auth::id()
                     ),
 
-                // ---------------------------------------------------------------
-                //  ADMIN: Delete
-                // ---------------------------------------------------------------
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
@@ -961,7 +943,7 @@ class PersonalDataSheetResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-        if (Auth::user()->role === 'employee') {
+        if (Auth::user()->role === User::ROLE_REGULAR) {
             $query->where('user_id', Auth::id());
         }
         return $query;
@@ -980,15 +962,6 @@ class PersonalDataSheetResource extends Resource
         if (auth()->user()?->role !== 'admin')
             return null;
         return PersonalDataSheet::where('status', 'submitted')->count() > 0 ? 'warning' : 'success';
-    }
-
-    public static function canView($record): bool
-    {
-        $user = Auth::user();
-        if ($user->role === 'admin') {
-            return true;
-        }
-        return $record->user_id === $user->id;
     }
 
     public static function getPages(): array

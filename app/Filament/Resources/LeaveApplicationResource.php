@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LeaveApplicationResource\Pages;
 use App\Models\LeaveApplication;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -23,9 +24,23 @@ class LeaveApplicationResource extends Resource
     protected static ?string $navigationGroup = 'Documents';
     protected static ?int $navigationSort = 2;
 
+    // =========================================================================
+    //  ACCESS CONTROL — Hide entirely from Job Order users
+    // =========================================================================
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
     public static function canCreate(): bool
     {
-        return auth()->user()->role === 'employee';
+        return auth()->user()->role === User::ROLE_REGULAR;
     }
 
     // =========================================================================
@@ -257,9 +272,6 @@ class LeaveApplicationResource extends Resource
                 self::getEnhancedFilters($isAdmin),
                 layout: FiltersLayout::AboveContentCollapsible
             )
-            // WHY: 2 columns for employees (Status/Type + Period).
-            //      3 columns for admins (+ Employee selector).
-            //      Dynamic column count prevents wasted whitespace on the employee view.
             ->filtersFormColumns($isAdmin ? 3 : 2)
             ->filtersFormWidth(\Filament\Support\Enums\MaxWidth::FourExtraLarge)
             ->persistFiltersInSession()
@@ -299,7 +311,6 @@ class LeaveApplicationResource extends Resource
     protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            // ── Employee — admin only ─────────────────────────────────────────
             Tables\Columns\TextColumn::make('employee.name')
                 ->label('Employee')
                 ->searchable()
@@ -309,7 +320,6 @@ class LeaveApplicationResource extends Resource
                 ->iconColor('primary')
                 ->visible($isAdmin),
 
-            // ── Position • Department ─────────────────────────────────────────
             Tables\Columns\TextColumn::make('position')
                 ->label('Position')
                 ->color('gray')
@@ -318,7 +328,6 @@ class LeaveApplicationResource extends Resource
                 )
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // ── Leave Type badge ──────────────────────────────────────────────
             Tables\Columns\TextColumn::make('type_of_leave')
                 ->label('Leave Type')
                 ->badge()
@@ -343,7 +352,6 @@ class LeaveApplicationResource extends Resource
                     default => 'heroicon-o-document-text',
                 }),
 
-            // ── Leave Period (From → To) ───────────────────────────────────────
             Tables\Columns\TextColumn::make('leave_date_from')
                 ->label('Leave Period')
                 ->sortable()
@@ -356,7 +364,6 @@ class LeaveApplicationResource extends Resource
                     . Carbon::parse($record->leave_date_to)->format('M d, Y')
                 ),
 
-            // ── Duration badge ────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('number_of_working_days')
                 ->label('Duration')
                 ->badge()
@@ -366,7 +373,6 @@ class LeaveApplicationResource extends Resource
                     fn($state) => $state . ' working ' . ($state == 1 ? 'day' : 'days')
                 ),
 
-            // ── Status badge ──────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -385,7 +391,6 @@ class LeaveApplicationResource extends Resource
                 })
                 ->formatStateUsing(fn(string $state): string => ucfirst($state)),
 
-            // ── Filed ─────────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('date_of_filing')
                 ->label('Filed')
                 ->since()
@@ -399,7 +404,6 @@ class LeaveApplicationResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
-            // ── Processed By ──────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('authorized_officer')
                 ->label('Processed By')
                 ->color('gray')
@@ -409,7 +413,6 @@ class LeaveApplicationResource extends Resource
                 ->limit(22)
                 ->tooltip(fn($record) => $record->authorized_officer),
 
-            // ── Commutation ───────────────────────────────────────────────────
             Tables\Columns\IconColumn::make('commutation')
                 ->label('Commutation')
                 ->boolean()
@@ -420,7 +423,6 @@ class LeaveApplicationResource extends Resource
                 ->getStateUsing(fn($record) => $record->commutation === 'requested')
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // ── Processed On ──────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('date_approved_disapproved')
                 ->label('Processed On')
                 ->dateTime('M d, Y h:i A')
@@ -434,28 +436,12 @@ class LeaveApplicationResource extends Resource
 
     // =========================================================================
     //  FILTERS
-    //
-    //  Design principle: fewer filters = less confusion.
-    //
-    //  EMPLOYEE view → 2 filters:
-    //    1. "Status & Type"  — the two most-used criteria
-    //    2. "Period"         — one Quick Select that auto-fills From/To
-    //
-    //  ADMIN view → 3 filters (same 2 + Employee selector as column 1):
-    //    1. "Employee"       — searchable employee picker
-    //    2. "Status & Type"  — same as employee view
-    //    3. "Period"         — same as employee view
-    //
-    //  Commutation and Medical Certificate filters are removed from the
-    //  visible panel — they were rarely used and added visual noise.
-    //  Admins can still filter by those via the Generate Report modal.
     // =========================================================================
 
     protected static function getEnhancedFilters(bool $isAdmin): array
     {
         $filters = [];
 
-        // ── ADMIN ONLY — Column 1: Employee picker ────────────────────────────
         if ($isAdmin) {
             $filters[] = Tables\Filters\Filter::make('employee_filter')
                 ->label('Employee')
@@ -483,9 +469,6 @@ class LeaveApplicationResource extends Resource
                 });
         }
 
-        // ── Column 1 (employee) / Column 2 (admin): Status & Leave Type ──────
-        // WHY: These are the two filters employees use 95% of the time.
-        // Grouped into one card so the panel stays compact and uncluttered.
         $filters[] = Tables\Filters\Filter::make('status_and_type')
             ->label('Status & Leave Type')
             ->columnSpan(1)
@@ -535,10 +518,6 @@ class LeaveApplicationResource extends Resource
                 return $indicators;
             });
 
-        // ── Column 2 (employee) / Column 3 (admin): Period picker ────────────
-        // WHY: A single Quick Select dropdown covers "this month", "last month"
-        // etc. in one click. The From/To pickers are auto-filled but editable
-        // for custom ranges. This replaces the old 4-field date range mess.
         $filters[] = Tables\Filters\Filter::make('period')
             ->label('Filing Period')
             ->columnSpan(1)
@@ -561,13 +540,12 @@ class LeaveApplicationResource extends Resource
                             'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
                             'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
                             'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                            default => [null, null], // 'custom' — let user fill pickers
+                            default => [null, null],
                         };
                         $set('from', $from);
                         $set('to', $to);
                     }),
 
-                // From/To shown below — auto-filled by preset, editable for custom
                 Forms\Components\Grid::make(2)->schema([
                     Forms\Components\DatePicker::make('from')
                         ->label('From')
@@ -588,7 +566,6 @@ class LeaveApplicationResource extends Resource
                     ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('date_of_filing', '<=', $d))
             )
             ->indicateUsing(function (array $data): array {
-                // Show the preset label as a single chip when pickers were auto-filled
                 $presetLabels = [
                     'this_month' => 'This Month',
                     'last_month' => 'Last Month',
@@ -599,8 +576,6 @@ class LeaveApplicationResource extends Resource
                 $indicators = [];
 
                 if (($data['from'] ?? null) || ($data['to'] ?? null)) {
-                    // If a named preset was chosen and the dates weren't manually edited,
-                    // show the preset name. Otherwise show the raw date range.
                     $preset = $data['preset'] ?? null;
                     if ($preset && isset($presetLabels[$preset])) {
                         $indicators[] = Tables\Filters\Indicator::make('Period: ' . $presetLabels[$preset])

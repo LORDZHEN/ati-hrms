@@ -35,7 +35,6 @@
         --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
     }
 
-    /* ── BASE ── */
     .hd-root {
         font-family: 'DM Sans', sans-serif;
         font-size: 14px;
@@ -58,8 +57,7 @@
     }
 
     .hd-hero-bg {
-        position: absolute;
-        inset: 0;
+        position: absolute; inset: 0;
         background:
             radial-gradient(ellipse 60% 80% at 75% 50%, rgba(5,150,105,0.55) 0%, transparent 65%),
             radial-gradient(ellipse 40% 60% at 90% 20%, rgba(217,119,6,0.35) 0%, transparent 60%),
@@ -68,8 +66,7 @@
     }
 
     .hd-hero-grid {
-        position: absolute;
-        inset: 0;
+        position: absolute; inset: 0;
         background-image:
             linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
             linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
@@ -79,24 +76,17 @@
 
     .hd-hero-dots {
         position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
+        top: 1.5rem; right: 1.5rem;
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 6px;
         opacity: 0.25;
     }
 
-    .hd-hero-dot {
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: #10b981;
-    }
+    .hd-hero-dot { width: 4px; height: 4px; border-radius: 50%; background: #10b981; }
 
     .hd-hero-content {
-        position: relative;
-        z-index: 2;
+        position: relative; z-index: 2;
         padding: 1.75rem 2rem;
         display: flex;
         align-items: center;
@@ -106,72 +96,45 @@
     }
 
     .hd-hero-eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
+        display: inline-flex; align-items: center; gap: 0.5rem;
         background: rgba(16,185,129,0.15);
         border: 1px solid rgba(16,185,129,0.3);
         color: #6ee7b7;
-        font-size: 0.6875rem;
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        padding: 0.3rem 0.75rem;
-        border-radius: 999px;
+        font-size: 0.6875rem; font-weight: 700;
+        letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 0.3rem 0.75rem; border-radius: 999px;
         margin-bottom: 0.625rem;
     }
 
     .hd-hero-name {
         font-family: 'Playfair Display', serif;
-        font-size: 1.875rem;
-        font-weight: 800;
-        color: #ffffff;
-        line-height: 1.15;
-        margin-bottom: 0.375rem;
-        letter-spacing: -0.02em;
+        font-size: 1.875rem; font-weight: 800;
+        color: #ffffff; line-height: 1.15;
+        margin-bottom: 0.375rem; letter-spacing: -0.02em;
     }
 
-    .hd-hero-sub {
-        font-size: 0.875rem;
-        color: rgba(255,255,255,0.55);
-        font-weight: 400;
-    }
+    .hd-hero-sub { font-size: 0.875rem; color: rgba(255,255,255,0.55); font-weight: 400; }
 
     .hd-hero-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 0.75rem;
+        display: flex; flex-direction: column;
+        align-items: flex-end; gap: 0.75rem;
     }
 
-    .hd-hero-pills {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
+    .hd-hero-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 
     .hd-pill {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        display: flex; align-items: center; gap: 0.4rem;
         background: rgba(255,255,255,0.07);
         border: 1px solid rgba(255,255,255,0.12);
         color: rgba(255,255,255,0.8);
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.4rem 0.875rem;
-        border-radius: 999px;
-        backdrop-filter: blur(8px);
-        white-space: nowrap;
+        font-size: 0.75rem; font-weight: 600;
+        padding: 0.4rem 0.875rem; border-radius: 999px;
+        backdrop-filter: blur(8px); white-space: nowrap;
     }
 
     .hd-hero-stripe {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
+        position: absolute; bottom: 0; left: 0; right: 0;
         height: 3px;
         background: linear-gradient(90deg, var(--g), var(--a2), var(--g));
         background-size: 200% 100%;
@@ -186,22 +149,12 @@
     /* ═══════════════════════════════════════
        SECTION LABEL
     ═══════════════════════════════════════ */
-    .hd-section-label {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        margin-bottom: 0.75rem;
-    }
+    .hd-section-label { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
 
     .hd-section-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
+        width: 28px; height: 28px; border-radius: 7px;
         background: linear-gradient(135deg, var(--g3), #bbf7d0);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
 
     .dark .hd-section-icon {
@@ -210,33 +163,22 @@
 
     .hd-section-title {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.9375rem;
-        font-weight: 700;
-        color: var(--g);
-        letter-spacing: -0.01em;
+        font-size: 0.9375rem; font-weight: 700;
+        color: var(--g); letter-spacing: -0.01em;
     }
 
     .hd-section-link {
         margin-left: auto;
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--g);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.625rem;
-        border-radius: 999px;
+        font-size: 0.75rem; font-weight: 700;
+        color: var(--g); text-decoration: none;
+        display: flex; align-items: center; gap: 0.25rem;
+        padding: 0.25rem 0.625rem; border-radius: 999px;
         border: 1.5px solid var(--g);
-        transition: all 0.2s ease;
-        white-space: nowrap;
+        transition: all 0.2s ease; white-space: nowrap;
     }
 
-    .hd-section-link:hover {
-        background: var(--g);
-        color: white;
-    }
+    .hd-section-link:hover { background: var(--g); color: white; }
 
     .hd-section-divider {
         height: 1px;
@@ -256,32 +198,16 @@
         transition: box-shadow 0.25s ease, border-color 0.25s ease;
     }
 
-    .hd-card:hover {
-        box-shadow: var(--shadow-md);
-    }
+    .hd-card:hover { box-shadow: var(--shadow-md); }
 
     /* ═══════════════════════════════════════
-       WIDGET GRID
+       GRIDS
     ═══════════════════════════════════════ */
     .hd-widget-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-        align-items: start;
+        display: grid; grid-template-columns: repeat(2, 1fr);
+        gap: 1rem; margin-bottom: 1.25rem; align-items: start;
     }
 
-    .hd-three-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-        align-items: start;
-    }
-
-    /* ═══════════════════════════════════════
-       ADMIN OUTER LAYOUT
-    ═══════════════════════════════════════ */
     .hd-admin-outer {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -289,8 +215,7 @@
         grid-template-areas:
             "activities pending announcements"
             "activities pending events";
-        gap: 1rem;
-        margin-bottom: 1.25rem;
+        gap: 1rem; margin-bottom: 1.25rem;
     }
 
     .hd-admin-activities    { grid-area: activities; }
@@ -304,8 +229,7 @@
     .hd-modules-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 0.875rem;
-        margin-bottom: 1.25rem;
+        gap: 0.875rem; margin-bottom: 1.25rem;
     }
 
     .hd-module {
@@ -313,22 +237,17 @@
         border-radius: var(--radius);
         border: 1.5px solid var(--border);
         padding: 1.125rem;
-        text-decoration: none;
-        display: block;
-        position: relative;
-        overflow: hidden;
+        text-decoration: none; display: block;
+        position: relative; overflow: hidden;
         transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
         box-shadow: var(--shadow-sm);
     }
 
     .hd-module::before {
         content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
         background: linear-gradient(90deg, var(--g), var(--a2));
-        transform: scaleX(0);
-        transform-origin: left;
+        transform: scaleX(0); transform-origin: left;
         transition: transform 0.3s ease;
     }
 
@@ -341,98 +260,62 @@
     }
 
     .hd-module-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        margin-bottom: 0.875rem;
+        display: flex; align-items: flex-start;
+        justify-content: space-between; margin-bottom: 0.875rem;
     }
 
     .hd-module-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: transform 0.3s ease;
-        flex-shrink: 0;
+        width: 40px; height: 40px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.3s ease; flex-shrink: 0;
     }
 
-    .hd-module:hover .hd-module-icon {
-        transform: scale(1.1) rotate(-6deg);
-    }
+    .hd-module:hover .hd-module-icon { transform: scale(1.1) rotate(-6deg); }
 
     .hd-module-stat-badge {
-        font-size: 1.375rem;
-        font-weight: 900;
-        color: var(--ink);
-        font-family: 'DM Sans', sans-serif;
-        line-height: 1;
+        font-size: 1.375rem; font-weight: 900;
+        color: var(--ink); font-family: 'DM Sans', sans-serif; line-height: 1;
     }
 
     .hd-module-name {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 0.25rem;
-        letter-spacing: -0.01em;
+        font-size: 0.875rem; font-weight: 700;
+        color: var(--ink); margin-bottom: 0.25rem; letter-spacing: -0.01em;
     }
 
     .hd-module-desc {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        color: var(--ink3);
-        line-height: 1.4;
+        font-size: 0.75rem; color: var(--ink3); line-height: 1.4;
     }
 
     .hd-module-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 0.875rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px solid var(--border);
     }
 
     .hd-module-label {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.625rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--ink3);
+        font-size: 0.625rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink3);
     }
 
     .hd-module-arrow {
-        width: 26px;
-        height: 26px;
-        border-radius: 7px;
+        width: 26px; height: 26px; border-radius: 7px;
         background: var(--g);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         transition: all 0.25s ease;
     }
 
-    .hd-module:hover .hd-module-arrow {
-        background: var(--a);
-        transform: translateX(2px);
-    }
+    .hd-module:hover .hd-module-arrow { background: var(--a); transform: translateX(2px); }
 
     /* ═══════════════════════════════════════
        ACTIVITY LIST
     ═══════════════════════════════════════ */
     .hd-activity {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.625rem 0.75rem;
-        border-radius: var(--radius-sm);
-        text-decoration: none;
-        transition: all 0.2s ease;
-        border: 1.5px solid transparent;
-        margin-bottom: 0.375rem;
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.625rem 0.75rem; border-radius: var(--radius-sm);
+        text-decoration: none; transition: all 0.2s ease;
+        border: 1.5px solid transparent; margin-bottom: 0.375rem;
     }
 
     .hd-activity:last-child { margin-bottom: 0; }
@@ -446,16 +329,10 @@
     .dark .hd-activity:hover { background: rgba(16,185,129,0.05); }
 
     .hd-activity-ico {
-        width: 34px;
-        height: 34px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        width: 34px; height: 34px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
 
-    /* FIX: Use explicit hex backgrounds (not Tailwind dynamic classes) */
     .hd-activity-ico.blue   { background: #dbeafe; }
     .hd-activity-ico.amber  { background: #fef3c7; }
     .hd-activity-ico.purple { background: #ede9fe; }
@@ -469,32 +346,18 @@
 
     .hd-activity-name {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 0.15rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.8125rem; font-weight: 700; color: var(--ink);
+        margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    .hd-activity-meta {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
+    .hd-activity-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
     .hd-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.15rem 0.5rem;
-        border-radius: 999px;
+        display: inline-flex; align-items: center;
+        padding: 0.15rem 0.5rem; border-radius: 999px;
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.625rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
+        font-size: 0.625rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.06em;
     }
 
     .hd-chip.blue   { background: #dbeafe; color: #1d4ed8; }
@@ -506,111 +369,71 @@
     .hd-chip.teal   { background: #ccfbf1; color: #115e59; }
     .hd-chip.red    { background: #fee2e2; color: #991b1b; }
 
-    .hd-activity-date {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.6875rem;
-        color: var(--ink3);
-    }
+    .hd-activity-date { font-family: 'DM Sans', sans-serif; font-size: 0.6875rem; color: var(--ink3); }
 
     .hd-activity-caret {
-        width: 22px;
-        height: 22px;
-        border-radius: 5px;
+        width: 22px; height: 22px; border-radius: 5px;
         background: var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transform: translateX(-4px);
-        transition: all 0.2s ease;
-        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0; transform: translateX(-4px);
+        transition: all 0.2s ease; flex-shrink: 0;
     }
 
     .hd-activity:hover .hd-activity-caret {
-        opacity: 1;
-        transform: translateX(0);
-        background: var(--g);
+        opacity: 1; transform: translateX(0); background: var(--g);
     }
 
     /* ═══════════════════════════════════════
-       ANNOUNCEMENT ITEMS
+       ANNOUNCEMENTS
     ═══════════════════════════════════════ */
     .hd-announce {
-        display: block;
-        text-decoration: none;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
+        display: block; text-decoration: none;
+        padding: 0.5rem 0.75rem; border-radius: 8px;
         border-left: 3px solid var(--border);
-        background: var(--paper);
-        margin-bottom: 0.375rem;
+        background: var(--paper); margin-bottom: 0.375rem;
         transition: all 0.2s ease;
     }
 
     .dark .hd-announce { background: rgba(16,185,129,0.04); }
     .hd-announce:last-child { margin-bottom: 0; }
-
     .hd-announce.high   { border-left-color: #dc2626; background: #fef2f2; }
     .hd-announce.medium { border-left-color: #d97706; background: #fffbeb; }
     .hd-announce.low    { border-left-color: #059669; }
-
     .dark .hd-announce.high   { background: rgba(220,38,38,0.08); }
     .dark .hd-announce.medium { background: rgba(217,119,6,0.08); }
 
-    .hd-announce:hover {
-        transform: translateX(3px);
-        box-shadow: var(--shadow-sm);
-        border-left-width: 4px;
-    }
+    .hd-announce:hover { transform: translateX(3px); box-shadow: var(--shadow-sm); border-left-width: 4px; }
 
     .hd-announce-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
-        margin-bottom: 0.175rem;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.5rem; margin-bottom: 0.175rem;
     }
 
     .hd-announce-title {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: var(--ink);
-        flex: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.8125rem; font-weight: 700; color: var(--ink);
+        flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     .hd-announce-date {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.625rem;
-        color: var(--ink3);
-        white-space: nowrap;
-        flex-shrink: 0;
+        font-size: 0.625rem; color: var(--ink3); white-space: nowrap; flex-shrink: 0;
     }
 
     .hd-announce-msg {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        color: var(--ink2);
-        line-height: 1.4;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.75rem; color: var(--ink2); line-height: 1.4;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     /* ═══════════════════════════════════════
-       EVENT ITEMS
+       EVENTS
     ═══════════════════════════════════════ */
     .hd-event {
-        display: flex;
-        gap: 0.75rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        text-decoration: none;
-        transition: all 0.25s ease;
-        background: var(--paper);
-        border: 1.5px solid transparent;
+        display: flex; gap: 0.75rem;
+        padding: 0.5rem 0.75rem; border-radius: 8px;
+        text-decoration: none; transition: all 0.25s ease;
+        background: var(--paper); border: 1.5px solid transparent;
         margin-bottom: 0.375rem;
     }
 
@@ -618,83 +441,49 @@
     .hd-event:last-child { margin-bottom: 0; }
 
     .hd-event:hover {
-        background: var(--card);
-        border-color: rgba(5,150,105,0.25);
-        box-shadow: var(--shadow-sm);
-        transform: translateY(-1px);
+        background: var(--card); border-color: rgba(5,150,105,0.25);
+        box-shadow: var(--shadow-sm); transform: translateY(-1px);
     }
 
     .hd-event-cal {
-        flex-shrink: 0;
-        width: 38px;
-        border-radius: 7px;
+        flex-shrink: 0; width: 38px; border-radius: 7px;
         background: linear-gradient(160deg, var(--g), #047857);
-        text-align: center;
-        color: white;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 0.25rem 0;
-        transition: background 0.25s ease;
+        text-align: center; color: white;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 0.25rem 0; transition: background 0.25s ease;
     }
 
-    .hd-event:hover .hd-event-cal {
-        background: linear-gradient(160deg, var(--a2), var(--a));
-    }
+    .hd-event:hover .hd-event-cal { background: linear-gradient(160deg, var(--a2), var(--a)); }
 
     .hd-event-mon {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.5rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        opacity: 0.85;
+        font-size: 0.5rem; font-weight: 700;
+        letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;
     }
 
-    .hd-event-day {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 1rem;
-        font-weight: 800;
-        line-height: 1.1;
-    }
-
+    .hd-event-day { font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 800; line-height: 1.1; }
     .hd-event-body { flex: 1; min-width: 0; }
 
     .hd-event-title {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 0.175rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.8125rem; font-weight: 700; color: var(--ink);
+        margin-bottom: 0.175rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
     .hd-event-meta {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.6875rem;
-        color: var(--ink3);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+        font-size: 0.6875rem; color: var(--ink3);
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
     }
 
     /* ═══════════════════════════════════════
        PENDING ACTIONS
     ═══════════════════════════════════════ */
     .hd-pending {
-        display: flex;
-        align-items: center;
-        gap: 0.875rem;
-        padding: 0.75rem 0.875rem;
-        border-radius: var(--radius-sm);
-        text-decoration: none;
-        background: var(--paper);
-        transition: all 0.2s ease;
-        margin-bottom: 0.375rem;
+        display: flex; align-items: center; gap: 0.875rem;
+        padding: 0.75rem 0.875rem; border-radius: var(--radius-sm);
+        text-decoration: none; background: var(--paper);
+        transition: all 0.2s ease; margin-bottom: 0.375rem;
         border: 1.5px solid transparent;
     }
 
@@ -702,23 +491,15 @@
     .hd-pending:last-child { margin-bottom: 0; }
 
     .hd-pending:hover {
-        background: var(--card);
-        border-color: rgba(5,150,105,0.2);
-        transform: translateX(3px);
-        box-shadow: var(--shadow-sm);
+        background: var(--card); border-color: rgba(5,150,105,0.2);
+        transform: translateX(3px); box-shadow: var(--shadow-sm);
     }
 
     .hd-pending-ico {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
 
-    /* FIX: Use explicit hex backgrounds */
     .hd-pending-ico.blue   { background: #dbeafe; }
     .hd-pending-ico.amber  { background: #fef3c7; }
     .hd-pending-ico.purple { background: #ede9fe; }
@@ -732,31 +513,17 @@
 
     .hd-pending-title {
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: var(--ink);
-        margin-bottom: 0.125rem;
+        font-size: 0.875rem; font-weight: 700; color: var(--ink); margin-bottom: 0.125rem;
     }
 
-    .hd-pending-sub {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        color: var(--ink3);
-    }
+    .hd-pending-sub { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: var(--ink3); }
 
     .hd-pending-num {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 38px; height: 38px; border-radius: 10px;
         background: linear-gradient(135deg, var(--g2), var(--g));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-family: 'DM Sans', sans-serif;
-        font-weight: 900;
-        font-size: 1rem;
-        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-family: 'DM Sans', sans-serif;
+        font-weight: 900; font-size: 1rem; flex-shrink: 0;
         box-shadow: 0 4px 12px rgba(5,150,105,0.35);
     }
 
@@ -764,24 +531,15 @@
        BIRTHDAY
     ═══════════════════════════════════════ */
     .hd-bday {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.625rem 0.75rem;
-        border-radius: var(--radius-sm);
-        background: var(--paper);
-        transition: all 0.2s ease;
-        margin-bottom: 0.375rem;
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.625rem 0.75rem; border-radius: var(--radius-sm);
+        background: var(--paper); transition: all 0.2s ease; margin-bottom: 0.375rem;
     }
 
     .dark .hd-bday { background: rgba(16,185,129,0.04); }
     .hd-bday:last-child { margin-bottom: 0; }
 
-    .hd-bday:hover {
-        background: var(--card);
-        transform: scale(1.01);
-        box-shadow: var(--shadow-sm);
-    }
+    .hd-bday:hover { background: var(--card); transform: scale(1.01); box-shadow: var(--shadow-sm); }
 
     .hd-bday.today {
         background: linear-gradient(135deg, #fffbeb, #fef3c7);
@@ -794,76 +552,35 @@
     }
 
     .hd-bday-ava {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
+        width: 34px; height: 34px; border-radius: 50%;
         background: linear-gradient(135deg, var(--g2), var(--a2));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-family: 'DM Sans', sans-serif;
-        font-weight: 800;
-        font-size: 0.75rem;
-        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-family: 'DM Sans', sans-serif;
+        font-weight: 800; font-size: 0.75rem; flex-shrink: 0;
     }
 
-    .hd-bday-name {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: var(--ink);
-    }
-
-    .hd-bday-dept {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        color: var(--ink3);
-    }
+    .hd-bday-name { font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 700; color: var(--ink); }
+    .hd-bday-dept { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: var(--ink3); }
 
     .hd-bday-date {
         margin-left: auto;
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--a);
-        white-space: nowrap;
+        font-size: 0.75rem; font-weight: 700; color: var(--a); white-space: nowrap;
     }
 
     /* ═══════════════════════════════════════
        EMPTY STATE
     ═══════════════════════════════════════ */
     .hd-empty {
-        text-align: center;
-        padding: 1.5rem 1rem;
+        text-align: center; padding: 1.5rem 1rem;
         border-radius: var(--radius-sm);
-        background: var(--paper);
-        border: 2px dashed var(--border);
+        background: var(--paper); border: 2px dashed var(--border);
     }
 
     .dark .hd-empty { background: rgba(16,185,129,0.03); }
-
-    .hd-empty-icon {
-        opacity: 0.2;
-        margin: 0 auto 0.625rem;
-        width: 2rem !important;
-        height: 2rem !important;
-    }
-
-    .hd-empty-title {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.875rem;
-        font-weight: 700;
-        color: var(--ink3);
-        margin-bottom: 0.2rem;
-    }
-
-    .hd-empty-text {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        color: var(--ink3);
-        opacity: 0.75;
-    }
+    .hd-empty-icon { opacity: 0.2; margin: 0 auto 0.625rem; width: 2rem !important; height: 2rem !important; }
+    .hd-empty-title { font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 700; color: var(--ink3); margin-bottom: 0.2rem; }
+    .hd-empty-text  { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: var(--ink3); opacity: 0.75; }
 
     /* ═══════════════════════════════════════
        PASSWORD MODAL
@@ -872,34 +589,26 @@
         background: var(--card);
         border-radius: 24px;
         padding: 2.5rem 2.25rem;
-        max-width: 460px;
-        width: 100%;
+        max-width: 460px; width: 100%;
         border: 2px solid rgba(220,38,38,0.2);
         box-shadow: 0 0 0 1px rgba(220,38,38,0.1), 0 24px 80px rgba(0,0,0,0.3);
-        position: relative;
-        overflow: hidden;
+        position: relative; overflow: hidden;
     }
 
     .hd-pw-modal::before {
         content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 4px;
+        position: absolute; top: 0; left: 0; right: 0; height: 4px;
         background: linear-gradient(90deg, #dc2626, #f97316, #dc2626);
         background-size: 200% 100%;
         animation: shimmer 2s linear infinite;
     }
 
     .hd-pw-icon {
-        width: 68px;
-        height: 68px;
-        margin: 0 auto 1.25rem;
-        border-radius: 50%;
+        width: 68px; height: 68px;
+        margin: 0 auto 1.25rem; border-radius: 50%;
         background: linear-gradient(135deg, #fef2f2, #fee2e2);
         border: 2px solid rgba(220,38,38,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         animation: hd-pulse 2.5s ease-in-out infinite;
     }
 
@@ -910,45 +619,28 @@
 
     .hd-pw-title {
         font-family: 'Playfair Display', serif;
-        font-size: 1.75rem;
-        font-weight: 900;
-        color: #dc2626;
-        text-align: center;
-        margin-bottom: 0.75rem;
+        font-size: 1.75rem; font-weight: 900; color: #dc2626;
+        text-align: center; margin-bottom: 0.75rem;
     }
 
     .hd-pw-text {
         font-family: 'DM Sans', sans-serif;
-        text-align: center;
-        font-size: 0.9375rem;
-        color: var(--ink3);
-        line-height: 1.65;
-        margin-bottom: 1.75rem;
+        text-align: center; font-size: 0.9375rem;
+        color: var(--ink3); line-height: 1.65; margin-bottom: 1.75rem;
     }
 
     .hd-pw-btn {
-        width: 100%;
-        padding: 0.9375rem 1.5rem;
+        width: 100%; padding: 0.9375rem 1.5rem;
         background: linear-gradient(135deg, #dc2626, #991b1b);
-        color: white;
-        border: none;
-        border-radius: 12px;
+        color: white; border: none; border-radius: 12px;
         font-family: 'DM Sans', sans-serif;
-        font-size: 0.9375rem;
-        font-weight: 700;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.625rem;
+        font-size: 0.9375rem; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 0.625rem;
         box-shadow: 0 8px 24px rgba(220,38,38,0.35);
         transition: all 0.25s ease;
     }
 
-    .hd-pw-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 14px 32px rgba(220,38,38,0.4);
-    }
+    .hd-pw-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(220,38,38,0.4); }
 
     /* ═══════════════════════════════════════
        ANIMATIONS
@@ -958,24 +650,21 @@
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    .hd-in { animation: hd-fadein 0.4s ease-out backwards; }
-    .hd-d1 { animation-delay: 0.05s; }
-    .hd-d2 { animation-delay: 0.10s; }
-    .hd-d3 { animation-delay: 0.15s; }
-    .hd-d4 { animation-delay: 0.20s; }
-    .hd-d5 { animation-delay: 0.25s; }
-    .hd-d6 { animation-delay: 0.30s; }
+    .hd-in  { animation: hd-fadein 0.4s ease-out backwards; }
+    .hd-d1  { animation-delay: 0.05s; }
+    .hd-d2  { animation-delay: 0.10s; }
+    .hd-d3  { animation-delay: 0.15s; }
+    .hd-d4  { animation-delay: 0.20s; }
+    .hd-d5  { animation-delay: 0.25s; }
+    .hd-d6  { animation-delay: 0.30s; }
 
     /* ═══════════════════════════════════════
        RESPONSIVE
     ═══════════════════════════════════════ */
     @media (max-width: 1024px) {
-        .hd-three-grid { grid-template-columns: 1fr 1fr !important; }
         .hd-admin-outer {
             grid-template-columns: 1fr 1fr !important;
-            grid-template-areas:
-                "activities pending"
-                "announcements events" !important;
+            grid-template-areas: "activities pending" "announcements events" !important;
         }
     }
 
@@ -985,14 +674,9 @@
         .hd-hero-name { font-size: 1.5rem; }
         .hd-hero-right { align-items: flex-start; }
         .hd-widget-grid { grid-template-columns: 1fr !important; }
-        .hd-three-grid  { grid-template-columns: 1fr !important; }
         .hd-admin-outer {
             grid-template-columns: 1fr !important;
-            grid-template-areas:
-                "activities"
-                "pending"
-                "announcements"
-                "events" !important;
+            grid-template-areas: "activities" "pending" "announcements" "events" !important;
         }
         .hd-modules-grid { grid-template-columns: 1fr 1fr; }
     }
@@ -1005,9 +689,15 @@
 
 {{-- ════════════════════════════════
      PASSWORD CHANGE MODAL
+     FIX: The middleware now handles the redirect automatically. This modal
+     is kept as a visible UX reinforcement for users who land on the dashboard
+     before the middleware fires (e.g. direct URL hits), but the button now
+     does a clean redirect to the profile page.
 ════════════════════════════════ --}}
 @if($mustChangePassword)
-    <div x-data="{ open: true }" x-show="open" x-trap="open"
+    <div x-data="{ open: true }"
+         x-show="open"
+         x-trap.noscroll="open"
          class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -1021,26 +711,19 @@
             </div>
             <h2 class="hd-pw-title">Security Alert</h2>
             <p class="hd-pw-text">
-                You are using a temporary password. Please update your password immediately to secure your account and continue using the system.
+                You are using a temporary password. Please update your password immediately
+                to secure your account and continue using the system.
             </p>
-            <button @click="window.location.href='{{ route('filament.hrms.pages.profile') }}'"
-                    class="hd-pw-btn">
+            {{-- FIX: use a standard anchor so the full-page navigation triggers
+                 the RequirePasswordChange middleware correctly --}}
+            <a href="{{ route('filament.hrms.pages.profile') }}" class="hd-pw-btn">
                 <x-heroicon-o-lock-closed class="w-4 h-4" />
                 Update Password Now
-            </button>
+            </a>
         </div>
     </div>
 @endif
 
-{{-- ════════════════════════════════
-     MAIN DASHBOARD
-════════════════════════════════ --}}
-
-{{--
-    FIX: Icon color map for activity & pending icons.
-    Tailwind JIT purges dynamic class strings like "text-blue-600" built at
-    runtime. We use a PHP map instead and pass colors via inline style.
---}}
 @php
     $iconColorMap = [
         'blue'   => '#2563eb',
@@ -1086,13 +769,14 @@
                         <x-heroicon-o-clock class="w-3.5 h-3.5" />
                         {{ $this->getCurrentTime() }}
                     </div>
-                    <div class="hd-pill" style="border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.12); color: #6ee7b7;">
+                    <div class="hd-pill" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.12);color:#6ee7b7;">
                         @if($user->isAdmin())
                             <x-heroicon-o-shield-check class="w-3.5 h-3.5" />
                             Administrator
                         @else
                             <x-heroicon-o-user class="w-3.5 h-3.5" />
-                            Employee
+                            {{-- FIX: show role display name instead of hardcoded 'Employee' --}}
+                            {{ $user->getRoleDisplayName() }}
                         @endif
                     </div>
                 </div>
@@ -1105,7 +789,7 @@
     {{-- ════════════════════════════════
          EMPLOYEE VIEW
     ════════════════════════════════ --}}
-    @if(!$user->isAdmin())
+    @if(! $user->isAdmin())
         <div class="hd-widget-grid hd-in hd-d1">
 
             {{-- Announcements --}}
@@ -1184,7 +868,6 @@
          ADMIN VIEW
     ════════════════════════════════ --}}
     @if($user->isAdmin())
-
         <div class="hd-admin-outer hd-in hd-d1">
 
             {{-- Col 1: Recent Activities --}}
@@ -1199,7 +882,6 @@
                 @forelse($recentActivities as $activity)
                     @php $iconColor = $iconColorMap[$activity['color']] ?? '#6b7280'; @endphp
                     <a href="{{ $activity['url'] }}" class="hd-activity">
-                        {{-- FIX: icon color via inline style — avoids Tailwind purge of dynamic class strings --}}
                         <div class="hd-activity-ico {{ $activity['color'] }}">
                             <x-dynamic-component
                                 :component="$activity['icon']"
@@ -1237,7 +919,6 @@
                 @forelse($pendingActions as $action)
                     @php $iconColor = $iconColorMap[$action['color']] ?? '#6b7280'; @endphp
                     <a href="{{ route($action['route']) }}" class="hd-pending">
-                        {{-- FIX: icon color via inline style --}}
                         <div class="hd-pending-ico {{ $action['color'] }}">
                             <x-dynamic-component
                                 :component="$action['icon']"
@@ -1327,15 +1008,14 @@
                 @endforelse
             </div>
 
-        </div>{{-- /hd-admin-outer --}}
-
+        </div>
     @endif
 
     {{-- ════════════════════════════════
          QUICK ACCESS MODULES
     ════════════════════════════════ --}}
-    <div class="hd-in hd-d3" style="margin-bottom: 1.25rem;">
-        <div class="hd-section-label" style="margin-bottom: 1rem;">
+    <div class="hd-in hd-d3" style="margin-bottom:1.25rem;">
+        <div class="hd-section-label" style="margin-bottom:1rem;">
             <div class="hd-section-icon">
                 <x-heroicon-o-squares-2x2 class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
             </div>
@@ -1346,7 +1026,7 @@
             @foreach($modules as $index => $module)
                 <a href="{{ route($module['route']) }}"
                    class="hd-module hd-in"
-                   style="animation-delay: {{ 0.05 * ($index + 1) }}s;">
+                   style="animation-delay:{{ 0.05 * ($index + 1) }}s;">
                     <div class="hd-module-top">
                         <div class="hd-module-icon {{ $module['icon_bg'] }}">
                             <x-dynamic-component :component="$module['icon']"
@@ -1385,7 +1065,7 @@
                 <div class="hd-bday-ava">
                     {{ strtoupper(substr($celebrant['name'], 0, 2)) }}
                 </div>
-                <div style="flex:1; min-width:0;">
+                <div style="flex:1;min-width:0;">
                     <div class="hd-bday-name">
                         {{ $celebrant['name'] }}
                         @if($celebrant['is_today'])

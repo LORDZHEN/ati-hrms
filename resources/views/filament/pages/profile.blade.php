@@ -48,6 +48,75 @@
     }
 
     /* ═══════════════════════════════════════
+       TEMP-PASSWORD WARNING BANNER  (NEW)
+    ═══════════════════════════════════════ */
+    .pf-pw-banner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, #fef2f2, #fee2e2);
+        border: 1.5px solid rgba(220,38,38,0.35);
+        border-radius: var(--radius);
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+        position: relative;
+        overflow: hidden;
+        animation: pf-fadein 0.4s ease-out backwards;
+    }
+
+    .dark .pf-pw-banner {
+        background: linear-gradient(135deg, rgba(220,38,38,0.12), rgba(185,28,28,0.08));
+        border-color: rgba(220,38,38,0.4);
+    }
+
+    .pf-pw-banner::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #dc2626, #f97316, #dc2626);
+        background-size: 200% 100%;
+        animation: pf-shimmer 2s linear infinite;
+    }
+
+    .pf-pw-banner-icon {
+        width: 44px; height: 44px; border-radius: 50%;
+        background: rgba(220,38,38,0.12);
+        border: 2px solid rgba(220,38,38,0.25);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        animation: pf-pulse-red 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pf-pulse-red {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+        50%       { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+    }
+
+    .pf-pw-banner-body { flex: 1; }
+
+    .pf-pw-banner-title {
+        font-size: 0.9375rem; font-weight: 700;
+        color: #dc2626; margin-bottom: 0.2rem;
+    }
+
+    .dark .pf-pw-banner-title { color: #fca5a5; }
+
+    .pf-pw-banner-text {
+        font-size: 0.8125rem; color: #7f1d1d; line-height: 1.5;
+    }
+
+    .dark .pf-pw-banner-text { color: #fecaca; }
+
+    .pf-pw-banner-arrow {
+        display: flex; align-items: center; gap: 0.375rem;
+        font-size: 0.75rem; font-weight: 700;
+        color: #dc2626; white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .dark .pf-pw-banner-arrow { color: #fca5a5; }
+
+    /* ═══════════════════════════════════════
        HERO
     ═══════════════════════════════════════ */
     .pf-hero {
@@ -199,6 +268,19 @@
         color: #fcd34d;
     }
 
+    /* Red pill for temporary-password warning */
+    .pf-pill.red {
+        border-color: rgba(220,38,38,0.5);
+        background: rgba(220,38,38,0.15);
+        color: #fca5a5;
+        animation: pf-badge-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pf-badge-pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.7; }
+    }
+
     .pf-hero-stripe {
         position: absolute; bottom: 0; left: 0; right: 0;
         height: 3px;
@@ -213,7 +295,7 @@
     }
 
     /* ═══════════════════════════════════════
-       SECTION LABEL  (matches hd-section-label)
+       SECTION LABEL
     ═══════════════════════════════════════ */
     .pf-section-label {
         display: flex; align-items: center; gap: 0.625rem;
@@ -243,7 +325,7 @@
     }
 
     /* ═══════════════════════════════════════
-       BASE CARD  (matches hd-card)
+       BASE CARD
     ═══════════════════════════════════════ */
     .pf-card {
         background: var(--card);
@@ -355,9 +437,14 @@
         position: relative;
     }
 
+    /* Highlight the Change Password card when a temp password is active */
+    .pf-action-card.highlight-pw {
+        border-color: rgba(220,38,38,0.4);
+        box-shadow: 0 0 0 3px rgba(220,38,38,0.1), var(--shadow-sm);
+    }
+
     .pf-action-card:hover { box-shadow: var(--shadow-md); }
 
-    /* Top accent bar matching hd-module::before */
     .pf-action-card::before {
         content: '';
         position: absolute; top: 0; left: 0; right: 0;
@@ -365,6 +452,11 @@
         background: linear-gradient(90deg, var(--g), var(--a2));
         transform: scaleX(0); transform-origin: left;
         transition: transform 0.3s ease;
+    }
+
+    .pf-action-card.highlight-pw::before {
+        background: linear-gradient(90deg, #dc2626, #f97316);
+        transform: scaleX(1);
     }
 
     .pf-action-card:hover::before { transform: scaleX(1); }
@@ -391,6 +483,12 @@
         box-shadow: 0 4px 12px rgba(245,158,11,0.3);
     }
 
+    /* Red icon variant for the password card when temp password is active */
+    .pf-action-icon.red {
+        background: linear-gradient(135deg, #dc2626, #991b1b);
+        box-shadow: 0 4px 12px rgba(220,38,38,0.35);
+    }
+
     .pf-action-title {
         font-size: 0.9375rem; font-weight: 700;
         color: var(--ink); letter-spacing: -0.01em;
@@ -400,10 +498,13 @@
         font-size: 0.75rem; color: var(--ink3); margin-top: 1px;
     }
 
+    .pf-action-sub.red { color: #dc2626; font-weight: 600; }
+    .dark .pf-action-sub.red { color: #fca5a5; }
+
     .pf-action-body { padding: 1rem 1.25rem 1.25rem; }
 
     /* ═══════════════════════════════════════
-       SECURITY TIPS  (matches hd-announce style)
+       SECURITY TIPS
     ═══════════════════════════════════════ */
     .pf-tips-grid {
         display: grid;
@@ -445,20 +546,6 @@
     }
 
     /* ═══════════════════════════════════════
-       CHIP (inline badge)
-    ═══════════════════════════════════════ */
-    .pf-chip {
-        display: inline-flex; align-items: center;
-        padding: 0.15rem 0.5rem; border-radius: 999px;
-        font-size: 0.625rem; font-weight: 800;
-        text-transform: uppercase; letter-spacing: 0.06em;
-    }
-
-    .pf-chip.green  { background: #d1fae5; color: #065f46; }
-    .pf-chip.amber  { background: #fef3c7; color: #92400e; }
-    .pf-chip.blue   { background: #dbeafe; color: #1d4ed8; }
-
-    /* ═══════════════════════════════════════
        ANIMATIONS
     ═══════════════════════════════════════ */
     @keyframes pf-fadein {
@@ -490,7 +577,38 @@
     }
 </style>
 
-<div class="pf-root max-w-5xl mx-auto pb-6">
+<div class="pf-root max-w-5xl mx-auto pb-6"
+     x-data="{ mustChangePw: @js($mustChangePassword) }"
+     @password-changed.window="mustChangePw = false">
+
+    {{-- ═══════════════════════════════════════════
+         TEMPORARY PASSWORD WARNING BANNER  (NEW)
+         Shown when must_change_password = true.
+         Hidden reactively when ChangePassword emits 'passwordChanged'.
+    ═══════════════════════════════════════════ --}}
+    <div x-show="mustChangePw"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-2"
+         class="pf-pw-banner">
+        <div class="pf-pw-banner-icon">
+            <x-heroicon-o-shield-exclamation class="w-6 h-6 text-red-600" />
+        </div>
+        <div class="pf-pw-banner-body">
+            <div class="pf-pw-banner-title">⚠ Temporary Password Active</div>
+            <div class="pf-pw-banner-text">
+                You are currently using a temporary password. Please update it now using the
+                <strong>Change Password</strong> form below before accessing other parts of the system.
+            </div>
+        </div>
+        <div class="pf-pw-banner-arrow">
+            <x-heroicon-o-arrow-down class="w-4 h-4" />
+            Change below
+        </div>
+    </div>
 
     {{-- ═══════════════════════════════════════════
          HERO BANNER
@@ -545,6 +663,13 @@
                         <div class="pf-pill green">
                             <x-heroicon-o-check-badge class="w-3.5 h-3.5" />
                             {{ Auth::user()->employment_status }}
+                        </div>
+                    @endif
+                    {{-- FIX: Show a red "Temp Password" pill when must_change_password is active --}}
+                    @if(Auth::user()->must_change_password)
+                        <div class="pf-pill red">
+                            <x-heroicon-o-key class="w-3.5 h-3.5" />
+                            Temporary Password
                         </div>
                     @endif
                 </div>
@@ -611,9 +736,7 @@
                 </div>
                 <div class="min-w-0">
                     <div class="pf-info-label">Employment Status</div>
-                    <div class="pf-info-value">
-                        {{ Auth::user()->employment_status }}
-                    </div>
+                    <div class="pf-info-value">{{ Auth::user()->employment_status }}</div>
                 </div>
             </div>
             @endif
@@ -645,6 +768,8 @@
 
     {{-- ═══════════════════════════════════════════
          ACTION CARDS
+         FIX: Change Password card is highlighted red when must_change_password
+              is active, and icon colour switches to red to signal urgency.
     ═══════════════════════════════════════════ --}}
     <div class="pf-actions-grid pf-in pf-d2">
 
@@ -664,15 +789,20 @@
             </div>
         </div>
 
-        {{-- Change Password --}}
-        <div class="pf-action-card">
+        {{-- Change Password — highlighted when temp password is active --}}
+        <div class="pf-action-card {{ $mustChangePassword ? 'highlight-pw' : '' }}"
+             id="change-password-card">
             <div class="pf-action-header">
-                <div class="pf-action-icon amber">
+                <div class="pf-action-icon {{ $mustChangePassword ? 'red' : 'amber' }}">
                     <x-heroicon-o-lock-closed class="w-5 h-5 text-white" />
                 </div>
                 <div>
                     <div class="pf-action-title">Change Password</div>
-                    <div class="pf-action-sub">Update your security credentials</div>
+                    @if($mustChangePassword)
+                        <div class="pf-action-sub red">⚠ Temporary password — update required</div>
+                    @else
+                        <div class="pf-action-sub">Update your security credentials</div>
+                    @endif
                 </div>
             </div>
             <div class="pf-action-body">
@@ -696,10 +826,10 @@
 
         <div class="pf-tips-grid">
             @foreach([
-                ['Use a strong, unique password',      'heroicon-o-lock-closed'],
-                ['Never share your credentials',       'heroicon-o-eye-slash'],
-                ['Update password regularly',          'heroicon-o-arrow-path'],
-                ['Log out from shared devices',        'heroicon-o-arrow-right-on-rectangle'],
+                ['Use a strong, unique password',   'heroicon-o-lock-closed'],
+                ['Never share your credentials',    'heroicon-o-eye-slash'],
+                ['Update password regularly',       'heroicon-o-arrow-path'],
+                ['Log out from shared devices',     'heroicon-o-arrow-right-on-rectangle'],
             ] as [$tip, $icon])
             <div class="pf-tip">
                 <div class="pf-tip-dot">
@@ -712,5 +842,19 @@
     </div>
 
 </div>
+
+{{-- Auto-scroll to the Change Password card on first load if temp password is active --}}
+@if($mustChangePassword)
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            const card = document.getElementById('change-password-card');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 600);
+    });
+</script>
+@endif
 
 </x-filament-panels::page>

@@ -69,7 +69,7 @@ class ChangePassword extends Component
      */
     public function updatedPassword(?string $value): void
     {
-        if (!$value) {
+        if (! $value) {
             $this->resetPasswordStrength();
             return;
         }
@@ -91,11 +91,11 @@ class ChangePassword extends Component
      */
     protected function calculatePasswordStrength(string $password): void
     {
-        $this->hasUppercase = preg_match('/[A-Z]/', $password) === 1;
-        $this->hasLowercase = preg_match('/[a-z]/', $password) === 1;
-        $this->hasNumber = preg_match('/[0-9]/', $password) === 1;
-        $this->hasSpecial = preg_match('/[\W_]/', $password) === 1;
-        $this->hasMinLength = strlen($password) >= 8;
+        $this->hasUppercase  = preg_match('/[A-Z]/', $password) === 1;
+        $this->hasLowercase  = preg_match('/[a-z]/', $password) === 1;
+        $this->hasNumber     = preg_match('/[0-9]/', $password) === 1;
+        $this->hasSpecial    = preg_match('/[\W_]/', $password) === 1;
+        $this->hasMinLength  = strlen($password) >= 8;
 
         $score = collect([
             $this->hasUppercase,
@@ -108,7 +108,7 @@ class ChangePassword extends Component
         $this->passwordStrength = match (true) {
             $score <= 2 => 'weak',
             $score <= 4 => 'medium',
-            default => 'strong',
+            default     => 'strong',
         };
     }
 
@@ -118,11 +118,11 @@ class ChangePassword extends Component
     protected function resetPasswordStrength(): void
     {
         $this->passwordStrength = 'weak';
-        $this->hasUppercase = false;
-        $this->hasLowercase = false;
-        $this->hasNumber = false;
-        $this->hasSpecial = false;
-        $this->hasMinLength = false;
+        $this->hasUppercase     = false;
+        $this->hasLowercase     = false;
+        $this->hasNumber        = false;
+        $this->hasSpecial       = false;
+        $this->hasMinLength     = false;
     }
 
     /**
@@ -130,7 +130,7 @@ class ChangePassword extends Component
      */
     protected function checkPasswordMatch(): void
     {
-        if (!$this->password || !$this->password_confirmation) {
+        if (! $this->password || ! $this->password_confirmation) {
             $this->passwordsMatch = null;
             return;
         }
@@ -144,8 +144,8 @@ class ChangePassword extends Component
     protected function rules(): array
     {
         return [
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password'      => 'required|string',
+            'password'              => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ];
     }
@@ -156,16 +156,21 @@ class ChangePassword extends Component
     protected function messages(): array
     {
         return [
-            'current_password.required' => 'Please enter your current password.',
-            'password.required' => 'Please enter a new password.',
-            'password.min' => 'Password must be at least 8 characters.',
-            'password.confirmed' => 'Password confirmation does not match.',
+            'current_password.required'      => 'Please enter your current password.',
+            'password.required'              => 'Please enter a new password.',
+            'password.min'                   => 'Password must be at least 8 characters.',
+            'password.confirmed'             => 'Password confirmation does not match.',
             'password_confirmation.required' => 'Please confirm your new password.',
         ];
     }
 
     /**
-     * Update user password
+     * Update user password.
+     *
+     * FIX: dispatch('password-changed') instead of dispatch('passwordUpdated').
+     *      The profile blade listens via @password-changed.window (Alpine JS
+     *      converts camelCase Livewire events to kebab-case on the window),
+     *      so the event name must be 'password-changed' to match.
      */
     public function updatePassword(): void
     {
@@ -189,7 +194,7 @@ class ChangePassword extends Component
         $user = Auth::user();
 
         // Verify current password
-        if (!Hash::check($this->current_password, $user->password)) {
+        if (! Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', 'The current password is incorrect.');
             return;
         }
@@ -200,15 +205,14 @@ class ChangePassword extends Component
             return;
         }
 
-        // Update password
+        // Persist new password and lift the temporary-password lock
         $user->update([
-            'password' => Hash::make($this->password),
-            'must_change_password' => false,
+            'password'             => Hash::make($this->password),
+            'must_change_password' => false,   // lifts RequirePasswordChange middleware redirect
         ]);
 
         $this->closeModal();
 
-        // Success notification
         Notification::make()
             ->title('Password Changed')
             ->body('Your password has been successfully updated.')
@@ -216,8 +220,10 @@ class ChangePassword extends Component
             ->duration(5000)
             ->send();
 
-        // Optional: Dispatch event for other components
-        $this->dispatch('passwordUpdated');
+        // FIX: was 'passwordUpdated' — must be 'password-changed' so Alpine's
+        //      @password-changed.window listener on the profile page fires and
+        //      sets mustChangePw = false, hiding the warning banner.
+        $this->dispatch('password-changed');
     }
 
     /**
@@ -226,10 +232,10 @@ class ChangePassword extends Component
     public function getStrengthColorProperty(): string
     {
         return match ($this->passwordStrength) {
-            'weak' => 'red',
+            'weak'   => 'red',
             'medium' => 'amber',
             'strong' => 'emerald',
-            default => 'gray',
+            default  => 'gray',
         };
     }
 
@@ -239,10 +245,10 @@ class ChangePassword extends Component
     public function getStrengthWidthProperty(): string
     {
         return match ($this->passwordStrength) {
-            'weak' => '33%',
+            'weak'   => '33%',
             'medium' => '66%',
             'strong' => '100%',
-            default => '0%',
+            default  => '0%',
         };
     }
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EmployeeResource\Pages;
 
 use App\Filament\Resources\EmployeeResource;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
@@ -28,8 +29,8 @@ class ListEmployees extends ListRecords
                 ->modalHeading('Bulk Approve Pending Employees')
                 ->modalDescription('This will approve all pending employees and send them their login credentials.')
                 ->action(function () {
-                    $pending = \App\Models\User::where('status', 'pending')
-                        ->whereNull('email_verified_at')
+                    $pending = User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
+                        ->where('status', 'pending')
                         ->get();
 
                     $count = 0;
@@ -66,9 +67,7 @@ class ListEmployees extends ListRecords
                                 'pending' => 'Pending',
                                 'inactive' => 'Inactive',
                             ])
-                            ->default('all')
-                            ->required()
-                            ->native(false),
+                            ->default('all')->required()->native(false),
 
                         Select::make('period')
                             ->label('Report Period')
@@ -79,13 +78,9 @@ class ListEmployees extends ListRecords
                                 'yearly' => 'This Year',
                                 'custom' => 'Custom Date Range',
                             ])
-                            ->default('monthly')
-                            ->required()
-                            ->native(false)
-                            ->live()
+                            ->default('monthly')->required()->native(false)->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
-
                                 match ($state) {
                                     'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
                                     'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
@@ -95,32 +90,20 @@ class ListEmployees extends ListRecords
                                 };
                             }),
                     ]),
-
                     Grid::make(2)->schema([
-                        DatePicker::make('from')
-                            ->label('From Date')
-                            ->required()
-                            ->native(false)
+                        DatePicker::make('from')->label('From Date')->required()->native(false)
                             ->default(Carbon::now()->startOfMonth()->toDateString()),
-
-                        DatePicker::make('to')
-                            ->label('To Date')
-                            ->required()
-                            ->native(false)
-                            ->after('from')
-                            ->default(Carbon::now()->endOfMonth()->toDateString()),
+                        DatePicker::make('to')->label('To Date')->required()->native(false)
+                            ->after('from')->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
                 ])
                 ->action(function (array $data) {
-                    // Build the report URL with query parameters
                     $url = route('employee.report', [
                         'status' => $data['status'] ?? 'all',
                         'period' => $data['period'] ?? 'monthly',
                         'from' => $data['from'],
                         'to' => $data['to'],
                     ]);
-
-                    // Redirect to the report route — browser will receive the PDF
                     $this->redirect($url, navigate: false);
                 })
                 ->modalSubmitActionLabel('Generate PDF')
@@ -130,46 +113,48 @@ class ListEmployees extends ListRecords
 
     public function getTabs(): array
     {
+        $base = fn() => User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER]);
+
         return [
             'all' => Tab::make('All Employees')
                 ->icon('heroicon-o-user-group')
-                ->badge(fn() => \App\Models\User::whereIn('role', ['employee', 'admin'])->count()),
-
-            'active' => Tab::make('Active')
-                ->icon('heroicon-o-check-circle')
-                ->badge(fn() => \App\Models\User::where('status', 'active')->count())
-                ->badgeColor('success')
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'active')),
+                ->badge(fn() => $base()->count()),
 
             'pending' => Tab::make('Pending Approval')
                 ->icon('heroicon-o-clock')
-                ->badge(fn() => \App\Models\User::where('status', 'pending')->whereNull('email_verified_at')->count())
+                ->badge(fn() => $base()->where('status', 'pending')->count())
                 ->badgeColor('warning')
-                ->modifyQueryUsing(
-                    fn(Builder $query) =>
-                    $query->where('status', 'pending')->whereNull('email_verified_at')
-                ),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'pending')),
+
+            'active' => Tab::make('Active')
+                ->icon('heroicon-o-check-circle')
+                ->badge(fn() => $base()->where('status', 'active')->count())
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'active')),
 
             'inactive' => Tab::make('Inactive')
                 ->icon('heroicon-o-x-circle')
-                ->badge(fn() => \App\Models\User::where('status', 'inactive')->count())
+                ->badge(fn() => $base()->where('status', 'inactive')->count())
                 ->badgeColor('danger')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('status', 'inactive')),
 
             'unverified' => Tab::make('Unverified Email')
                 ->icon('heroicon-o-envelope')
-                ->badge(fn() => \App\Models\User::whereNull('email_verified_at')->count())
+                ->badge(fn() => $base()->whereNull('email_verified_at')->count())
                 ->badgeColor('gray')
                 ->modifyQueryUsing(fn(Builder $query) => $query->whereNull('email_verified_at')),
 
+            'job_order' => Tab::make('Job Order')
+                ->icon('heroicon-o-briefcase')
+                ->badge(fn() => User::where('role', User::ROLE_JOB_ORDER)->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('role', User::ROLE_JOB_ORDER)),
+
             'recent' => Tab::make('Recently Added')
                 ->icon('heroicon-o-sparkles')
-                ->badge(fn() => \App\Models\User::where('created_at', '>=', now()->subDays(7))->count())
+                ->badge(fn() => $base()->where('created_at', '>=', now()->subDays(7))->count())
                 ->badgeColor('info')
-                ->modifyQueryUsing(
-                    fn(Builder $query) =>
-                    $query->where('created_at', '>=', now()->subDays(7))
-                ),
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('created_at', '>=', now()->subDays(7))),
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LocatorSlipResource\Pages;
 use App\Models\LocatorSlip;
+use App\Models\User;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -27,6 +28,37 @@ class LocatorSlipResource extends Resource
     protected static ?int $navigationSort = 3;
 
     // =========================================================================
+    //  ACCESS CONTROL — Hide entirely from Job Order users
+    // =========================================================================
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Auth::user()->role === User::ROLE_REGULAR;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return $record->status === 'pending' &&
+            (Auth::user()->role === 'admin' || Auth::id() === $record->user_id);
+    }
+
+    public static function canDelete($record): bool
+    {
+        return $record->status === 'pending' &&
+            (Auth::user()->role === 'admin' || Auth::id() === $record->user_id);
+    }
+
+    // =========================================================================
     //  FORM
     // =========================================================================
 
@@ -46,7 +78,6 @@ class LocatorSlipResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // Compute once — prevents repeated auth lookups in every closure.
         $isAdmin = Auth::user()->role === 'admin';
 
         return $table
@@ -94,7 +125,6 @@ class LocatorSlipResource extends Resource
     protected static function getTableColumns(bool $isAdmin): array
     {
         return [
-            // ── Employee — admin only ─────────────────────────────────────────
             Tables\Columns\TextColumn::make('employee_name')
                 ->label('Employee')
                 ->searchable()
@@ -104,7 +134,6 @@ class LocatorSlipResource extends Resource
                 ->iconColor('primary')
                 ->visible($isAdmin),
 
-            // ── Position • Department ─────────────────────────────────────────
             Tables\Columns\TextColumn::make('position')
                 ->label('Position')
                 ->color('gray')
@@ -116,7 +145,6 @@ class LocatorSlipResource extends Resource
                 )
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // ── Transaction Type badge ────────────────────────────────────────
             Tables\Columns\TextColumn::make('transaction_type')
                 ->label('Type')
                 ->badge()
@@ -136,7 +164,6 @@ class LocatorSlipResource extends Resource
                     default => $state,
                 }),
 
-            // ── Destination ───────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('destination')
                 ->label('Destination')
                 ->searchable()
@@ -145,7 +172,6 @@ class LocatorSlipResource extends Resource
                 ->icon('heroicon-o-map-pin')
                 ->iconColor('warning'),
 
-            // ── Purpose ───────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('purpose')
                 ->label('Purpose')
                 ->color('gray')
@@ -154,7 +180,6 @@ class LocatorSlipResource extends Resource
                 ->tooltip(fn($record) => $record->purpose)
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // ── Trip Date ─────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('inclusive_date')
                 ->label('Trip Date')
                 ->date('M d, Y')
@@ -162,7 +187,6 @@ class LocatorSlipResource extends Resource
                 ->icon('heroicon-o-calendar-days')
                 ->iconColor('info'),
 
-            // ── Status badge ──────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -181,7 +205,6 @@ class LocatorSlipResource extends Resource
                 })
                 ->formatStateUsing(fn(string $state): string => ucfirst($state)),
 
-            // ── Submitted ─────────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Submitted')
                 ->since()
@@ -191,7 +214,6 @@ class LocatorSlipResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
-            // ── Processed By ──────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('approved_by')
                 ->label('Processed By')
                 ->color('gray')
@@ -201,7 +223,6 @@ class LocatorSlipResource extends Resource
                 ->limit(22)
                 ->tooltip(fn($record) => $record->approved_by),
 
-            // ── Admin Remarks ─────────────────────────────────────────────────
             Tables\Columns\TextColumn::make('admin_remarks')
                 ->label('Remarks')
                 ->limit(40)
@@ -216,22 +237,12 @@ class LocatorSlipResource extends Resource
 
     // =========================================================================
     //  FILTERS
-    //
-    //  Old: 4 stacked fields in a side drawer — ugly and hard to use.
-    //
-    //  New:
-    //    EMPLOYEE view (2 cols): Status & Type | Trip Date Period
-    //    ADMIN view   (3 cols): Employee      | Status & Type | Trip Date Period
-    //
-    //  The side-drawer layout is replaced with AboveContentCollapsible so
-    //  filters sit above the table, horizontally, matching DTR and Leave.
     // =========================================================================
 
     protected static function getEnhancedFilters(bool $isAdmin): array
     {
         $filters = [];
 
-        // ── ADMIN ONLY — Column 1: Employee picker ────────────────────────────
         if ($isAdmin) {
             $filters[] = Tables\Filters\Filter::make('employee_filter')
                 ->label('Employee')
@@ -263,7 +274,6 @@ class LocatorSlipResource extends Resource
                 });
         }
 
-        // ── Column 1 (employee) / Column 2 (admin): Status & Type ────────────
         $filters[] = Tables\Filters\Filter::make('status_and_type')
             ->label('Status & Type')
             ->columnSpan(1)
@@ -306,8 +316,6 @@ class LocatorSlipResource extends Resource
                 return $indicators;
             });
 
-        // ── Column 2 (employee) / Column 3 (admin): Trip Date Period ──────────
-        // Quick Select auto-fills the From/To pickers — same UX pattern as DTR.
         $filters[] = Tables\Filters\Filter::make('trip_period')
             ->label('Trip Date Period')
             ->columnSpan(1)
@@ -550,27 +558,6 @@ class LocatorSlipResource extends Resource
             ->visible(fn() => auth()->user()->role === 'admin')
             ->collapsible()
             ->collapsed(true);
-    }
-
-    // =========================================================================
-    //  AUTHORIZATION
-    // =========================================================================
-
-    public static function canCreate(): bool
-    {
-        return Auth::user()->role === 'employee';
-    }
-
-    public static function canEdit($record): bool
-    {
-        return $record->status === 'pending' &&
-            (Auth::user()->role === 'admin' || Auth::id() === $record->user_id);
-    }
-
-    public static function canDelete($record): bool
-    {
-        return $record->status === 'pending' &&
-            (Auth::user()->role === 'admin' || Auth::id() === $record->user_id);
     }
 
     // =========================================================================

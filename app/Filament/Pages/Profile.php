@@ -15,6 +15,31 @@ class Profile extends Page
     protected static ?string $navigationGroup = 'Settings';
     protected static ?int $navigationSort = 99;
 
+    // FIX: declare the property so the blade can access $mustChangePassword
+    public bool $mustChangePassword = false;
+
+    public function mount(): void
+    {
+        // FIX: populate from the authenticated user on every page load
+        $this->mustChangePassword = (bool) Auth::user()->must_change_password;
+    }
+
+    /**
+     * Called by ChangePassword component via $this->dispatch('password-changed').
+     * Clears the flag reactively without a full page reload.
+     */
+    public function onPasswordChanged(): void
+    {
+        $this->mustChangePassword = false;
+    }
+
+    protected function getListeners(): array
+    {
+        return [
+            'password-changed' => 'onPasswordChanged',
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [];
@@ -33,16 +58,13 @@ class Profile extends Page
     {
         $user = Auth::user();
 
-        // Priority 1: Build directly from profile_photo_path (most reliable on shared hosts)
         if (!empty($user->profile_photo_path)) {
             if (Storage::disk('public')->exists($user->profile_photo_path)) {
                 return Storage::disk('public')->url($user->profile_photo_path);
             }
-            // File may still be served via symlink even if Storage::exists() is unreliable
             return url('storage/' . ltrim($user->profile_photo_path, '/'));
         }
 
-        // Priority 2: Jetstream's accessor if already absolute
         if (method_exists($user, 'getProfilePhotoUrlAttribute')) {
             $url = $user->profile_photo_url;
             if (str_starts_with($url, 'http')) {
@@ -50,7 +72,6 @@ class Profile extends Page
             }
         }
 
-        // Priority 3: UI Avatars initials fallback
         return 'https://ui-avatars.com/api/?name=' . urlencode($user->name)
             . '&color=ffffff&background=16a34a&size=256&bold=true';
     }

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\RequirePasswordChange;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -34,8 +35,8 @@ class HrmsPanelProvider extends PanelProvider
             ->registration(\App\Filament\Pages\Auth\Register::class)
             ->favicon(asset('images/Main_Logo-removebg-preview.png'))
             ->colors([
-                'primary' => Color::hex('#1a6b3c'),   // ATI deep forest green
-                'secondary' => Color::hex('#f5a800'), // ATI institutional gold
+                'primary' => Color::hex('#1a6b3c'),
+                'secondary' => Color::hex('#f5a800'),
                 'gray' => Color::hex('#4a5568'),
             ])
             ->navigationGroups([
@@ -46,7 +47,6 @@ class HrmsPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
 
-            // ── Inject CSS for user info dark/light mode ──
             // ── Inject CSS for user info dark/light mode ──
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
@@ -61,7 +61,6 @@ class HrmsPanelProvider extends PanelProvider
                         line-height: 1.3;
                     }
 
-                    /* Force override everything Filament sets */
                     span.hrms-user-name,
                     div.hrms-user-info span.hrms-user-name {
                         font-size: 0.875rem !important;
@@ -116,7 +115,6 @@ class HrmsPanelProvider extends PanelProvider
                     : ''
                 )
             )
-            // ─────────────────────────────────────────────────────────────
 
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -128,7 +126,7 @@ class HrmsPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                AuthenticateSession::class,
+                AuthenticateSession::class,        // FIX: Filament's own AuthenticateSession
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
@@ -137,6 +135,7 @@ class HrmsPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RequirePasswordChange::class,      // FIX: redirect to profile on first login
             ]);
     }
 }

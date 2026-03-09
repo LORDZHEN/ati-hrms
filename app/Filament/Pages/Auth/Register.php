@@ -61,12 +61,12 @@ class Register extends BaseRegister
                     Forms\Components\Select::make('suffix')
                         ->label('Suffix')
                         ->options([
-                            'Jr'  => 'Jr',
-                            'Sr'  => 'Sr',
-                            'I'   => 'I',
-                            'II'  => 'II',
+                            'Jr' => 'Jr',
+                            'Sr' => 'Sr',
+                            'I' => 'I',
+                            'II' => 'II',
                             'III' => 'III',
-                            'IV'  => 'IV',
+                            'IV' => 'IV',
                         ]),
 
                     Forms\Components\TextInput::make('email')
@@ -88,14 +88,11 @@ class Register extends BaseRegister
                 ])
                 ->columns(2),
 
-            // ── Address fields are Hidden here ──
-            // The actual dropdowns are rendered in the Blade via Alpine.js
-            // and push their values back into these hidden form fields via $wire.set()
+            // Hidden address fields populated by Alpine.js
             Forms\Components\Hidden::make('region_id'),
             Forms\Components\Hidden::make('province_id'),
             Forms\Components\Hidden::make('city_id'),
             Forms\Components\Hidden::make('barangay_id'),
-            // Forms\Components\Hidden::make('purok_street'),
 
             Section::make('II. Employment Information')
                 ->extraAttributes(['class' => 'fi-section-transparent'])
@@ -108,32 +105,27 @@ class Register extends BaseRegister
                         ->label('Department')
                         ->required(),
 
-                    Forms\Components\Select::make('employment_status')
-                        ->label('Employment Status')
+                    Forms\Components\Select::make('employment_type')
+                        ->label('Employment Type')
                         ->options([
-                            'Permanent'   => 'Permanent',
-                            'Contractual' => 'Contractual',
-                            'Job Order'   => 'Job Order',
-                            'COS'         => 'COS',
+                            User::ROLE_REGULAR => 'Regular Employee',
+                            User::ROLE_JOB_ORDER => 'Job Order',
                         ])
-                        ->required(),
+                        ->required()
+                        ->helperText('Choose your employment classification. Admins are created separately.'),
                 ])
                 ->columns(2),
         ];
     }
 
-    /**
-     * Must match Filament's base signature exactly: ?RegistrationResponse
-     * Return null to suppress Filament's default auto-login + redirect.
-     * We handle everything ourselves via session flash + $this->redirect().
-     */
     public function register(): ?RegistrationResponse
     {
         $data = $this->form->getState();
 
-        // Validate that address fields were filled via Alpine.js
-        if (empty($data['region_id']) || empty($data['province_id']) ||
-            empty($data['city_id'])   || empty($data['barangay_id'])) {
+        if (
+            empty($data['region_id']) || empty($data['province_id']) ||
+            empty($data['city_id']) || empty($data['barangay_id'])
+        ) {
 
             $this->addError('data.region_id', 'Please complete your full address.');
             return null;
@@ -150,50 +142,49 @@ class Register extends BaseRegister
 
     protected function handleRegistration(array $data): User
     {
-        // Temp password = birthday in MMDDYYYY format
-        // e.g. December 04, 2002 → "12042002"
         $tempPassword = Carbon::parse($data['birthday'])->format('mdY');
 
+        // Sanitize: never allow 'admin' from registration form
+        $role = in_array($data['employment_type'], [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
+            ? $data['employment_type']
+            : User::ROLE_REGULAR;
+
         $user = User::create([
-            'employee_id'          => $data['employee_id'],
-            'first_name'           => $data['first_name'],
-            'middle_name'          => $data['middle_name'] ?? null,
-            'last_name'            => $data['last_name'],
-            'suffix'               => $data['suffix'] ?? null,
-            'name'                 => trim(implode(' ', array_filter([
-                                          $data['first_name'],
-                                          $data['middle_name'] ?? null,
-                                          $data['last_name'],
-                                          $data['suffix'] ?? null,
-                                      ]))),
-            'email'                => $data['email'],
-            'password'             => Hash::make($tempPassword),
-            'birthday'             => $data['birthday'],
-            'phone'                => $data['phone'] ?? null,
-            'region_id'            => $data['region_id'],
-            'province_id'          => $data['province_id'],
-            'city_id'              => $data['city_id'],
-            'barangay_id'          => $data['barangay_id'],
-            // 'purok_street'         => $data['purok_street'] ?? null,
-            'position'             => $data['position'],
-            'department'           => $data['department'],
-            'employment_status'    => $data['employment_status'],
-            'role'                 => User::ROLE_EMPLOYEE,
-            'status'               => 'pending',
-            'verification_status'  => 'pending',
+            'employee_id' => $data['employee_id'],
+            'first_name' => $data['first_name'],
+            'middle_name' => $data['middle_name'] ?? null,
+            'last_name' => $data['last_name'],
+            'suffix' => $data['suffix'] ?? null,
+            'name' => trim(implode(' ', array_filter([
+                $data['first_name'],
+                $data['middle_name'] ?? null,
+                $data['last_name'],
+                $data['suffix'] ?? null,
+            ]))),
+            'email' => $data['email'],
+            'password' => Hash::make($tempPassword),
+            'birthday' => $data['birthday'],
+            'phone' => $data['phone'] ?? null,
+            'region_id' => $data['region_id'],
+            'province_id' => $data['province_id'],
+            'city_id' => $data['city_id'],
+            'barangay_id' => $data['barangay_id'],
+            'position' => $data['position'],
+            'department' => $data['department'],
+            'role' => $role,
+            'status' => 'pending',
+            'verification_status' => 'pending',
             'must_change_password' => true,
         ]);
 
-        // Send pending registration notification email
         try {
             Mail::to($user->email)->send(new PendingRegistrationMail($user));
         } catch (\Throwable $e) {
             Log::error('Registration mail failed: ' . $e->getMessage());
         }
 
-        // Notify all admins via in-app notification (bell icon)
         try {
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', User::ROLE_ADMIN)->get();
             foreach ($admins as $admin) {
                 $admin->notify(new NewEmployeeRegistered($user));
             }
@@ -201,11 +192,10 @@ class Register extends BaseRegister
             Log::error('Admin notification failed: ' . $e->getMessage());
         }
 
-        // Ensure the newly created user is never auto-logged in
         Auth::logout();
 
         $this->showSuccessMessage = true;
-        $this->successMessage     = 'Registration successful! Please wait for admin verification before logging in.';
+        $this->successMessage = 'Registration successful! Please wait for admin verification before logging in.';
 
         return $user;
     }

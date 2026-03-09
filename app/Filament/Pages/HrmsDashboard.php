@@ -14,17 +14,6 @@ use App\Models\Event;
 use App\Models\TransactionHistory;
 use Carbon\Carbon;
 
-/**
- * HrmsDashboard
- *
- * FIX 1: buildRecentActivities() — "Unknown" employee name
- *   employee_name column may be null; fall back to the eager-loaded
- *   user relationship, then user_id, then 'Unknown Employee'.
- *
- * FIX 2: Dashboard icon colors
- *   Handled in the Blade view — replaced dynamic Tailwind class strings
- *   with inline SVG color styles so Tailwind purge can't drop them.
- */
 class HrmsDashboard extends Page
 {
     protected static string $view = 'filament.pages.hrms-dashboard';
@@ -46,11 +35,15 @@ class HrmsDashboard extends Page
     public function mount(): void
     {
         $this->user = Auth::user();
-        $this->mustChangePassword = $this->user->must_change_password;
+        $this->mustChangePassword = (bool) $this->user->must_change_password;
 
         if ($this->user->isAdmin()) {
             $this->stats['total_users'] = User::count();
-            $this->stats['active_employees'] = User::where('role', 'employee')
+
+            $this->stats['active_employees'] = User::whereIn('role', [
+                User::ROLE_REGULAR,
+                User::ROLE_JOB_ORDER,
+            ])
                 ->where('status', 'active')
                 ->count();
 
@@ -73,7 +66,7 @@ class HrmsDashboard extends Page
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // FIX: "Unknown" employee name resolved via relationship fallback chain
+    // Recent Activities — employee name fallback chain
     // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildRecentActivities(): void
@@ -84,11 +77,7 @@ class HrmsDashboard extends Page
             ->get()
             ->map(fn(TransactionHistory $tx) => [
                 'type' => $tx->transaction_type,
-
-                // FIX: employee_name may be null — fall back to relationship,
-                // then a formatted "User #id", then a hard fallback string.
                 'employee' => $this->resolveEmployeeName($tx),
-
                 'status' => ucfirst($tx->status),
                 'date' => $tx->created_at->setTimezone('Asia/Manila')->format('M d, Y'),
                 'icon' => $tx->resolved_icon,
@@ -103,29 +92,19 @@ class HrmsDashboard extends Page
 
     /**
      * Resolve a human-readable employee name from a TransactionHistory record.
-     *
-     * Priority:
-     *   1. employee_name column (if populated and not blank)
-     *   2. user relationship → full_name accessor
-     *   3. user relationship → name column
-     *   4. user_id present → "Employee #<id>"
-     *   5. Hard fallback → "Unknown Employee"
      */
     protected function resolveEmployeeName(TransactionHistory $tx): string
     {
-        // 1. Stored employee_name string
         if (filled($tx->employee_name)) {
             return $tx->employee_name;
         }
 
-        // 2 & 3. Eager-loaded user relationship
         if ($tx->relationLoaded('user') && $tx->user) {
             return $tx->user->full_name
                 ?? $tx->user->name
                 ?? 'Unknown Employee';
         }
 
-        // 4. user_id present but relationship wasn't loaded (safety net)
         if ($tx->user_id) {
             $user = User::find($tx->user_id);
             if ($user) {
@@ -134,17 +113,16 @@ class HrmsDashboard extends Page
             return "Employee #{$tx->user_id}";
         }
 
-        // 5. Nothing available
         return 'Unknown Employee';
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // All methods below are UNCHANGED from the original HrmsDashboard
+    // Pending Actions (admin only)
     // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildPendingActions(): void
     {
-        $this->pendingActions = [
+        $this->pendingActions = array_slice([
             [
                 'title' => 'Leave Approvals',
                 'count' => LeaveApplication::where('status', 'pending')->count(),
@@ -180,10 +158,12 @@ class HrmsDashboard extends Page
                 'color' => 'rose',
                 'route' => 'filament.hrms.resources.salns.index',
             ],
-        ];
-
-        $this->pendingActions = array_slice($this->pendingActions, 0, 5);
+        ], 0, 5);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Announcements / Events / Birthdays
+    // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildAnnouncements(): void
     {
@@ -222,7 +202,10 @@ class HrmsDashboard extends Page
     {
         $currentMonth = now('Asia/Manila')->month;
 
-        $this->birthdayCelebrants = User::where('role', 'employee')
+        $this->birthdayCelebrants = User::whereIn('role', [
+            User::ROLE_REGULAR,
+            User::ROLE_JOB_ORDER,
+        ])
             ->whereNotNull('birthday')
             ->whereMonth('birthday', $currentMonth)
             ->orderByRaw('DAY(birthday)')
@@ -230,27 +213,44 @@ class HrmsDashboard extends Page
             ->get()
             ->map(fn($u) => [
                 'name' => $u->full_name ?? $u->name,
-                'date' => $u->birthday ? Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->format('M d') : 'N/A',
+                'date' => $u->birthday
+                    ? Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->format('M d')
+                    : 'N/A',
                 'department' => $u->department ?? 'N/A',
                 'photo' => $u->profile_photo_url ?? null,
-                'is_today' => $u->birthday && Carbon::parse($u->birthday)->setTimezone('Asia/Manila')->isSameDay(now('Asia/Manila')),
+                'is_today' => $u->birthday
+                    && Carbon::parse($u->birthday)
+                        ->setTimezone('Asia/Manila')
+                        ->isSameDay(now('Asia/Manila')),
             ])
             ->toArray();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Modules
+    //
+    // Job Order users only see DTR — all other modules (Leave, Locator Slip,
+    // Travel Order, PDS, SALN) are restricted to Regular employees and admins.
+    // ─────────────────────────────────────────────────────────────────────────
+
     protected function buildModules(): void
     {
-        $baseModules = [
-            [
-                'title' => 'Daily Time Record',
-                'route' => 'filament.hrms.resources.daily-time-records.index',
-                'icon' => 'heroicon-o-clock',
-                'icon_bg' => 'bg-emerald-100 dark:bg-emerald-900/40',
-                'icon_color' => 'text-emerald-600 dark:text-emerald-400',
-                'admin_text' => 'View and manage all employee DTRs',
-                'employee_text' => 'Track your daily time records',
-                'stat_key' => 'dtr_count',
-            ],
+        $isJobOrder = $this->user->role === User::ROLE_JOB_ORDER;
+
+        // DTR is available to everyone (admin, regular, job_order).
+        $dtrModule = [
+            'title' => 'Daily Time Record',
+            'route' => 'filament.hrms.resources.daily-time-records.index',
+            'icon' => 'heroicon-o-clock',
+            'icon_bg' => 'bg-emerald-100 dark:bg-emerald-900/40',
+            'icon_color' => 'text-emerald-600 dark:text-emerald-400',
+            'admin_text' => 'View and manage all employee DTRs',
+            'employee_text' => 'Track your daily time records',
+            'stat_key' => 'dtr_count',
+        ];
+
+        // Modules only for Regular employees (and admin).
+        $regularModules = [
             [
                 'title' => 'Leave Application',
                 'route' => 'filament.hrms.resources.leave-applications.index',
@@ -304,25 +304,36 @@ class HrmsDashboard extends Page
         ];
 
         if ($this->user->isAdmin()) {
-            $this->modules = array_merge([
+            // Admin sees Employees tile + DTR + all regular modules.
+            $this->modules = array_merge(
                 [
-                    'title' => 'Employees',
-                    'route' => 'filament.hrms.resources.employees.index',
-                    'icon' => 'heroicon-o-users',
-                    'icon_bg' => 'bg-green-100 dark:bg-green-900/40',
-                    'icon_color' => 'text-green-600 dark:text-green-400',
-                    'admin_text' => 'Manage employee records',
-                    'employee_text' => '',
-                    'stat_key' => 'employee_count',
+                    [
+                        'title' => 'Employees',
+                        'route' => 'filament.hrms.resources.employees.index',
+                        'icon' => 'heroicon-o-users',
+                        'icon_bg' => 'bg-green-100 dark:bg-green-900/40',
+                        'icon_color' => 'text-green-600 dark:text-green-400',
+                        'admin_text' => 'Manage employee records',
+                        'employee_text' => '',
+                        'stat_key' => 'employee_count',
+                    ],
                 ],
-            ], $baseModules);
+                [$dtrModule],
+                $regularModules
+            );
+        } elseif ($isJobOrder) {
+            // Job Order users only see DTR.
+            $this->modules = [$dtrModule];
         } else {
-            $this->modules = $baseModules;
+            // Regular employees see DTR + all regular modules.
+            $this->modules = array_merge([$dtrModule], $regularModules);
         }
     }
 
     protected function attachModuleStats(): void
     {
+        $isJobOrder = $this->user->role === User::ROLE_JOB_ORDER;
+
         $statCounts = [
             'employee_count' => $this->stats['active_employees'] ?? 0,
             'dtr_count' => 0,
@@ -348,6 +359,10 @@ class HrmsDashboard extends Page
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function getGreeting(): string
     {
         $hour = now('Asia/Manila')->hour;
@@ -356,7 +371,8 @@ class HrmsDashboard extends Page
             $hour < 18 => 'Good afternoon',
             default => 'Good evening',
         };
-        return $timeGreeting . ', ' . $this->user->full_name . '!';
+
+        return $timeGreeting . ', ' . ($this->user->full_name ?: $this->user->name) . '!';
     }
 
     public function getCurrentDate(): string

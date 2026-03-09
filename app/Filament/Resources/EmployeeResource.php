@@ -65,7 +65,7 @@ class EmployeeResource extends Resource
     }
 
     /* ============================================================
-       FORM
+       FORM (Edit only — no create)
        ============================================================ */
 
     public static function form(Form $form): Form
@@ -73,44 +73,52 @@ class EmployeeResource extends Resource
         return $form->schema([
 
             Section::make('Personal Information')
-                ->description("Enter the employee's personal details")
+                ->description("Update the employee's personal details")
                 ->icon('heroicon-o-user')
                 ->collapsible()
                 ->schema([
                     Grid::make(3)->schema([
                         TextInput::make('first_name')->label('First Name')->required()->maxLength(255)->live(onBlur: true)
-                            ->afterStateUpdated(fn($state, callable $set, callable $get) => self::syncFullName($set, $get))->autofocus(),
+                            ->afterStateUpdated(fn($state, callable $set, callable $get) => self::syncFullName($set, $get)),
                         TextInput::make('middle_name')->label('Middle Name')->maxLength(255)->placeholder('Optional')->live(onBlur: true)
                             ->afterStateUpdated(fn($state, callable $set, callable $get) => self::syncFullName($set, $get)),
                         TextInput::make('last_name')->label('Last Name')->required()->maxLength(255)->live(onBlur: true)
                             ->afterStateUpdated(fn($state, callable $set, callable $get) => self::syncFullName($set, $get)),
                     ]),
                     Grid::make(2)->schema([
-                        TextInput::make('email')->label('Email Address')->email()->required()->maxLength(255)->unique(ignoreRecord: true)->prefixIcon('heroicon-o-envelope')->placeholder('employee@company.com'),
-                        DatePicker::make('birthday')->label('Date of Birth')->required()->maxDate(now()->subYears(18))->native(false)->displayFormat('F d, Y')->prefixIcon('heroicon-o-cake')->helperText('Must be at least 18 years old'),
+                        TextInput::make('email')->label('Email Address')->email()->required()->maxLength(255)->unique(ignoreRecord: true)->prefixIcon('heroicon-o-envelope'),
+                        DatePicker::make('birthday')->label('Date of Birth')->required()->maxDate(now()->subYears(18))->native(false)->displayFormat('F d, Y')->prefixIcon('heroicon-o-cake'),
                     ]),
                     Placeholder::make('full_name_preview')->label('Full Name Preview')
-                        ->content(fn(callable $get) => self::buildFullName($get) ?: 'Enter names above to see preview')
-                        ->helperText('This is how the name will appear in the system'),
+                        ->content(fn(callable $get) => self::buildFullName($get) ?: 'Enter names above to see preview'),
                     TextInput::make('name')->hidden()->dehydrated()->default(fn(callable $get) => self::buildFullName($get)),
                 ]),
 
             Section::make('Employment Details')
-                ->description('Configure employment and system access')
+                ->description('Update employment and system access')
                 ->icon('heroicon-o-briefcase')
                 ->collapsible()
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('employee_id')->label('Employee ID')->required()->maxLength(50)->unique(ignoreRecord: true)->prefixIcon('heroicon-o-identification')->placeholder('EMP-001')->helperText('Unique identifier for the employee'),
+                        TextInput::make('employee_id')->label('Employee ID')->required()->maxLength(50)->unique(ignoreRecord: true)->prefixIcon('heroicon-o-identification'),
                         Select::make('status')->label('Account Status')
-                            ->options(['pending' => 'Pending Approval', 'active' => 'Active', 'inactive' => 'Inactive'])
-                            ->default('pending')->required()->native(false)->prefixIcon('heroicon-o-shield-check'),
+                            ->options([
+                                'pending' => 'Pending Approval',
+                                'active' => 'Active',
+                                'inactive' => 'Inactive',
+                            ])
+                            ->required()->native(false)->prefixIcon('heroicon-o-shield-check'),
                     ]),
                     Select::make('role')->label('System Role')
-                        ->options(['admin' => 'Administrator', 'employee' => 'Employee'])
-                        ->default('employee')->required()->native(false)
+                        ->options([
+                            User::ROLE_ADMIN => 'Administrator',
+                            User::ROLE_REGULAR => 'Regular Employee',
+                            User::ROLE_JOB_ORDER => 'Job Order',
+                        ])
+                        ->required()->native(false)
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false)
-                        ->prefixIcon('heroicon-o-key')->helperText('Determines system access level'),
+                        ->prefixIcon('heroicon-o-key')
+                        ->helperText('Determines system access level'),
                 ]),
         ]);
     }
@@ -126,7 +134,20 @@ class EmployeeResource extends Resource
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
-                    ->options(['pending' => 'Pending Approval', 'active' => 'Active', 'inactive' => 'Inactive'])
+                    ->options([
+                        'pending' => 'Pending Approval',
+                        'active' => 'Active',
+                        'inactive' => 'Inactive',
+                    ])
+                    ->multiple()->native(false)->preload(),
+
+                SelectFilter::make('role')
+                    ->label('Role')
+                    ->options([
+                        User::ROLE_REGULAR => 'Regular Employee',
+                        User::ROLE_JOB_ORDER => 'Job Order',
+                        User::ROLE_ADMIN => 'Administrator',
+                    ])
                     ->multiple()->native(false)->preload(),
 
                 TernaryFilter::make('email_verified_at')
@@ -141,7 +162,7 @@ class EmployeeResource extends Resource
 
                 Filter::make('pending_approval')
                     ->label('Pending Approval')
-                    ->query(fn(Builder $q) => $q->where('status', 'pending')->whereNull('email_verified_at'))
+                    ->query(fn(Builder $q) => $q->where('status', 'pending'))
                     ->toggle(),
 
                 Filter::make('recent')
@@ -156,14 +177,17 @@ class EmployeeResource extends Resource
                             TextInput::make('age_to')->label('Max Age')->numeric()->placeholder('65'),
                         ]),
                     ])
-                    ->query(fn(Builder $q, array $data) => $q
-                        ->when($data['age_from'], fn($q, $age) => $q->where('birthday', '<=', now()->subYears((int) $age)->endOfDay()))
-                        ->when($data['age_to'], fn($q, $age) => $q->where('birthday', '>=', now()->subYears((int) $age)->startOfDay()))
+                    ->query(
+                        fn(Builder $q, array $data) => $q
+                            ->when($data['age_from'], fn($q, $age) => $q->where('birthday', '<=', now()->subYears((int) $age)->endOfDay()))
+                            ->when($data['age_to'], fn($q, $age) => $q->where('birthday', '>=', now()->subYears((int) $age)->startOfDay()))
                     )
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-                        if ($data['age_from'] ?? null) $indicators[] = 'Age from: ' . $data['age_from'];
-                        if ($data['age_to'] ?? null) $indicators[] = 'Age to: ' . $data['age_to'];
+                        if ($data['age_from'] ?? null)
+                            $indicators[] = 'Age from: ' . $data['age_from'];
+                        if ($data['age_to'] ?? null)
+                            $indicators[] = 'Age to: ' . $data['age_to'];
                         return $indicators;
                     }),
             ], layout: FiltersLayout::AboveContentCollapsible)
@@ -172,13 +196,15 @@ class EmployeeResource extends Resource
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()->label('View Details')->icon('heroicon-o-eye')->color('info'),
-                    Tables\Actions\EditAction::make()->label('Edit')->icon('heroicon-o-pencil')->color('warning')->visible(fn() => Auth::user()?->isAdmin() ?? false),
+                    Tables\Actions\EditAction::make()->label('Edit')->icon('heroicon-o-pencil')->color('warning')
+                        ->visible(fn() => Auth::user()?->isAdmin() ?? false),
                     Tables\Actions\Action::make('reset_password')
                         ->label('Reset Password')->icon('heroicon-o-key')->color('gray')
                         ->requiresConfirmation()
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false)
                         ->action(fn() => Notification::make()->title('Password reset email sent')->success()->send()),
-                    Tables\Actions\DeleteAction::make()->visible(fn() => Auth::user()?->isAdmin() ?? false),
+                    Tables\Actions\DeleteAction::make()
+                        ->visible(fn() => Auth::user()?->isAdmin() ?? false),
                 ])->label('Actions')->icon('heroicon-m-ellipsis-vertical')->button()->color('gray'),
             ])
             ->bulkActions([
@@ -195,7 +221,8 @@ class EmployeeResource extends Resource
                         ->action(fn($records) => $records->each->update(['status' => 'inactive']))
                         ->deselectRecordsAfterCompletion()
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false),
-                    Tables\Actions\DeleteBulkAction::make()->visible(fn() => Auth::user()?->isAdmin() ?? false),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => Auth::user()?->isAdmin() ?? false),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -204,13 +231,9 @@ class EmployeeResource extends Resource
             ->defaultPaginationPageOption(25)
             ->poll('30s')
             ->emptyStateHeading('No Employees Found')
-            ->emptyStateDescription('Get started by adding your first employee.')
-            ->emptyStateIcon('heroicon-o-user-group')
-            ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Add Employee')->icon('heroicon-m-plus')
-                    ->visible(fn() => Auth::user()?->isAdmin() ?? false),
-            ]);
+            ->emptyStateDescription('New registrations from the registration page will appear here.')
+            ->emptyStateIcon('heroicon-o-user-group');
+        // ↑ No emptyStateActions — Add Employee is removed intentionally
     }
 
     /* ============================================================
@@ -221,6 +244,7 @@ class EmployeeResource extends Resource
     {
         return [
             Tables\Columns\Layout\Split::make([
+
                 // Left: Identity
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('name')
@@ -252,16 +276,18 @@ class EmployeeResource extends Resource
                     Tables\Columns\TextColumn::make('role')
                         ->label('Role')
                         ->badge()
-                        ->formatStateUsing(fn(string $state): string => ucfirst($state))
+                        ->formatStateUsing(fn(string $state): string => User::getRoles()[$state] ?? ucfirst($state))
                         ->color(fn(string $state): string => match ($state) {
-                            'admin'    => 'danger',
-                            'employee' => 'info',
-                            default    => 'gray',
+                            User::ROLE_ADMIN => 'danger',
+                            User::ROLE_REGULAR => 'info',
+                            User::ROLE_JOB_ORDER => 'warning',
+                            default => 'gray',
                         })
                         ->icon(fn(string $state): string => match ($state) {
-                            'admin'    => 'heroicon-m-shield-check',
-                            'employee' => 'heroicon-m-user',
-                            default    => 'heroicon-m-question-mark-circle',
+                            User::ROLE_ADMIN => 'heroicon-m-shield-check',
+                            User::ROLE_REGULAR => 'heroicon-m-user',
+                            User::ROLE_JOB_ORDER => 'heroicon-m-briefcase',
+                            default => 'heroicon-m-question-mark-circle',
                         })
                         ->visible(fn() => Auth::user()?->isAdmin() ?? false),
 
@@ -279,28 +305,28 @@ class EmployeeResource extends Resource
                         ->icon('heroicon-o-cake')->iconColor('gray'),
                 ])->space(1),
 
-                // Right: Account Status & Registration
+                // Right: Account Status & Registration Date
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('status')
                         ->label('Status')
                         ->badge()
                         ->formatStateUsing(fn(string $state): string => match ($state) {
-                            'pending'  => 'Pending',
-                            'active'   => 'Active',
+                            'pending' => 'Pending',
+                            'active' => 'Active',
                             'inactive' => 'Inactive',
-                            default    => ucfirst($state),
+                            default => ucfirst($state),
                         })
                         ->color(fn(string $state): string => match ($state) {
-                            'active'   => 'success',
-                            'pending'  => 'warning',
+                            'active' => 'success',
+                            'pending' => 'warning',
                             'inactive' => 'danger',
-                            default    => 'gray',
+                            default => 'gray',
                         })
                         ->icon(fn(string $state): string => match ($state) {
-                            'active'   => 'heroicon-m-check-circle',
-                            'pending'  => 'heroicon-m-clock',
+                            'active' => 'heroicon-m-check-circle',
+                            'pending' => 'heroicon-m-clock',
                             'inactive' => 'heroicon-m-x-circle',
-                            default    => 'heroicon-m-question-mark-circle',
+                            default => 'heroicon-m-question-mark-circle',
                         })
                         ->size(Tables\Columns\TextColumn\TextColumnSize::Medium),
 
@@ -311,6 +337,7 @@ class EmployeeResource extends Resource
                         ->icon('heroicon-o-calendar-days')->iconColor('gray')
                         ->description(fn(User $record): string => $record->created_at->diffForHumans()),
                 ])->space(1)->alignment('end'),
+
             ])->from('md'),
         ];
     }
@@ -319,29 +346,35 @@ class EmployeeResource extends Resource
        QUERY & ACCESS
        ============================================================ */
 
+    /**
+     * Show all non-admin users (regular + job_order).
+     * Admin accounts are managed separately and don't need to appear here.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereIn('role', ['employee', 'admin'])
+            ->whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
             ->latest('created_at');
     }
 
+    /**
+     * Disable create — employees register themselves via the registration page.
+     */
     public static function canCreate(): bool
     {
-        return Auth::user()?->isAdmin() ?? false;
+        return false;
     }
 
     /* ============================================================
-       PAGES
+       PAGES — No 'create' route
        ============================================================ */
 
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListEmployees::route('/'),
-            'create' => Pages\CreateEmployee::route('/create'),
-            'view'   => Pages\ViewEmployee::route('/{record}'),
-            'edit'   => Pages\EditEmployee::route('/{record}/edit'),
+            'index' => Pages\ListEmployees::route('/'),
+            'view' => Pages\ViewEmployee::route('/{record}'),
+            'edit' => Pages\EditEmployee::route('/{record}/edit'),
         ];
     }
 
@@ -371,9 +404,8 @@ class EmployeeResource extends Resource
     private static function getPendingCount(): int
     {
         return User::query()
-            ->where('role', 'employee')
+            ->whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
             ->where('status', 'pending')
-            ->whereNull('email_verified_at')
             ->count();
     }
 }

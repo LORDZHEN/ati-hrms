@@ -34,12 +34,26 @@ class SalnResource extends Resource
     protected static ?int $navigationSort = 5;
 
     // =========================================================================
+    //  ACCESS CONTROL — Hide entirely from Job Order users
+    // =========================================================================
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return Auth::user()?->role !== User::ROLE_JOB_ORDER;
+    }
+
+    // =========================================================================
     //  AUTHORIZATION
     // =========================================================================
 
     public static function canCreate(): bool
     {
-        return Auth::user()->role === 'employee';
+        return Auth::user()->role === User::ROLE_REGULAR;
     }
 
     public static function canEdit($record): bool
@@ -77,13 +91,6 @@ class SalnResource extends Resource
                 ->description('⚠️ Please fill out the official SALN form above. These fields are for data binding.')
                 ->schema([
 
-                    // -----------------------------------------------------------------------
-                    //  as_of_date: default(now()) ensures the date is pre-filled on create.
-                    //  The Blade input reads wire:model="data.as_of_date" — because Filament
-                    //  binds this field to the Livewire $data array, setting a default here
-                    //  means the native <input type="date"> in the Blade will have a value
-                    //  on first load rather than showing "dd/mm/yyyy".
-                    // -----------------------------------------------------------------------
                     Forms\Components\DatePicker::make('as_of_date')
                         ->label('As of Date')
                         ->required()
@@ -141,15 +148,6 @@ class SalnResource extends Resource
                         ->schema([
                             Grid::make(3)->schema([
                                 Forms\Components\TextInput::make('name')->label('Full Name')->required()->columnSpan(2),
-                                // ---------------------------------------------------------------
-                                //  date_of_birth: DatePicker with afterStateHydrated to
-                                //  normalize the raw DB value.  The DB stores dates as full
-                                //  ISO datetimes ("2015-06-16T00:00:00.000000Z").
-                                //  afterStateHydrated runs once on form load and converts
-                                //  the value to a plain Y-m-d string — the only format
-                                //  Filament's DatePicker and the Blade <input type="date">
-                                //  both accept without errors.
-                                // ---------------------------------------------------------------
                                 Forms\Components\DatePicker::make('date_of_birth')
                                     ->label('Date of Birth')
                                     ->required()
@@ -370,7 +368,7 @@ class SalnResource extends Resource
                 Tables\Actions\CreateAction::make()
                     ->label('File SALN')
                     ->icon('heroicon-o-plus')
-                    ->visible(fn() => Auth::user()->role === 'employee'),
+                    ->visible(fn() => Auth::user()->role === User::ROLE_REGULAR),
             ]);
     }
 
@@ -422,10 +420,6 @@ class SalnResource extends Resource
                 ->color(fn($state) => ($state ?? 0) >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-banknotes'),
 
-            // -----------------------------------------------------------------------
-            //  "Filed" column — reads created_at (stamped on every resubmission).
-            //  Shows "X ago" with the exact datetime on hover.
-            // -----------------------------------------------------------------------
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Filed')
                 ->since()
@@ -435,17 +429,9 @@ class SalnResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
-            // -----------------------------------------------------------------------
-            //  "Resubmitted" column — null until the employee edits and saves.
-            //  Admins can see at a glance if/when a SALN was updated after filing.
-            //  Shows a yellow "RESUBMITTED" badge + the timestamp.
-            // -----------------------------------------------------------------------
             Tables\Columns\TextColumn::make('resubmitted_at')
                 ->label('Resubmitted')
                 ->sortable()
-                // formatStateUsing receives the raw Carbon|null value.
-                // ->since() + ->badge() together cause the badge to render even for null;
-                // we handle both cases here so null shows a plain dash (no badge).
                 ->formatStateUsing(fn($state) => $state ? \Carbon\Carbon::parse($state)->diffForHumans() : null)
                 ->placeholder('—')
                 ->tooltip(fn($record) => $record->resubmitted_at?->format('M d, Y h:i A'))
@@ -484,7 +470,7 @@ class SalnResource extends Resource
                     \Filament\Forms\Components\Select::make('user_id')
                         ->label('Employee')
                         ->options(
-                            fn() => User::where('role', 'employee')
+                            fn() => User::where('role', User::ROLE_REGULAR)
                                 ->orderBy('first_name')
                                 ->get()
                                 ->mapWithKeys(fn($u) => [$u->id => $u->first_name . ' ' . $u->last_name])
@@ -503,9 +489,6 @@ class SalnResource extends Resource
                             'without' => 'Without remarks',
                         ]),
 
-                    // -------------------------------------------------------
-                    //  New: filter by resubmission status
-                    // -------------------------------------------------------
                     \Filament\Forms\Components\Select::make('resubmitted')
                         ->label('Resubmission')
                         ->native(false)
@@ -689,7 +672,7 @@ class SalnResource extends Resource
                     ->color('warning')
                     ->visible(
                         fn(Saln $record) =>
-                        Auth::user()->role === 'employee' &&
+                        Auth::user()->role === User::ROLE_REGULAR &&
                         $record->user_id === Auth::id()
                     ),
 
@@ -731,17 +714,10 @@ class SalnResource extends Resource
         return $query;
     }
 
-    // -----------------------------------------------------------------------
-    //  Navigation badge — count of SALNs resubmitted but not yet remarked,
-    //  PLUS original submissions with no remarks (unreviewed).
-    //  This gives admins a single number representing "needs attention".
-    // -----------------------------------------------------------------------
     public static function getNavigationBadge(): ?string
     {
         if (Auth::user()?->role !== 'admin')
             return null;
-
-        // Unreviewed = no remarks AND (original or resubmitted)
         $count = Saln::whereNull('remarks')->count();
         return $count > 0 ? (string) $count : null;
     }

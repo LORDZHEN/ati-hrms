@@ -30,7 +30,9 @@ class EmployeeRegistrationService
      * 1. Generates temp password from birthday in MMDDYYYY format
      *    e.g. December 04, 2002 → "12042002"
      * 2. Updates the user record (active, verified, new password)
-     * 3. Sends approval email with the temp password
+     * 3. FIX: Also sets verification_status = 'verified' so the DB
+     *    column stays in sync with email_verified_at and status.
+     * 4. Sends approval email with the temp password
      *
      * Returns false if birthday is missing or unparseable.
      */
@@ -43,15 +45,14 @@ class EmployeeRegistrationService
             return false;
         }
 
-        // Update employee to active
         $employee->update([
             'status' => 'active',
             'email_verified_at' => now(),
             'password' => Hash::make($temporaryPassword),
             'must_change_password' => true,
+            'verification_status' => 'verified',   // FIX: was never set, left as 'pending'
         ]);
 
-        // Send approval email with credentials
         try {
             Mail::to($employee->email)->send(
                 new AccountVerifiedMail($employee, $temporaryPassword)
@@ -78,6 +79,8 @@ class EmployeeRegistrationService
     /**
      * Resends login credentials to an already-approved employee.
      * Regenerates password from birthday and resends email.
+     * FIX: Also re-confirms verification_status = 'verified' in case
+     *      older records were approved before this fix was deployed.
      */
     public function resendCredentials(User $employee): bool
     {
@@ -90,6 +93,7 @@ class EmployeeRegistrationService
         $employee->update([
             'password' => Hash::make($temporaryPassword),
             'must_change_password' => true,
+            'verification_status' => 'verified',   // FIX: keep in sync for legacy records
         ]);
 
         try {

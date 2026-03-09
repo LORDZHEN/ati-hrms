@@ -51,19 +51,25 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     protected $casts = [
         'must_change_password' => 'boolean',
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'birthday' => 'date',
+        'email_verified_at'    => 'datetime',
+        'password'             => 'hashed',
+        'birthday'             => 'date',
     ];
 
-    const ROLE_EMPLOYEE = 'employee';
-    const ROLE_ADMIN = 'admin';
+    /* ============================================================
+       ROLE CONSTANTS
+       ============================================================ */
+
+    const ROLE_ADMIN     = 'admin';
+    const ROLE_REGULAR   = 'regular';
+    const ROLE_JOB_ORDER = 'job_order';
 
     public static function getRoles(): array
     {
         return [
-            self::ROLE_EMPLOYEE => 'Employee',
-            self::ROLE_ADMIN => 'Admin',
+            self::ROLE_ADMIN     => 'Administrator',
+            self::ROLE_REGULAR   => 'Regular Employee',
+            self::ROLE_JOB_ORDER => 'Job Order',
         ];
     }
 
@@ -79,16 +85,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function canAccessPanel(Panel $panel): bool
     {
         return match ($panel->getId()) {
-            'hrms' => in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EMPLOYEE]),
+            'hrms' => in_array($this->role, [
+                self::ROLE_ADMIN,
+                self::ROLE_REGULAR,
+                self::ROLE_JOB_ORDER,
+            ]),
             default => false,
         };
     }
 
-    /**
-     * Filament topbar avatar image (required by HasAvatar interface).
-     * Uses Storage::disk('public')->exists() instead of file_exists()
-     * to correctly resolve paths on shared hosting environments.
-     */
     public function getFilamentAvatarUrl(): ?string
     {
         if ($this->profile_photo_path) {
@@ -123,7 +128,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->profile_photo_path
             ? asset('storage/' . $this->profile_photo_path)
             : 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name ?: 'User')
-            . '&background=10b981&color=ffffff&bold=true';
+              . '&background=10b981&color=ffffff&bold=true';
     }
 
     /* ============================================================
@@ -135,19 +140,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(LocatorSlip::class, 'user_id');
     }
 
-    /**
-     * The employee's current leave credit balances.
-     * One row in leave_credits per employee.
-     */
     public function leaveCredits(): HasOne
     {
         return $this->hasOne(LeaveCredit::class);
     }
 
-    /**
-     * Full audit trail of every leave credit change for this employee
-     * (accruals, deductions, reversals, adjustments, annual resets).
-     */
     public function leaveCreditLogs(): HasMany
     {
         return $this->hasMany(LeaveCreditLog::class);
@@ -160,7 +157,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     protected static function booted(): void
     {
         static::creating(function ($user) {
-            if ($user->role === self::ROLE_EMPLOYEE) {
+            if (in_array($user->role, [self::ROLE_REGULAR, self::ROLE_JOB_ORDER])) {
                 $user->must_change_password = true;
             }
         });
@@ -170,13 +167,18 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
        ROLE CHECKS
        ============================================================ */
 
-    public function isEmployee(): bool
-    {
-        return $this->role === self::ROLE_EMPLOYEE;
-    }
-
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isRegular(): bool
+    {
+        return $this->role === self::ROLE_REGULAR;
+    }
+
+    public function isJobOrder(): bool
+    {
+        return $this->role === self::ROLE_JOB_ORDER;
     }
 }

@@ -5,22 +5,12 @@ namespace App\Observers;
 use App\Models\User;
 use App\Models\TransactionHistory;
 
-/**
- * Observer: UserObserver
- *
- * Logs a transaction when a new employee account is registered.
- *
- * Register: User::observe(UserObserver::class);
- *
- * NOTE: This only logs when role === 'employee' to avoid
- *       spamming the log with admin account creations.
- */
 class UserObserver
 {
     public function created(User $user): void
     {
-        // Only log employee registrations
-        if (($user->role ?? '') !== 'employee') {
+        // Only log regular employee or job order registrations
+        if (!in_array($user->role ?? '', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])) {
             return;
         }
 
