@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
+
 class DailyTimeRecordResource extends Resource
 {
     protected static ?string $model = EmployeeDtr::class;

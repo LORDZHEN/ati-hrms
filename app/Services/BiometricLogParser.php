@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Carbon\Carbon;
-use League\Csv\Reader;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use League\Csv\Reader;
 
 /**
  * BiometricLogParser
@@ -12,58 +14,43 @@ use Illuminate\Support\Collection;
  * Reads a raw biometric attendance machine export (multi-employee, punch-event format)
  * and converts it into the clean per-employee DTR row format that DtrCalculator expects.
  *
- * Raw input columns expected:
- *   LogID, CredentialID, EmployeeName, Date, Time, Timestamp,
- *   PunchType, DeviceID, VerificationMethod, WorkCode, Status
+ * Raw input columns: EmployeeID, EmployeeName, LogDate, LogTime, Timestamp, Device, LogType
  *
- * Output per DTR row:
- *   EmployeeID, Name, Date, MorningIn, MorningOut, AfternoonIn, AfternoonOut
+ * ── MATCHING STRATEGY ────────────────────────────────────────────────────────
+ * CSV EmployeeID  ←→  users.employee_id
+ *
+ * Both sides are cast to trimmed strings and compared in PHP — NOT in SQL.
+ *
+ * WHY NOT SQL whereIn/whereRaw?
+ *   The users.employee_id column is VARCHAR. When a whereIn() receives a list
+ *   that contains numeric-looking strings ("12345", "1", "2"...) MySQL may
+ *   silently coerce the VARCHAR column to INT for comparison, causing "12345"
+ *   stored as VARCHAR to fail matching against the string "12345" from the CSV.
+ *   PHP string === string comparison is always exact and never has this issue.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 class BiometricLogParser
 {
-    // Session boundary constants — change these if your office hours differ
-    private const MORNING_CUTOFF_IN = '12:30'; // latest a Morning IN punch can be
-    private const MORNING_CUTOFF_OUT = '12:30'; // latest a Morning OUT punch can be
-    private const AFTERNOON_CUTOFF_IN = '14:00'; // latest an Afternoon IN punch can be
+    private const MORNING_CUTOFF = '12:30';
+    private const DOUBLE_TAP_GRACE = '12:45';
+    private const AFTERNOON_CUTOFF_IN = '14:00';
 
-    // Statuses we silently discard (duplicate machine entries, etc.)
-    private const SKIP_STATUSES = ['Duplicate'];
+    private const COL_ALIASES = [
+        'employee_id' => ['EmployeeID', 'employeeid', 'CredentialID', 'credentialid', 'ID', 'id'],
+        'employee_name' => ['EmployeeName', 'employeename', 'Name', 'name', 'Employee Name'],
+        'log_date' => ['LogDate', 'logdate', 'Date', 'date'],
+        'log_time' => ['LogTime', 'logtime', 'Time', 'time'],
+        'timestamp' => ['Timestamp', 'timestamp', 'DateTime', 'datetime'],
+        'punch_type' => ['LogType', 'logtype', 'PunchType', 'punchtype', 'Type', 'type'],
+    ];
 
-    /**
-     * Parse the raw biometric CSV and return DTR rows for ONE specific employee.
-     *
-     * @param  string     $filePath      Absolute path to the raw biometric CSV
-     * @param  int|string $credentialId  The CredentialID enrolled in the biometric device
-     * @return array  Array of DTR rows ready for DtrCalculator::calculateFromArray()
-     *
-     * @throws \Exception  If file is missing or has no records for this employee
-     */
-    public function parseForEmployee(string $filePath, int|string $credentialId): array
-    {
-        if (!file_exists($filePath)) {
-            throw new \Exception("Biometric log file not found: {$filePath}");
-        }
-
-        $csv = Reader::createFromPath($filePath, 'r');
-        $csv->setHeaderOffset(0);
-
-        $punchesByDay = $this->groupPunchesByDay($csv, (string) $credentialId);
-
-        if ($punchesByDay->isEmpty()) {
-            throw new \Exception(
-                "No attendance records found for Credential ID: {$credentialId}"
-            );
-        }
-
-        return $this->buildDtrRows($punchesByDay, (string) $credentialId);
-    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Scan the raw CSV and return a summary of ALL employees found in the file.
-     * Use this to populate the "select employee" dropdown in the Filament UI.
+     * Scan the CSV and return ONLY employees that exist in the users table.
      *
-     * @param  string $filePath
-     * @return Collection  Keyed by CredentialID => ['id', 'name', 'days', 'day_count', 'punch_count']
+     * @param  string $filePath  Absolute path to the raw biometric CSV
+     * @return Collection  Keyed by users.id
      */
     public function detectEmployees(string $filePath): Collection
     {
@@ -73,55 +60,168 @@ class BiometricLogParser
 
         $csv = Reader::createFromPath($filePath, 'r');
         $csv->setHeaderOffset(0);
+        $colMap = $this->buildColumnMap($csv->getHeader());
 
-        $employees = collect();
+        Log::info('[BiometricLogParser] detectEmployees — column map', ['map' => $colMap]);
+
+        // ── STEP 1: Collect all unique IDs + stats from the CSV ───────────────
+        $csvEmployees = collect();
 
         foreach ($csv->getRecords() as $row) {
             $row = $this->sanitizeRow($row);
+            $csvId = $this->col($row, $colMap, 'employee_id');
+            $csvName = $this->col($row, $colMap, 'employee_name');
+            $date = $this->col($row, $colMap, 'log_date');
 
-            if (in_array($row['Status'] ?? '', self::SKIP_STATUSES, true)) {
+            if ($csvId === '' || $date === '') {
                 continue;
             }
 
-            $id = $row['CredentialID'] ?? '';
-            if ($id === '') {
-                continue;
-            }
-
-            if (!$employees->has($id)) {
-                $employees->put($id, [
-                    'id' => $id,
-                    'name' => trim($row['EmployeeName'] ?? ''),
+            if (!$csvEmployees->has($csvId)) {
+                $csvEmployees->put($csvId, [
+                    'csv_id' => $csvId,
+                    'csv_name' => $csvName,
                     'days' => collect(),
                     'punch_count' => 0,
                 ]);
             }
 
-            $entry = $employees->get($id);
-            $entry['days']->push($row['Date'] ?? '');
+            $entry = $csvEmployees->get($csvId);
+            $entry['days']->push($date);
             $entry['punch_count']++;
-            $employees->put($id, $entry);
+            $csvEmployees->put($csvId, $entry);
         }
 
-        return $employees->map(function ($e) {
-            return [
-                'id' => $e['id'],
-                'name' => $e['name'],
-                'days' => $e['days']->unique()->sort()->values()->toArray(),
-                'day_count' => $e['days']->unique()->count(),
-                'punch_count' => $e['punch_count'],
-            ];
-        });
+        Log::info('[BiometricLogParser] CSV IDs found', [
+            'count' => $csvEmployees->count(),
+            'csv_ids' => $csvEmployees->keys()->values()->toArray(),
+        ]);
+
+        if ($csvEmployees->isEmpty()) {
+            Log::warning('[BiometricLogParser] No rows parsed — check column mapping or file encoding.');
+            return collect();
+        }
+
+        // ── STEP 2: Load ALL registered employees from DB ─────────────────────
+        // Load everything into PHP memory, then do string comparison there.
+        // This completely bypasses the MySQL VARCHAR vs INT coercion bug.
+        $allDbEmployees = User::where('role', User::ROLE_EMPLOYEE)
+            ->whereNotNull('employee_id')
+            ->where('employee_id', '!=', '')
+            ->get();
+
+        Log::info('[BiometricLogParser] DB employees loaded', [
+            'total' => $allDbEmployees->count(),
+            'db_employee_ids' => $allDbEmployees->pluck('employee_id', 'id')->toArray(),
+        ]);
+
+        // Build lookup keyed by trimmed string employee_id
+        $dbLookup = $allDbEmployees->keyBy(fn($u) => trim((string) $u->employee_id));
+
+        // ── STEP 3: PHP-side match — no SQL type coercion possible ────────────
+        $matched = collect();
+
+        foreach ($csvEmployees as $csvId => $csvData) {
+            $trimmedCsvId = trim((string) $csvId);
+            $dbUser = $dbLookup->get($trimmedCsvId);
+
+            if (!$dbUser) {
+                Log::debug('[BiometricLogParser] No DB match — skipped', [
+                    'csv_id' => $csvId,
+                    'csv_name' => $csvData['csv_name'],
+                ]);
+                continue;
+            }
+
+            $uniqueDays = $csvData['days']->unique()->sort()->values();
+
+            $matched->put($dbUser->id, [
+                'user_id' => $dbUser->id,
+                'db_name' => $dbUser->name,
+                'employee_id' => trim((string) $dbUser->employee_id),
+                'csv_name' => $csvData['csv_name'],
+                'days' => $uniqueDays->toArray(),
+                'day_count' => $uniqueDays->count(),
+                'punch_count' => $csvData['punch_count'],
+            ]);
+
+            Log::info('[BiometricLogParser] Matched', [
+                'user_id' => $dbUser->id,
+                'db_name' => $dbUser->name,
+                'employee_id' => $dbUser->employee_id,
+                'days' => $uniqueDays->count(),
+                'punches' => $csvData['punch_count'],
+            ]);
+        }
+
+        Log::info('[BiometricLogParser] Match complete', [
+            'matched' => $matched->count(),
+            'skipped' => $csvEmployees->count() - $matched->count(),
+        ]);
+
+        return $matched->sortBy('db_name')->values()->keyBy('user_id');
     }
 
-    // ------------------------------------------------------------------
-    // Private helpers
-    // ------------------------------------------------------------------
-
     /**
-     * Read all records for the target employee and group them by date.
+     * Parse the raw CSV and return DTR rows for ONE specific employee.
+     *
+     * @param  string     $filePath   Absolute path to the raw biometric CSV
+     * @param  int|string $employeeId The employee_id from users table (= CSV EmployeeID)
+     * @return array  DTR rows for DtrCalculator::calculateFromArray()
+     * @throws \Exception
      */
-    private function groupPunchesByDay(Reader $csv, string $credentialId): Collection
+    public function parseForEmployee(string $filePath, int|string $employeeId): array
+    {
+        if (!file_exists($filePath)) {
+            throw new \Exception("Biometric log file not found: {$filePath}");
+        }
+
+        $csv = Reader::createFromPath($filePath, 'r');
+        $csv->setHeaderOffset(0);
+        $colMap = $this->buildColumnMap($csv->getHeader());
+
+        $normalizedId = trim((string) $employeeId);
+        $punchesByDay = $this->groupPunchesByDay($csv, $colMap, $normalizedId);
+
+        if ($punchesByDay->isEmpty()) {
+            throw new \Exception("No attendance records found for Employee ID: {$employeeId}");
+        }
+
+        return $this->buildDtrRows($punchesByDay, $normalizedId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function buildColumnMap(array $headers): array
+    {
+        $map = [];
+        $headerLower = array_map('strtolower', array_map('trim', $headers));
+
+        foreach (self::COL_ALIASES as $internalKey => $aliases) {
+            foreach ($aliases as $alias) {
+                $pos = array_search(strtolower(trim($alias)), $headerLower, true);
+                if ($pos !== false) {
+                    $map[$internalKey] = $headers[$pos];
+                    break;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    private function col(array $row, array $colMap, string $key): string
+    {
+        $header = $colMap[$key] ?? null;
+        if ($header === null) {
+            return '';
+        }
+        return trim($row[$header] ?? '');
+    }
+
+    private function groupPunchesByDay(Reader $csv, array $colMap, string $employeeId): Collection
     {
         $byDay = collect();
         $timezone = config('app.timezone', 'Asia/Manila');
@@ -129,27 +229,38 @@ class BiometricLogParser
         foreach ($csv->getRecords() as $row) {
             $row = $this->sanitizeRow($row);
 
-            // Only this employee
-            if (($row['CredentialID'] ?? '') !== $credentialId) {
+            if (trim((string) $this->col($row, $colMap, 'employee_id')) !== $employeeId) {
                 continue;
             }
 
-            // Drop flagged duplicates
-            if (in_array($row['Status'] ?? '', self::SKIP_STATUSES, true)) {
-                continue;
-            }
-
-            $dateStr = $row['Date'] ?? '';
-            $timestamp = $row['Timestamp'] ?? ($dateStr . ' ' . ($row['Time'] ?? '00:00:00'));
+            $dateStr = $this->col($row, $colMap, 'log_date');
+            $timeStr = $this->col($row, $colMap, 'log_time');
+            $tsStr = $this->col($row, $colMap, 'timestamp');
+            $punchRaw = $this->col($row, $colMap, 'punch_type');
+            $empName = $this->col($row, $colMap, 'employee_name');
 
             if ($dateStr === '') {
                 continue;
             }
 
+            $rawTs = $tsStr !== ''
+                ? $tsStr
+                : ($dateStr . ' ' . ($timeStr !== '' ? $timeStr : '00:00:00'));
+
             try {
-                $dt = Carbon::createFromFormat('Y-m-d H:i:s', $timestamp, $timezone);
+                $dt = null;
+                foreach (['Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d'] as $fmt) {
+                    try {
+                        $dt = Carbon::createFromFormat($fmt, $rawTs, $timezone);
+                        break;
+                    } catch (\Exception) {
+                    }
+                }
+                if ($dt === null) {
+                    $dt = Carbon::parse($rawTs, $timezone);
+                }
             } catch (\Exception) {
-                continue; // skip rows with unparseable timestamps
+                continue;
             }
 
             if (!$byDay->has($dateStr)) {
@@ -159,22 +270,17 @@ class BiometricLogParser
             $byDay->get($dateStr)->push([
                 'datetime' => $dt,
                 'time' => $dt->format('H:i'),
-                'punch_type' => strtoupper(trim($row['PunchType'] ?? '')),
-                'work_code' => $row['WorkCode'] ?? '',
-                'name' => trim($row['EmployeeName'] ?? ''),
+                'punch_type' => strtoupper(trim($punchRaw)),
+                'name' => $empName,
             ]);
         }
 
-        // Sort each day chronologically, then sort the days themselves
         return $byDay
             ->map(fn($punches) => $punches->sortBy('datetime')->values())
             ->sortKeys();
     }
 
-    /**
-     * Convert grouped punch events into clean DTR rows.
-     */
-    private function buildDtrRows(Collection $punchesByDay, string $credentialId): array
+    private function buildDtrRows(Collection $punchesByDay, string $employeeId): array
     {
         $rows = [];
         $employeeName = null;
@@ -187,7 +293,7 @@ class BiometricLogParser
             $sessions = $this->assignSessions($punches);
 
             $rows[] = [
-                'EmployeeID' => $credentialId,
+                'EmployeeID' => $employeeId,
                 'Name' => $employeeName ?? '',
                 'Date' => $dateStr,
                 'MorningIn' => $sessions['MorningIn'],
@@ -201,14 +307,18 @@ class BiometricLogParser
     }
 
     /**
-     * Given all punches for a single day (pre-sorted by time),
-     * assign each punch to the correct session slot.
+     * Assign punch events to MorningIn/Out and AfternoonIn/Out slots.
      *
-     * Rules:
-     *  MorningIn    — first IN  at or before 12:30
-     *  MorningOut   — last  OUT at or before 12:30
-     *  AfternoonIn  — first IN  between 12:30 and 14:00
-     *  AfternoonOut — last  OUT after 12:30 (normal EOD or overtime — always take the latest)
+     * Infer mode (LogType empty — typical machine export):
+     *   Morning  ≤ 12:30 → 1 punch = MorningIn; 2+ = first/last
+     *   Afternoon > 12:30:
+     *     solo ≤ 12:45 with morning In but no Out → double-tap MorningOut
+     *     solo ≤ 14:00                            → AfternoonIn
+     *     solo > 14:00                            → AfternoonOut
+     *     2+   → first (≤14:00) = AfternoonIn, last = AfternoonOut
+     *
+     * Explicit mode (LogType = IN/OUT):
+     *   Uses the declared punch direction directly.
      */
     private function assignSessions(Collection $punches): array
     {
@@ -217,28 +327,60 @@ class BiometricLogParser
         $afternoonIn = null;
         $afternoonOut = null;
 
-        $cutoffMorningIn = $this->toMinutes(self::MORNING_CUTOFF_IN);
-        $cutoffMorningOut = $this->toMinutes(self::MORNING_CUTOFF_OUT);
+        $cutoffMorning = $this->toMinutes(self::MORNING_CUTOFF);
+        $cutoffDoubleTap = $this->toMinutes(self::DOUBLE_TAP_GRACE);
         $cutoffAfternoonIn = $this->toMinutes(self::AFTERNOON_CUTOFF_IN);
 
-        foreach ($punches as $punch) {
-            $mins = $this->toMinutes($punch['time']);
-            $type = $punch['punch_type'];
+        $hasPunchType = $punches->contains(fn($p) => $p['punch_type'] !== '');
 
-            if ($type === 'IN') {
-                if ($mins <= $cutoffMorningIn && $morningIn === null) {
-                    $morningIn = $punch['time'];
-                } elseif ($mins > $cutoffMorningIn && $mins <= $cutoffAfternoonIn && $afternoonIn === null) {
-                    $afternoonIn = $punch['time'];
+        if ($hasPunchType) {
+            foreach ($punches as $punch) {
+                $mins = $this->toMinutes($punch['time']);
+                $type = $punch['punch_type'];
+
+                if ($type === 'IN') {
+                    if ($mins <= $cutoffMorning && $morningIn === null) {
+                        $morningIn = $punch['time'];
+                    } elseif ($mins > $cutoffMorning && $mins <= $cutoffAfternoonIn && $afternoonIn === null) {
+                        $afternoonIn = $punch['time'];
+                    }
+                }
+                if ($type === 'OUT') {
+                    if ($mins <= $cutoffMorning) {
+                        $morningOut = $punch['time'];
+                    } else {
+                        $afternoonOut = $punch['time'];
+                    }
                 }
             }
+        } else {
+            $morningPunches = $punches->filter(fn($p) => $this->toMinutes($p['time']) <= $cutoffMorning)->values();
+            $afternoonPunches = $punches->filter(fn($p) => $this->toMinutes($p['time']) > $cutoffMorning)->values();
 
-            if ($type === 'OUT') {
-                if ($mins <= $cutoffMorningOut) {
-                    $morningOut = $punch['time']; // lunch break departure
+            if ($morningPunches->count() === 1) {
+                $morningIn = $morningPunches->first()['time'];
+            } elseif ($morningPunches->count() >= 2) {
+                $morningIn = $morningPunches->first()['time'];
+                $morningOut = $morningPunches->last()['time'];
+            }
+
+            if ($afternoonPunches->count() === 1) {
+                $solo = $afternoonPunches->first()['time'];
+                $soloMins = $this->toMinutes($solo);
+
+                if ($soloMins <= $cutoffDoubleTap && $morningIn !== null && $morningOut === null) {
+                    $morningOut = $solo;
+                } elseif ($soloMins <= $cutoffAfternoonIn) {
+                    $afternoonIn = $solo;
                 } else {
-                    $afternoonOut = $punch['time']; // EOD or overtime — always update to latest
+                    $afternoonOut = $solo;
                 }
+            } elseif ($afternoonPunches->count() >= 2) {
+                $first = $afternoonPunches->first();
+                if ($this->toMinutes($first['time']) <= $cutoffAfternoonIn) {
+                    $afternoonIn = $first['time'];
+                }
+                $afternoonOut = $afternoonPunches->last()['time'];
             }
         }
 
@@ -250,19 +392,12 @@ class BiometricLogParser
         ];
     }
 
-    /**
-     * Convert "HH:MM" time string to total minutes since midnight.
-     */
     private function toMinutes(string $time): int
     {
         [$h, $m] = array_map('intval', explode(':', $time . ':00'));
-
         return ($h * 60) + $m;
     }
 
-    /**
-     * Trim whitespace, carriage returns, BOM, and surrounding quotes from all CSV fields.
-     */
     private function sanitizeRow(array $row): array
     {
         return array_map(
