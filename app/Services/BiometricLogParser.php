@@ -105,7 +105,7 @@ class BiometricLogParser
         // ── STEP 2: Load ALL registered employees from DB ─────────────────────
         // Load everything into PHP memory, then do string comparison there.
         // This completely bypasses the MySQL VARCHAR vs INT coercion bug.
-        $allDbEmployees = User::where('role', User::ROLE_EMPLOYEE)
+        $allDbEmployees = User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
             ->get();

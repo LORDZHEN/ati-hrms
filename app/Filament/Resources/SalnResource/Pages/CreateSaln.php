@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\SalnResource\Pages;
 
 use App\Filament\Resources\SalnResource;
-use Filament\Resources\Pages\CreateRecord;
-use App\Notifications\NewSalnFiled;
 use App\Models\User;
+use App\Notifications\NewSalnFiled;
+use Carbon\Carbon;
 use Filament\Actions;
-use Illuminate\Support\Facades\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
 class CreateSaln extends CreateRecord
 {
@@ -17,28 +17,23 @@ class CreateSaln extends CreateRecord
     {
         return [
             Actions\Action::make('create')
-                ->label('Submit SALN')
-                ->submit('create')
-                ->color('primary'),
-
+                ->label('Submit SALN')->submit('create')->color('primary'),
             Actions\Action::make('cancel')
-                ->label('Cancel')
-                ->url($this->getResource()::getUrl('index'))
-                ->color('gray'),
+                ->label('Cancel')->url($this->getResource()::getUrl('index'))->color('gray'),
         ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['user_id'] = auth()->id();
+        $data['status'] = 'submitted'; // always starts as submitted
 
-        // Normalize date_of_birth on every child so we always store Y-m-d,
-        // never the full ISO datetime Filament may pass through.
+        // Normalize children date_of_birth
         if (!empty($data['children'])) {
             foreach ($data['children'] as &$child) {
                 if (!empty($child['date_of_birth'])) {
                     try {
-                        $child['date_of_birth'] = \Carbon\Carbon::parse($child['date_of_birth'])->format('Y-m-d');
+                        $child['date_of_birth'] = Carbon::parse($child['date_of_birth'])->format('Y-m-d');
                     } catch (\Exception $e) {
                     }
                 }
@@ -46,10 +41,9 @@ class CreateSaln extends CreateRecord
             unset($child);
         }
 
-        $realPropertiesTotal = collect($data['realProperties'] ?? [])->sum('current_fair_market_value');
-        $personalPropertiesTotal = collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
-
-        $data['total_assets'] = $realPropertiesTotal + $personalPropertiesTotal;
+        // Calculate totals
+        $data['total_assets'] = collect($data['realProperties'] ?? [])->sum('current_fair_market_value')
+            + collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
         $data['total_liabilities'] = collect($data['liabilities'] ?? [])->sum('outstanding_balance');
         $data['net_worth'] = $data['total_assets'] - $data['total_liabilities'];
 
@@ -60,16 +54,15 @@ class CreateSaln extends CreateRecord
     {
         $this->record->calculateTotals();
 
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new NewSalnFiled($this->record));
-        }
+        // Notify all admins
+        User::where('role', 'admin')->get()->each(
+            fn($admin) => $admin->notify(new NewSalnFiled($this->record))
+        );
 
         \Filament\Notifications\Notification::make()
             ->title('SALN Submitted Successfully')
             ->body('Your Statement of Assets, Liabilities and Net Worth has been filed.')
-            ->success()
-            ->send();
+            ->success()->send();
     }
 
     protected function getRedirectUrl(): string
@@ -77,87 +70,65 @@ class CreateSaln extends CreateRecord
         return $this->getResource()::getUrl('index');
     }
 
+    // ── Livewire helpers (keep your existing ones below) ─────────────────────
+
     public function addChild(): void
     {
-        $children = $this->data['children'] ?? [];
-        $children[] = ['name' => '', 'date_of_birth' => '', 'age' => ''];
-        $this->data['children'] = $children;
+        $this->data['children'][] = ['name' => '', 'date_of_birth' => '', 'age' => ''];
     }
-
     public function removeChild(int $index): void
     {
-        $children = $this->data['children'] ?? [];
-        unset($children[$index]);
-        $this->data['children'] = array_values($children);
+        unset($this->data['children'][$index]);
+        $this->data['children'] = array_values($this->data['children']);
     }
 
     public function addRealProperty(): void
     {
-        $items = $this->data['realProperties'] ?? [];
-        $items[] = ['description' => '', 'kind' => '', 'exact_location' => '', 'assessed_value' => '', 'current_fair_market_value' => '', 'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => ''];
-        $this->data['realProperties'] = $items;
+        $this->data['realProperties'][] = ['description' => '', 'kind' => '', 'exact_location' => '', 'assessed_value' => '', 'current_fair_market_value' => '', 'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => ''];
     }
-
     public function removeRealProperty(int $index): void
     {
-        $items = $this->data['realProperties'] ?? [];
-        unset($items[$index]);
-        $this->data['realProperties'] = array_values($items);
+        unset($this->data['realProperties'][$index]);
+        $this->data['realProperties'] = array_values($this->data['realProperties']);
     }
 
     public function addPersonalProperty(): void
     {
-        $items = $this->data['personalProperties'] ?? [];
-        $items[] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
-        $this->data['personalProperties'] = $items;
+        $this->data['personalProperties'][] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
     }
-
     public function removePersonalProperty(int $index): void
     {
-        $items = $this->data['personalProperties'] ?? [];
-        unset($items[$index]);
-        $this->data['personalProperties'] = array_values($items);
+        unset($this->data['personalProperties'][$index]);
+        $this->data['personalProperties'] = array_values($this->data['personalProperties']);
     }
 
     public function addLiability(): void
     {
-        $items = $this->data['liabilities'] ?? [];
-        $items[] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
-        $this->data['liabilities'] = $items;
+        $this->data['liabilities'][] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
     }
-
     public function removeLiability(int $index): void
     {
-        $items = $this->data['liabilities'] ?? [];
-        unset($items[$index]);
-        $this->data['liabilities'] = array_values($items);
+        unset($this->data['liabilities'][$index]);
+        $this->data['liabilities'] = array_values($this->data['liabilities']);
     }
 
     public function addBusinessInterest(): void
     {
-        $items = $this->data['businessInterests'] ?? [];
-        $items[] = ['name_of_entity' => '', 'business_address' => '', 'nature_of_business_interest' => '', 'date_of_acquisition' => ''];
-        $this->data['businessInterests'] = $items;
+        $this->data['businessInterests'][] = ['name_of_entity' => '', 'business_address' => '', 'nature_of_business_interest' => '', 'date_of_acquisition' => ''];
     }
-
     public function removeBusinessInterest(int $index): void
     {
-        $items = $this->data['businessInterests'] ?? [];
-        unset($items[$index]);
-        $this->data['businessInterests'] = array_values($items);
+        unset($this->data['businessInterests'][$index]);
+        $this->data['businessInterests'] = array_values($this->data['businessInterests']);
     }
 
     public function addRelativeInGovernment(): void
     {
-        $items = $this->data['relativesInGovernment'] ?? [];
-        $items[] = ['name_of_relative' => '', 'relationship' => '', 'position' => '', 'name_of_agency_office_address' => ''];
-        $this->data['relativesInGovernment'] = $items;
+        $this->data['relativesInGovernment'][] = ['name_of_relative' => '', 'relationship' => '', 'position' => '', 'name_of_agency_office_address' => ''];
     }
-
     public function removeRelativeInGovernment(int $index): void
     {
-        $items = $this->data['relativesInGovernment'] ?? [];
-        unset($items[$index]);
-        $this->data['relativesInGovernment'] = array_values($items);
+        unset($this->data['relativesInGovernment'][$index]);
+        $this->data['relativesInGovernment'] = array_values($this->data['relativesInGovernment']);
     }
 }

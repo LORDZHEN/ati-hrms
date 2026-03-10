@@ -41,22 +41,25 @@ class Saln extends Model
         'subscribed_sworn_date',
         'person_administering_oath',
         'remarks',
+        'status',           // ← NEW
+        'resubmitted_at',   // ← NEW
     ];
 
     protected $casts = [
-        'as_of_date' => 'date',
-        'date_signed' => 'date',
-        'subscribed_sworn_date' => 'date',
-        'joint_filing' => 'boolean',
-        'separate_filing' => 'boolean',
-        'not_applicable' => 'boolean',
-        'has_business_interests' => 'boolean',
-        'no_business_interests' => 'boolean',
+        'as_of_date'                  => 'date',
+        'date_signed'                 => 'date',
+        'subscribed_sworn_date'       => 'date',
+        'resubmitted_at'              => 'datetime', // ← NEW
+        'joint_filing'                => 'boolean',
+        'separate_filing'             => 'boolean',
+        'not_applicable'              => 'boolean',
+        'has_business_interests'      => 'boolean',
+        'no_business_interests'       => 'boolean',
         'has_relatives_in_government' => 'boolean',
-        'no_relatives_in_government' => 'boolean',
-        'total_assets' => 'decimal:2',
-        'total_liabilities' => 'decimal:2',
-        'net_worth' => 'decimal:2',
+        'no_relatives_in_government'  => 'boolean',
+        'total_assets'                => 'decimal:2',
+        'total_liabilities'           => 'decimal:2',
+        'net_worth'                   => 'decimal:2',
     ];
 
     public function user(): BelongsTo

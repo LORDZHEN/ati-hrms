@@ -48,7 +48,7 @@ class DailyTimeRecordResource extends Resource
                         Forms\Components\CheckboxList::make('selected_employees')
                             ->label('')
                             ->options(
-                                User::where('role', User::ROLE_EMPLOYEE)
+                                User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
                                     ->orderBy('name')
                                     ->get()
                                     ->mapWithKeys(function ($user) {

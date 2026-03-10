@@ -11,26 +11,14 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Grid;
 use Filament\Actions\Action;
 
-/**
- * ViewTransactionHistory
- *
- * Detailed view of a single transaction log entry.
- * Uses Filament Infolist to render structured, read-only fields.
- * Provides a "View Original Record" action that links back to the source.
- */
 class ViewTransactionHistory extends ViewRecord
 {
     protected static string $resource = TransactionHistoryResource::class;
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Infolist Layout
-    // ─────────────────────────────────────────────────────────────────────────
 
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
-                // ── Transaction Details ────────────────────────────────────
                 Section::make('Transaction Details')
                     ->icon('heroicon-o-document-text')
                     ->schema([
@@ -42,7 +30,7 @@ class ViewTransactionHistory extends ViewRecord
 
                             TextEntry::make('transaction_type')
                                 ->label('Transaction Type')
-                                ->icon(fn (TransactionHistory $r) => $r->resolved_icon),
+                                ->icon(fn(TransactionHistory $r) => $r->resolved_icon),
 
                             TextEntry::make('module')
                                 ->label('Module')
@@ -52,8 +40,8 @@ class ViewTransactionHistory extends ViewRecord
                             TextEntry::make('status')
                                 ->label('Status')
                                 ->badge()
-                                ->formatStateUsing(fn (string $state) => ucfirst($state))
-                                ->color(fn (TransactionHistory $r) => TransactionHistory::statusColor($r->status)),
+                                ->formatStateUsing(fn(string $state) => ucfirst($state))
+                                ->color(fn(TransactionHistory $r) => TransactionHistory::statusColor($r->status)),
                         ]),
 
                         TextEntry::make('description')
@@ -62,7 +50,6 @@ class ViewTransactionHistory extends ViewRecord
                             ->prose(),
                     ]),
 
-                // ── Actor ──────────────────────────────────────────────────
                 Section::make('Actor Information')
                     ->icon('heroicon-o-user')
                     ->collapsed()
@@ -78,7 +65,6 @@ class ViewTransactionHistory extends ViewRecord
                         ]),
                     ]),
 
-                // ── Record Reference ───────────────────────────────────────
                 Section::make('Record Reference')
                     ->icon('heroicon-o-link')
                     ->collapsed()
@@ -95,7 +81,6 @@ class ViewTransactionHistory extends ViewRecord
                         ]),
                     ]),
 
-                // ── Timestamps ────────────────────────────────────────────
                 Section::make('Timestamps')
                     ->icon('heroicon-o-clock')
                     ->collapsed()
@@ -115,23 +100,17 @@ class ViewTransactionHistory extends ViewRecord
             ]);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Header Actions
-    // ─────────────────────────────────────────────────────────────────────────
-
     protected function getHeaderActions(): array
     {
         return [
-            // Link to the original Filament resource record if URL is stored
             Action::make('view_record')
                 ->label('View Original Record')
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('primary')
-                ->url(fn () => $this->record->record_url ?? null)
+                ->url(fn() => $this->record->record_url ?? null)
                 ->openUrlInNewTab()
-                ->visible(fn () => filled($this->record->record_url)),
+                ->visible(fn() => filled($this->record->record_url)),
 
-            // Back to timeline
             Action::make('back')
                 ->label('Back to Timeline')
                 ->icon('heroicon-o-arrow-left')

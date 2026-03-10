@@ -482,3 +482,9 @@ Route::get('/saln/report', function () {
     return $pdf->stream($filename);
 
 })->middleware(['auth'])->name('saln.report');
+
+// Biometric CSV upload endpoint — bypasses Livewire file upload
+Route::post('/biometric/upload-csv', [\App\Http\Controllers\BiometricUploadController::class, 'store'])
+    ->middleware(['web', 'auth'])
+    ->name('biometric.upload');
+

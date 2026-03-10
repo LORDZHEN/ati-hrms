@@ -1,519 +1,673 @@
 <x-filament-panels::page>
 
 {{--
-    Transaction History — Modern Activity Timeline
+    Transaction History — Matched to Dashboard UI
     ===============================================
-    Fixed: entry card layout — name/description no longer wrapping to a
-    separate row. Root cause was flex items not being constrained properly
-    on narrow containers. Fixed by:
-      • Removing flex-wrap from .th-entry
-      • Ensuring .th-body has min-width:0 AND flex:1 with overflow hidden
-      • Avatar and icon are flex-shrink:0 with explicit dimensions
+    Design language unified with hd-root dashboard:
+      • DM Sans + Playfair Display typography
+      • Same --g / --a / --ink / --paper / --card token system
+      • Hero banner with grid + dots + shimmer stripe
+      • hd-card / hd-section-label / hd-section-icon pattern
+      • Consistent stat pills, chips, activity rows, empty states
 --}}
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+
 <style>
-    /* ── Reset & Base ─────────────────────────────────────────── */
+    /* ── Tokens (mirrors dashboard exactly) ───────────────────── */
+    :root {
+        --g:          #059669;
+        --g2:         #10b981;
+        --g3:         #d1fae5;
+        --a:          #d97706;
+        --a2:         #f59e0b;
+        --a3:         #fef3c7;
+        --ink:        #0f1f16;
+        --ink2:       #374151;
+        --ink3:       #6b7280;
+        --paper:      #f9faf7;
+        --card:       #ffffff;
+        --border:     #e5e7eb;
+        --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md:  0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        --shadow-lg:  0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+        --radius:     16px;
+        --radius-sm:  10px;
+    }
+
+    .dark {
+        --ink:       #f0fdf4;
+        --ink2:      #d1fae5;
+        --ink3:      #6ee7b7;
+        --paper:     #0a1612;
+        --card:      #0f1f18;
+        --border:    #1f3429;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+        --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+    }
+
+    /* ── Root ──────────────────────────────────────────────────── */
     .th-root {
-        font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+        font-family: 'DM Sans', sans-serif;
         font-size: 14px;
+        background: var(--paper);
+        min-height: 100vh;
+        color: var(--ink);
     }
 
-    /* ── Stats bar ────────────────────────────────────────────── */
-    .th-stats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .625rem;
+    /* ── Hero Banner (same structure as hd-hero) ───────────────── */
+    .th-hero {
+        position: relative;
+        border-radius: 20px;
+        overflow: hidden;
         margin-bottom: 1.5rem;
+        background: var(--ink);
+        min-height: 130px;
     }
 
-    .th-stat-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: .4rem;
-        padding: .35rem .9rem;
-        border-radius: 999px;
-        font-size: .75rem;
-        font-weight: 700;
-        border: 1.5px solid;
-        cursor: default;
-        transition: transform .15s;
+    .th-hero-bg {
+        position: absolute; inset: 0;
+        background:
+            radial-gradient(ellipse 55% 80% at 80% 50%, rgba(5,150,105,0.50) 0%, transparent 65%),
+            radial-gradient(ellipse 35% 55% at 92% 15%, rgba(217,119,6,0.30) 0%, transparent 60%),
+            radial-gradient(ellipse 45% 65% at 5%  85%, rgba(16,185,129,0.18) 0%, transparent 60%),
+            linear-gradient(135deg, #071a10 0%, #0f2d1c 40%, #0a1e12 100%);
     }
 
-    .th-stat-pill:hover { transform: translateY(-1px); }
+    .th-hero-grid {
+        position: absolute; inset: 0;
+        background-image:
+            linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+    }
 
-    .th-stat-leave    { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
-    .th-stat-travel   { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
-    .th-stat-locator  { background: #f5f3ff; border-color: #c4b5fd; color: #5b21b6; }
-    .th-stat-saln     { background: #fff1f2; border-color: #fca5a5; color: #9f1239; }
-    .th-stat-pds      { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
-    .th-stat-employee { background: #f0fdf4; border-color: #86efac; color: #15803d; }
-    .th-stat-dtr      { background: #f8fafc; border-color: #94a3b8; color: #334155; }
-    .th-stat-default  { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
+    .th-hero-dots {
+        position: absolute;
+        top: 1.25rem; right: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        opacity: 0.22;
+    }
 
-    .dark .th-stat-leave    { background: rgba(29,78,216,.15);  border-color: #3b82f6; color: #93c5fd; }
-    .dark .th-stat-travel   { background: rgba(146,64,14,.15);  border-color: #f59e0b; color: #fcd34d; }
-    .dark .th-stat-locator  { background: rgba(91,33,182,.15);  border-color: #8b5cf6; color: #c4b5fd; }
-    .dark .th-stat-saln     { background: rgba(159,18,57,.15);  border-color: #f87171; color: #fca5a5; }
-    .dark .th-stat-pds      { background: rgba(6,95,70,.15);    border-color: #34d399; color: #6ee7b7; }
-    .dark .th-stat-employee { background: rgba(21,128,61,.15);  border-color: #4ade80; color: #86efac; }
-    .dark .th-stat-dtr      { background: rgba(51,65,85,.2);    border-color: #64748b; color: #94a3b8; }
+    .th-hero-dot { width: 4px; height: 4px; border-radius: 50%; background: #10b981; }
 
-    /* ── Date divider ─────────────────────────────────────────── */
-    .th-date-group {
+    .th-hero-content {
+        position: relative; z-index: 2;
+        padding: 1.5rem 2rem;
         display: flex;
         align-items: center;
-        gap: .75rem;
-        margin: 1.75rem 0 1rem;
+        justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
     }
 
-    .th-date-label {
-        font-size: .6875rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .1em;
-        color: #6b7280;
-        white-space: nowrap;
-        padding: .25rem .75rem;
-        background: #f3f4f6;
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
+    .th-hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: rgba(16,185,129,0.15);
+        border: 1px solid rgba(16,185,129,0.3);
+        color: #6ee7b7;
+        font-size: 0.6875rem; font-weight: 700;
+        letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 0.3rem 0.75rem; border-radius: 999px;
+        margin-bottom: 0.5rem;
     }
 
-    .dark .th-date-label {
-        background: rgba(255,255,255,.05);
-        border-color: rgba(255,255,255,.1);
-        color: #9ca3af;
+    .th-hero-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.625rem; font-weight: 800;
+        color: #ffffff; line-height: 1.15;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.25rem;
     }
 
-    .th-date-line {
-        flex: 1;
+    .th-hero-sub { font-size: 0.8125rem; color: rgba(255,255,255,0.5); }
+
+    .th-hero-stripe {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--g), var(--a2), var(--g));
+        background-size: 200% 100%;
+        animation: th-shimmer 3s linear infinite;
+    }
+
+    @keyframes th-shimmer {
+        0%   { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+    }
+
+    /* ── Stats pills (right side of hero) ─────────────────────── */
+    .th-hero-stats { display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: flex-end; }
+
+    .th-hpill {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.82);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.7rem; font-weight: 700;
+        padding: 0.3rem 0.75rem; border-radius: 999px;
+        backdrop-filter: blur(8px); white-space: nowrap;
+        transition: transform .15s ease;
+        cursor: default;
+    }
+
+    .th-hpill:hover { transform: translateY(-1px); }
+    .th-hpill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+    .th-hp-today   { border-color: rgba(255,255,255,0.15); }
+    .th-hp-today .th-hpill-dot { background: #6ee7b7; }
+
+    .th-hp-leave   { border-color: rgba(96,165,250,0.3); color: #93c5fd; }
+    .th-hp-leave .th-hpill-dot { background: #60a5fa; }
+
+    .th-hp-travel  { border-color: rgba(251,191,36,0.3); color: #fde047; }
+    .th-hp-travel .th-hpill-dot { background: #fbbf24; }
+
+    .th-hp-locator { border-color: rgba(167,139,250,0.3); color: #c4b5fd; }
+    .th-hp-locator .th-hpill-dot { background: #a78bfa; }
+
+    .th-hp-saln    { border-color: rgba(251,113,133,0.3); color: #fda4af; }
+    .th-hp-saln .th-hpill-dot { background: #fb7185; }
+
+    .th-hp-pds     { border-color: rgba(74,222,128,0.3); color: #86efac; }
+    .th-hp-pds .th-hpill-dot { background: #4ade80; }
+
+    .th-hp-employee{ border-color: rgba(52,211,153,0.3); color: #6ee7b7; }
+    .th-hp-employee .th-hpill-dot { background: #34d399; }
+
+    .th-hp-dtr     { border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
+    .th-hp-dtr .th-hpill-dot { background: #94a3b8; }
+
+    /* ── Section label (mirrors hd-section-label exactly) ─────── */
+    .th-section-label { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.75rem; }
+
+    .th-section-icon {
+        width: 28px; height: 28px; border-radius: 7px;
+        background: linear-gradient(135deg, var(--g3), #bbf7d0);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    .dark .th-section-icon {
+        background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.15));
+    }
+
+    .th-section-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.9375rem; font-weight: 700;
+        color: var(--g); letter-spacing: -0.01em;
+    }
+
+    .th-section-divider {
         height: 1px;
-        background: linear-gradient(90deg, #e5e7eb, transparent);
+        background: linear-gradient(90deg, var(--border), transparent);
+        margin-bottom: 1rem;
     }
 
-    .dark .th-date-line { background: linear-gradient(90deg, rgba(255,255,255,.08), transparent); }
+    /* ── Card (mirrors hd-card) ────────────────────────────────── */
+    .th-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1.5px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        margin-bottom: 1.25rem;
+    }
 
-    /* ── Timeline spine ───────────────────────────────────────── */
+    /* ── Date divider ──────────────────────────────────────────── */
+    .th-date-row {
+        display: flex; align-items: center; gap: 0.875rem;
+        margin: 2rem 0 1rem;
+    }
+
+    .th-date-row:first-child { margin-top: 0.25rem; }
+
+    .th-date-badge {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.3rem 0.875rem; border-radius: 999px;
+        background: var(--card); border: 1.5px solid var(--border);
+        font-size: 0.6875rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--ink3); box-shadow: var(--shadow-sm);
+        white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    }
+
+    .th-date-today {
+        background: linear-gradient(135deg, var(--g), #047857);
+        border-color: transparent; color: #fff;
+        box-shadow: 0 4px 14px rgba(5,150,105,0.35);
+    }
+
+    .th-date-line { flex: 1; height: 1px; background: var(--border); }
+
+    .th-date-count { font-size: 0.6875rem; color: var(--ink3); font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+
+    /* ── Timeline spine ────────────────────────────────────────── */
     .th-timeline {
         position: relative;
-        padding-left: 2.25rem;
+        padding-left: 1.75rem;
+        display: flex; flex-direction: column; gap: 0.375rem;
     }
 
     .th-timeline::before {
         content: '';
-        position: absolute;
-        left: .875rem;
-        top: 0; bottom: 0;
-        width: 2px;
-        background: linear-gradient(180deg, #d1fae5, #bfdbfe, #e9d5ff, #fce7f3, #d1fae5);
-        border-radius: 999px;
-        opacity: .5;
+        position: absolute; left: 0;
+        top: 1.25rem; bottom: 1.25rem;
+        width: 2px; border-radius: 2px;
+        background: linear-gradient(180deg,
+            rgba(5,150,105,.7)  0%,
+            rgba(217,119,6,.5)  33%,
+            rgba(16,185,129,.5) 66%,
+            rgba(5,150,105,.3)  100%
+        );
     }
 
-    /* ── Entry card ───────────────────────────────────────────── */
+    /* ── Entry row (mirrors hd-activity exactly) ───────────────── */
     .th-entry {
         position: relative;
-        /* FIX: no flex-wrap — all children must stay on one row */
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: center;       /* vertically center avatar, icon, body, arrow */
-        gap: .75rem;
-        padding: .875rem 1rem;
-        margin-bottom: .625rem;
-        border-radius: 14px;
-        border: 1.5px solid #e5e7eb;
-        background: #fff;
+        display: flex; flex-wrap: nowrap; align-items: center;
+        gap: 0.75rem; padding: 0.625rem 0.75rem;
+        border-radius: var(--radius-sm);
+        background: var(--paper);
+        border: 1.5px solid transparent;
         text-decoration: none;
-        transition: all .2s cubic-bezier(.4,0,.2,1);
-        box-shadow: 0 1px 4px rgba(0,0,0,.04);
-        /* FIX: prevent card itself from overflowing its container */
-        min-width: 0;
-        overflow: hidden;
+        transition: all 0.2s ease;
+        min-width: 0; overflow: hidden;
     }
 
-    .dark .th-entry {
-        background: rgba(255,255,255,.03);
-        border-color: rgba(255,255,255,.08);
-    }
+    .dark .th-entry { background: rgba(16,185,129,0.04); }
+
+    .th-entry:last-child { margin-bottom: 0; }
 
     .th-entry:hover {
-        transform: translateX(4px);
-        border-color: rgba(5,150,105,.3);
-        box-shadow: 0 4px 18px rgba(5,150,105,.1);
+        background: var(--card);
+        border-color: rgba(5,150,105,0.2);
+        transform: translateX(3px);
+        box-shadow: var(--shadow-sm);
     }
 
     /* Spine dot */
     .th-entry::before {
         content: '';
         position: absolute;
-        left: -1.5rem;
-        top: 50%;
+        left: -1.9rem; top: 50%;
         transform: translateY(-50%);
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #fff;
-        border: 2px solid #d1d5db;
-        transition: border-color .2s, background .2s;
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--card); border: 2px solid var(--border);
+        transition: border-color .2s, background .2s, transform .2s;
+        z-index: 1;
     }
 
     .th-entry:hover::before {
-        border-color: #059669;
-        background: #d1fae5;
+        border-color: var(--g); background: var(--g3);
+        transform: translateY(-50%) scale(1.25);
     }
 
-    /* ── Avatar ───────────────────────────────────────────────── */
+    /* ── Avatar ────────────────────────────────────────────────── */
     .th-avatar {
-        /* FIX: explicit size + no shrink so it never collapses */
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
+        width: 34px; height: 34px; min-width: 34px;
         border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: .8rem;
-        color: #fff;
-        flex-shrink: 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,.15);
-        overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 0.75rem; color: #fff;
+        flex-shrink: 0; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     }
 
-    .th-avatar img {
-        width: 40px;
-        height: 40px;
-        object-fit: cover;
-    }
+    .th-avatar img { width: 34px; height: 34px; object-fit: cover; }
 
     .th-av-0 { background: linear-gradient(135deg,#059669,#047857); }
-    .th-av-1 { background: linear-gradient(135deg,#2563eb,#1d4ed8); }
-    .th-av-2 { background: linear-gradient(135deg,#7c3aed,#6d28d9); }
-    .th-av-3 { background: linear-gradient(135deg,#db2777,#be185d); }
+    .th-av-1 { background: linear-gradient(135deg,#3b82f6,#1d4ed8); }
+    .th-av-2 { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
+    .th-av-3 { background: linear-gradient(135deg,#f43f5e,#be123c); }
     .th-av-4 { background: linear-gradient(135deg,#d97706,#b45309); }
-    .th-av-5 { background: linear-gradient(135deg,#0891b2,#0e7490); }
-    .th-av-6 { background: linear-gradient(135deg,#16a34a,#15803d); }
-    .th-av-7 { background: linear-gradient(135deg,#dc2626,#b91c1c); }
+    .th-av-5 { background: linear-gradient(135deg,#0ea5e9,#0369a1); }
+    .th-av-6 { background: linear-gradient(135deg,#22c55e,#15803d); }
+    .th-av-7 { background: linear-gradient(135deg,#ef4444,#b91c1c); }
 
-    /* ── Module icon badge ────────────────────────────────────── */
+    /* ── Module icon (mirrors hd-activity-ico) ─────────────────── */
     .th-mod-icon {
-        /* FIX: explicit size + no shrink */
-        width: 34px;
-        height: 34px;
-        min-width: 34px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 32px; height: 32px; min-width: 32px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
         flex-shrink: 0;
     }
 
-    .th-mod-leave    { background: #dbeafe; color: #1d4ed8; }
-    .th-mod-travel   { background: #fef3c7; color: #92400e; }
-    .th-mod-locator  { background: #ede9fe; color: #5b21b6; }
-    .th-mod-saln     { background: #ffe4e6; color: #9f1239; }
-    .th-mod-pds      { background: #d1fae5; color: #065f46; }
-    .th-mod-employee { background: #dcfce7; color: #15803d; }
-    .th-mod-dtr      { background: #f1f5f9; color: #334155; }
-    .th-mod-default  { background: #f1f5f9; color: #475569; }
+    .th-mi-leave    { background: #dbeafe; color: #1e40af; }
+    .th-mi-travel   { background: #fef3c7; color: #92400e; }
+    .th-mi-locator  { background: #ede9fe; color: #6d28d9; }
+    .th-mi-saln     { background: #ffe4e6; color: #9f1239; }
+    .th-mi-pds      { background: #d1fae5; color: #065f46; }
+    .th-mi-employee { background: #ccfbf1; color: #115e59; }
+    .th-mi-dtr      { background: #f3f4f6; color: #374151; }
+    .th-mi-default  { background: #f3f4f6; color: #6b7280; }
 
-    .dark .th-mod-leave    { background: rgba(29,78,216,.18);  color: #93c5fd; }
-    .dark .th-mod-travel   { background: rgba(146,64,14,.18);  color: #fcd34d; }
-    .dark .th-mod-locator  { background: rgba(91,33,182,.18);  color: #c4b5fd; }
-    .dark .th-mod-saln     { background: rgba(159,18,57,.18);  color: #fca5a5; }
-    .dark .th-mod-pds      { background: rgba(6,95,70,.18);    color: #6ee7b7; }
-    .dark .th-mod-employee { background: rgba(21,128,61,.18);  color: #86efac; }
-    .dark .th-mod-dtr      { background: rgba(51,65,85,.25);   color: #94a3b8; }
+    .dark .th-mi-leave    { background: rgba(59,130,246,.12);  color: #93c5fd; }
+    .dark .th-mi-travel   { background: rgba(234,179,8,.12);   color: #fde047; }
+    .dark .th-mi-locator  { background: rgba(139,92,246,.12);  color: #c4b5fd; }
+    .dark .th-mi-saln     { background: rgba(244,63,94,.12);   color: #fda4af; }
+    .dark .th-mi-pds      { background: rgba(34,197,94,.12);   color: #86efac; }
+    .dark .th-mi-employee { background: rgba(16,185,129,.12);  color: #6ee7b7; }
+    .dark .th-mi-dtr      { background: rgba(100,116,139,.12); color: #94a3b8; }
 
-    /* ── Entry body text ──────────────────────────────────────── */
-    .th-body {
-        /* FIX: flex:1 + min-width:0 is the critical combo for text truncation
-           inside flex children — without min-width:0 the child doesn't shrink
-           below its content size and causes wrapping/overflow */
-        flex: 1 1 0%;
-        min-width: 0;
-        overflow: hidden;
+    /* ── Body text ─────────────────────────────────────────────── */
+    .th-body { flex: 1 1 0%; min-width: 0; overflow: hidden; }
+
+    .th-name {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8125rem; font-weight: 700; color: var(--ink);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        margin-bottom: 0.175rem; line-height: 1.3;
     }
 
-    .th-employee-name {
-        font-size: .875rem;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: .15rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        line-height: 1.3;
+    .th-desc {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.75rem; color: var(--ink3);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        margin-bottom: 0.3rem; line-height: 1.4;
     }
 
-    .dark .th-employee-name { color: #f9fafb; }
+    .th-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
 
-    .th-description {
-        font-size: .775rem;
-        color: #6b7280;
-        line-height: 1.4;
-        margin-bottom: .35rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .dark .th-description { color: #9ca3af; }
-
-    .th-meta {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: .35rem;
-    }
-
-    /* ── Status badge ─────────────────────────────────────────── */
-    .th-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: .15rem .55rem;
-        border-radius: 999px;
-        font-size: .6rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .06em;
+    /* ── Status chip (mirrors hd-chip exactly) ─────────────────── */
+    .th-chip {
+        display: inline-flex; align-items: center;
+        padding: 0.15rem 0.5rem; border-radius: 999px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.625rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.06em;
         white-space: nowrap;
     }
 
-    .th-badge-pending    { background: #fef3c7; color: #92400e; }
-    .th-badge-approved   { background: #d1fae5; color: #065f46; }
-    .th-badge-rejected   { background: #ffe4e6; color: #9f1239; }
-    .th-badge-filed      { background: #dbeafe; color: #1d4ed8; }
-    .th-badge-uploaded   { background: #dbeafe; color: #1d4ed8; }
-    .th-badge-submitted  { background: #dbeafe; color: #1d4ed8; }
-    .th-badge-registered { background: #d1fae5; color: #065f46; }
-    .th-badge-cancelled  { background: #f3f4f6; color: #4b5563; }
-    .th-badge-default    { background: #f3f4f6; color: #4b5563; }
+    .th-chip-pending    { background: #fef3c7; color: #92400e; }
+    .th-chip-approved   { background: #d1fae5; color: #065f46; }
+    .th-chip-rejected   { background: #ffe4e6; color: #9f1239; }
+    .th-chip-filed,
+    .th-chip-uploaded,
+    .th-chip-submitted  { background: #dbeafe; color: #1e40af; }
+    .th-chip-registered { background: #d1fae5; color: #065f46; }
+    .th-chip-cancelled  { background: #f3f4f6; color: #4b5563; }
+    .th-chip-default    { background: #f3f4f6; color: #4b5563; }
 
-    .dark .th-badge-pending    { background: rgba(146,64,14,.2);  color: #fde68a; }
-    .dark .th-badge-approved   { background: rgba(6,95,70,.2);    color: #6ee7b7; }
-    .dark .th-badge-rejected   { background: rgba(159,18,57,.2);  color: #fca5a5; }
-    .dark .th-badge-filed,
-    .dark .th-badge-uploaded,
-    .dark .th-badge-submitted  { background: rgba(29,78,216,.2);  color: #93c5fd; }
-    .dark .th-badge-registered { background: rgba(6,95,70,.2);    color: #6ee7b7; }
-    .dark .th-badge-cancelled  { background: rgba(75,85,99,.2);   color: #9ca3af; }
+    .dark .th-chip-pending    { background: rgba(146,64,14,.2);  color: #fde68a; }
+    .dark .th-chip-approved   { background: rgba(6,95,70,.2);    color: #6ee7b7; }
+    .dark .th-chip-rejected   { background: rgba(159,18,57,.2);  color: #fda4af; }
+    .dark .th-chip-filed,
+    .dark .th-chip-uploaded,
+    .dark .th-chip-submitted  { background: rgba(29,78,216,.2);  color: #93c5fd; }
+    .dark .th-chip-registered { background: rgba(6,95,70,.2);    color: #6ee7b7; }
+    .dark .th-chip-cancelled  { background: rgba(75,85,99,.2);   color: #9ca3af; }
 
-    /* ── Module chip ──────────────────────────────────────────── */
-    .th-module-chip {
-        font-size: .6rem;
-        font-weight: 700;
-        color: #6b7280;
-        padding: .15rem .5rem;
-        background: #f3f4f6;
-        border-radius: 999px;
-        border: 1px solid #e5e7eb;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        white-space: nowrap;
+    /* ── Module label tag ──────────────────────────────────────── */
+    .th-mod-label {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.625rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        color: var(--ink3); background: var(--paper);
+        padding: 0.15rem 0.45rem; border-radius: 999px;
+        border: 1px solid var(--border); white-space: nowrap;
     }
 
-    .dark .th-module-chip {
-        background: rgba(255,255,255,.05);
-        border-color: rgba(255,255,255,.1);
-        color: #9ca3af;
+    /* ── Timestamp ─────────────────────────────────────────────── */
+    .th-time { font-size: 0.6875rem; color: var(--ink3); white-space: nowrap; }
+
+    /* ── View record link ──────────────────────────────────────── */
+    .th-rec-link {
+        font-size: 0.6875rem; font-weight: 700;
+        color: var(--g); text-decoration: none; white-space: nowrap;
+        opacity: 0.75; transition: opacity .15s;
     }
 
-    /* ── Timestamp ────────────────────────────────────────────── */
-    .th-time {
-        font-size: .6875rem;
-        color: #9ca3af;
-        white-space: nowrap;
+    .th-rec-link:hover { opacity: 1; }
+
+    /* ── Arrow caret (mirrors hd-activity-caret exactly) ──────── */
+    .th-caret {
+        width: 22px; height: 22px; border-radius: 5px;
+        background: var(--border);
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0; transform: translateX(-4px);
+        transition: all 0.2s ease; flex-shrink: 0;
     }
 
-    /* ── View link arrow ──────────────────────────────────────── */
-    .th-view-arrow {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-        border-radius: 7px;
-        background: #f3f4f6;
-        color: #9ca3af;
-        flex-shrink: 0;
-        transition: all .2s;
+    .th-entry:hover .th-caret {
+        opacity: 1; transform: translateX(0);
+        background: var(--g);
     }
 
-    .th-entry:hover .th-view-arrow {
-        background: #059669;
-        color: #fff;
-    }
-
-    .dark .th-view-arrow { background: rgba(255,255,255,.07); color: #6b7280; }
-
-    /* ── Empty state ──────────────────────────────────────────── */
+    /* ── Empty state (mirrors hd-empty exactly) ────────────────── */
     .th-empty {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #9ca3af;
+        text-align: center; padding: 3rem 1.5rem;
+        border-radius: var(--radius-sm);
+        background: var(--paper);
+        border: 2px dashed var(--border);
     }
 
-    /* ── Pagination wrapper ───────────────────────────────────── */
-    .th-pagination {
-        margin-top: 2rem;
+    .dark .th-empty { background: rgba(16,185,129,0.03); }
+
+    .th-empty-icon {
+        opacity: 0.2; margin: 0 auto 0.75rem;
+        width: 2.5rem !important; height: 2.5rem !important;
     }
 
-    /* ── Fade-in animation ────────────────────────────────────── */
-    @keyframes th-in {
-        from { opacity: 0; transform: translateY(8px); }
+    .th-empty-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.9375rem; font-weight: 700; color: var(--ink3); margin-bottom: 0.25rem;
+    }
+
+    .th-empty-text {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.8125rem; color: var(--ink3); opacity: 0.75;
+    }
+
+    /* ── Pagination ────────────────────────────────────────────── */
+    .th-pagination { margin-top: 1.5rem; }
+
+    /* ── Animations (same keyframe as hd-fadein) ───────────────── */
+    @keyframes hd-fadein {
+        from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    .th-in { animation: th-in .3s ease-out backwards; }
+    .th-in { animation: hd-fadein 0.4s ease-out backwards; }
+    .th-d1 { animation-delay: 0.05s; }
+    .th-d2 { animation-delay: 0.10s; }
+    .th-d3 { animation-delay: 0.15s; }
 
-    /* ── Responsive ───────────────────────────────────────────── */
+    /* ── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+        .th-hero-content { padding: 1.25rem 1.5rem; }
+        .th-hero-title   { font-size: 1.25rem; }
+    }
+
     @media (max-width: 640px) {
-        .th-timeline { padding-left: 1.5rem; }
-        /* On very small screens hide the module icon to save space */
-        .th-mod-icon { display: none; }
+        .th-timeline  { padding-left: 1.25rem; }
+        .th-mod-icon  { display: none; }
+        .th-entry     { padding: 0.625rem 0.75rem; gap: 0.625rem; }
     }
 </style>
 
 <div class="th-root" x-data>
 
-    {{-- ── Stats bar ─────────────────────────────────────────────────── --}}
-    <div class="th-stats th-in">
+    {{-- ── Hero ─────────────────────────────────────────────────────── --}}
+    <div class="th-hero th-in">
+        <div class="th-hero-bg"></div>
+        <div class="th-hero-grid"></div>
 
-        <span class="th-stat-pill th-stat-default">
-            <x-heroicon-o-clock class="w-3.5 h-3.5" />
-            Today: {{ $todayCount }}
-        </span>
-
-        @foreach($stats as $module => $count)
-            @php
-                $slug = strtolower($module);
-                $cssClass = match($slug) {
-                    'leave'    => 'th-stat-leave',
-                    'travel'   => 'th-stat-travel',
-                    'locator'  => 'th-stat-locator',
-                    'saln'     => 'th-stat-saln',
-                    'pds'      => 'th-stat-pds',
-                    'employee' => 'th-stat-employee',
-                    'dtr'      => 'th-stat-dtr',
-                    default    => 'th-stat-default',
-                };
-                $icon = \App\Models\TransactionHistory::moduleIcon($module);
-            @endphp
-            <span class="th-stat-pill {{ $cssClass }}">
-                <x-dynamic-component :component="$icon" class="w-3.5 h-3.5" />
-                {{ $module }}: {{ $count }}
-            </span>
-        @endforeach
-
-    </div>
-
-    {{-- ── Timeline ────────────────────────────────────────────────────── --}}
-    @if($grouped->isEmpty())
-        <div class="th-empty">
-            <x-heroicon-o-clock class="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p class="font-bold text-lg mb-1">No transactions logged yet</p>
-            <p class="text-sm">Activities will appear here as employees use HRMS modules.</p>
+        <div class="th-hero-dots">
+            @for($i = 0; $i < 25; $i++)
+                <div class="th-hero-dot"></div>
+            @endfor
         </div>
-    @else
 
-        @foreach($grouped as $date => $entries)
-
-            {{-- Date divider --}}
-            <div class="th-date-group th-in">
-                <span class="th-date-label">
-                    @php
-                        $d = \Carbon\Carbon::parse($date)->setTimezone('Asia/Manila');
-                        if ($d->isToday())         { echo 'Today'; }
-                        elseif ($d->isYesterday()) { echo 'Yesterday'; }
-                        else                       { echo $d->format('l, F j, Y'); }
-                    @endphp
-                </span>
-                <div class="th-date-line"></div>
-                <span class="th-time">{{ $entries->count() }} {{ Str::plural('entry', $entries->count()) }}</span>
+        <div class="th-hero-content">
+            <div>
+                <div class="th-hero-eyebrow">
+                    <x-heroicon-o-clock class="w-3 h-3" />
+                    Activity Log
+                </div>
+                <h1 class="th-hero-title">Transaction History</h1>
+                <p class="th-hero-sub">A full audit trail of all employee activity across modules.</p>
             </div>
 
-            {{-- Entries --}}
-            <div class="th-timeline">
-                @foreach($entries as $idx => $tx)
+            <div class="th-hero-stats">
+                <div class="th-hpill th-hp-today">
+                    <span class="th-hpill-dot"></span>
+                    <x-heroicon-o-clock class="w-3 h-3" />
+                    {{ $todayCount }} today
+                </div>
+
+                @foreach($stats as $module => $count)
                     @php
-                        $modSlug  = strtolower($tx->module);
-                        $modCss   = match($modSlug) {
-                            'leave'    => 'th-mod-leave',
-                            'travel'   => 'th-mod-travel',
-                            'locator'  => 'th-mod-locator',
-                            'saln'     => 'th-mod-saln',
-                            'pds'      => 'th-mod-pds',
-                            'employee' => 'th-mod-employee',
-                            'dtr'      => 'th-mod-dtr',
-                            default    => 'th-mod-default',
+                        $slug    = strtolower($module);
+                        $pillCss = match($slug) {
+                            'leave'    => 'th-hp-leave',
+                            'travel'   => 'th-hp-travel',
+                            'locator'  => 'th-hp-locator',
+                            'saln'     => 'th-hp-saln',
+                            'pds'      => 'th-hp-pds',
+                            'employee' => 'th-hp-employee',
+                            'dtr'      => 'th-hp-dtr',
+                            default    => 'th-hp-today',
                         };
-                        $statusKey = strtolower($tx->status);
-                        $validStatuses = ['pending','approved','rejected','filed','uploaded','submitted','registered','cancelled'];
-                        $statusCss = in_array($statusKey, $validStatuses) ? "th-badge-{$statusKey}" : 'th-badge-default';
-                        $avClass   = 'th-av-' . (abs(crc32($tx->employee_name)) % 8);
-                        $icon      = $tx->resolved_icon;
-                        $viewUrl   = route('filament.hrms.resources.transaction-histories.view', $tx->id);
+                        $icon = \App\Models\TransactionHistory::moduleIcon($module);
                     @endphp
-
-                    <a href="{{ $viewUrl }}"
-                       class="th-entry th-in"
-                       style="animation-delay: {{ min(0.04 * $idx, 0.4) }}s"
-                       title="{{ $tx->employee_name }} — {{ $tx->description }}">
-
-                        {{-- Avatar --}}
-                        <div class="th-avatar {{ $avClass }}">
-                            @if($tx->user?->profile_photo_url)
-                                <img src="{{ $tx->user->profile_photo_url }}"
-                                     alt="{{ $tx->employee_name }}">
-                            @else
-                                {{ $tx->initials }}
-                            @endif
-                        </div>
-
-                        {{-- Module icon --}}
-                        <div class="th-mod-icon {{ $modCss }}">
-                            <x-dynamic-component :component="$icon" class="w-4 h-4" />
-                        </div>
-
-                        {{-- Body — name + description + meta chips --}}
-                        <div class="th-body">
-                            <div class="th-employee-name">{{ $tx->employee_name }}</div>
-                            <div class="th-description">{{ $tx->description }}</div>
-                            <div class="th-meta">
-                                <span class="th-badge {{ $statusCss }}">{{ ucfirst($tx->status) }}</span>
-                                <span class="th-module-chip">{{ $tx->module }}</span>
-                                <span class="th-time">
-                                    {{ $tx->created_at->setTimezone('Asia/Manila')->format('g:i A') }}
-                                </span>
-                                @if($tx->record_url)
-                                    <a href="{{ $tx->record_url }}"
-                                       target="_blank"
-                                       onclick="event.stopPropagation()"
-                                       class="th-time underline hover:text-emerald-600 transition-colors"
-                                       title="Open original record">
-                                        View Record ↗
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-
-                        {{-- Arrow caret --}}
-                        <div class="th-view-arrow">
-                            <x-heroicon-o-arrow-right class="w-3.5 h-3.5" />
-                        </div>
-
-                    </a>
+                    <div class="th-hpill {{ $pillCss }}">
+                        <span class="th-hpill-dot"></span>
+                        <x-dynamic-component :component="$icon" class="w-3 h-3" />
+                        {{ $module }}: {{ $count }}
+                    </div>
                 @endforeach
             </div>
-
-        @endforeach
-
-        <div class="th-pagination">
-            {{ $transactions->links() }}
         </div>
 
+        <div class="th-hero-stripe"></div>
+    </div>
+
+    {{-- ── Timeline Card ──────────────────────────────────────────── --}}
+    @if($grouped->isEmpty())
+        <div class="th-card th-in th-d1">
+            <div class="th-empty">
+                <x-heroicon-o-clock class="th-empty-icon text-gray-400" />
+                <div class="th-empty-title">No Transactions Logged Yet</div>
+                <div class="th-empty-text">Activities will appear here as employees use HRMS modules.</div>
+            </div>
+        </div>
+    @else
+        <div class="th-card th-in th-d1">
+
+            <div class="th-section-label">
+                <div class="th-section-icon">
+                    <x-heroicon-o-list-bullet class="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                </div>
+                <span class="th-section-title">Activity Timeline</span>
+            </div>
+            <div class="th-section-divider"></div>
+
+            @foreach($grouped as $date => $entries)
+                @php
+                    $d           = \Carbon\Carbon::parse($date)->setTimezone('Asia/Manila');
+                    $isToday     = $d->isToday();
+                    $isYesterday = $d->isYesterday();
+                    $label       = $isToday ? 'Today' : ($isYesterday ? 'Yesterday' : $d->format('l, F j, Y'));
+                @endphp
+
+                {{-- Date divider --}}
+                <div class="th-date-row th-in" style="animation-delay:.08s">
+                    <div class="th-date-badge {{ $isToday ? 'th-date-today' : '' }}">
+                        @if($isToday)<x-heroicon-s-bolt class="w-3 h-3" />@endif
+                        {{ $label }}
+                    </div>
+                    <div class="th-date-line"></div>
+                    <span class="th-date-count">
+                        {{ $entries->count() }} {{ Str::plural('entry', $entries->count()) }}
+                    </span>
+                </div>
+
+                {{-- Entries --}}
+                <div class="th-timeline">
+                    @foreach($entries as $idx => $tx)
+                        @php
+                            $modSlug    = strtolower($tx->module);
+                            $modIconCss = match($modSlug) {
+                                'leave'    => 'th-mi-leave',
+                                'travel'   => 'th-mi-travel',
+                                'locator'  => 'th-mi-locator',
+                                'saln'     => 'th-mi-saln',
+                                'pds'      => 'th-mi-pds',
+                                'employee' => 'th-mi-employee',
+                                'dtr'      => 'th-mi-dtr',
+                                default    => 'th-mi-default',
+                            };
+                            $statusKey  = strtolower($tx->status);
+                            $validSt    = ['pending','approved','rejected','filed','uploaded','submitted','registered','cancelled'];
+                            $chipCss    = in_array($statusKey, $validSt) ? "th-chip-{$statusKey}" : 'th-chip-default';
+                            $avClass    = 'th-av-' . (abs(crc32($tx->employee_name)) % 8);
+                            $icon       = $tx->resolved_icon;
+                            $viewUrl    = route('filament.hrms.resources.transaction-histories.view', $tx->id);
+                        @endphp
+
+                        <a href="{{ $viewUrl }}"
+                           class="th-entry th-in"
+                           style="animation-delay:{{ min(0.04 * $idx, 0.45) }}s"
+                           title="{{ $tx->employee_name }} — {{ $tx->description }}">
+
+                            {{-- Avatar --}}
+                            <div class="th-avatar {{ $avClass }}">
+                                @if($tx->user?->profile_photo_url)
+                                    <img src="{{ $tx->user->profile_photo_url }}"
+                                         alt="{{ $tx->employee_name }}">
+                                @else
+                                    {{ $tx->initials }}
+                                @endif
+                            </div>
+
+                            {{-- Module icon --}}
+                            <div class="th-mod-icon {{ $modIconCss }}">
+                                <x-dynamic-component :component="$icon" class="w-3.5 h-3.5" />
+                            </div>
+
+                            {{-- Body --}}
+                            <div class="th-body">
+                                <div class="th-name">{{ $tx->employee_name }}</div>
+                                <div class="th-desc">{{ $tx->description }}</div>
+                                <div class="th-meta">
+                                    <span class="th-chip {{ $chipCss }}">{{ ucfirst($tx->status) }}</span>
+                                    <span class="th-mod-label">{{ $tx->module }}</span>
+                                    <span class="th-time">
+                                        {{ $tx->created_at->setTimezone('Asia/Manila')->format('g:i A') }}
+                                    </span>
+                                    @if($tx->record_url)
+                                        <a href="{{ $tx->record_url }}"
+                                           target="_blank"
+                                           onclick="event.stopPropagation()"
+                                           class="th-rec-link"
+                                           title="Open original record">
+                                            View Record ↗
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- Caret --}}
+                            <div class="th-caret">
+                                <x-heroicon-o-arrow-right class="w-3 h-3 text-white" />
+                            </div>
+
+                        </a>
+                    @endforeach
+                </div>
+
+            @endforeach
+
+            <div class="th-pagination">
+                {{ $transactions->links() }}
+            </div>
+
+        </div>
     @endif
 
 </div>

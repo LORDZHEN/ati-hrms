@@ -30,7 +30,7 @@ class SendDtrReminders extends Command
         $this->info("Sending {$type} DTR reminders...");
 
         // Get all employees
-        $employees = User::where('role', User::ROLE_EMPLOYEE)->get();
+        $employees = User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])->get();
 
         $remindedCount = 0;
 
