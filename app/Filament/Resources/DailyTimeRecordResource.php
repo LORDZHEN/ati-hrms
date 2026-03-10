@@ -507,10 +507,6 @@ class DailyTimeRecordResource extends Resource
             ->emptyStateDescription('No records match your current filters, or none have been uploaded yet.')
             ->emptyStateIcon('heroicon-o-inbox')
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Upload DTR')
-                    ->icon('heroicon-m-plus')
-                    ->visible(fn() => $isAdmin),
             ])
 
             ->striped()
@@ -829,7 +825,6 @@ class DailyTimeRecordResource extends Resource
     {
         return [
             'index' => Pages\ListDailyTimeRecords::route('/'),
-            'create' => Pages\CreateDailyTimeRecord::route('/create'),
         ];
     }
 }

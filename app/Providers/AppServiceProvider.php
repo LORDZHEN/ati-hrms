@@ -18,6 +18,8 @@ use App\Observers\SalnObserver;
 use App\Observers\PersonalDataSheetObserver;
 use App\Observers\UserObserver;
 use App\Observers\DailyTimeRecordObserver;
+use App\Models\EmployeeDtr;
+use App\Observers\DtrObserver;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -41,6 +43,6 @@ class AppServiceProvider extends ServiceProvider
         Saln::observe(SalnObserver::class);
         PersonalDataSheet::observe(PersonalDataSheetObserver::class);
         User::observe(UserObserver::class);
-        // DailyTimeRecord::observe(DailyTimeRecordObserver::class);
+        EmployeeDtr::observe(DtrObserver::class);
     }
 }
