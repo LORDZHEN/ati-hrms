@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyTimeRecordResource\Actions;
 
+use App\Livewire\EmployeeCheckboxList;
 use App\Models\EmployeeDtr;
 use App\Models\User;
 use App\Notifications\DtrUploaded;
@@ -13,25 +14,48 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use League\Csv\Writer;
 
 /**
  * BiometricImportAction — XLS Edition
  *
- * Accepts a ZKTeco / BioTime attendance export (.xls or .xlsx).
- * Parses the "Logs" sheet to detect all employees with punch data,
- * matches them against registered users (by employee_id), lets the
- * admin select which ones to import, then produces DTR CSV records.
+ * ── HOW SELECTION WORKS ───────────────────────────────────────────────────────
+ * Selection state lives in App\Livewire\EmployeeCheckboxList and is written
+ * to the Laravel session on every toggle. BiometricImportAction reads the
+ * session at submit time via EmployeeCheckboxList::getSessionSelection().
+ * No JS bridge, no Livewire::find(), no mountedActionsData path guessing.
  *
- * Upload flow:
- *   1. Admin clicks "Import Biometric Log" → modal opens.
- *   2. Admin uploads the .xls / .xlsx file (AJAX upload to /biometric/upload-xls).
- *   3. Admin clicks "Scan File for Employees" → server parses the Logs sheet,
- *      matched employees are shown as a checkbox list.
- *   4. Admin selects employees → clicks Submit → DTR records created.
+ * ── HOW ALREADY-IMPORTED FILTERING WORKS ─────────────────────────────────────
+ * The `employee_dtrs` table has a `period_label` column (e.g. "2026/02/01 ~ 02/28")
+ * that is stored on every DTR record at creation time. On re-scan, the filter:
+ *
+ *   EmployeeDtr::where('period_label', $period)->pluck('employee_id')
+ *
+ * This is an exact string match against the XLS-extracted period string —
+ * completely independent of created_at, so it works correctly even when the
+ * admin imports February data in March (or any other month).
+ *
+ * THE BUG THAT WAS HERE:
+ * The old code used ->whereYear('created_at', $year)->whereMonth('created_at', $month).
+ * XLS period = "2026/02/01 ~ 02/28" → year=2026, month=02 (February).
+ * But the admin runs the import in March 2026 → created_at = March.
+ * So the filter found NOTHING, and all 25 already-imported employees reappeared
+ * on every re-scan. Also, `period_label` was never written at create time,
+ * so even a correct query against it would have found nothing.
+ *
+ * ── IMPORT_BATCH ──────────────────────────────────────────────────────────────
+ * Each Submit click generates a UUID stored in `import_batch` on every record
+ * created in that run. Useful for auditing which employees were imported together.
+ *
+ * ── BATCH LIMIT ───────────────────────────────────────────────────────────────
+ * 25 employees per submit. Enforced client-side (UI disables checkboxes at limit)
+ * and server-side (array_slice guard).
  */
 class BiometricImportAction extends Action
 {
+    private const BATCH_LIMIT = 25;
+
     public static function getDefaultName(): ?string
     {
         return 'import_biometric';
@@ -49,12 +73,13 @@ class BiometricImportAction extends Action
             ->modalHeading('Import Biometric Attendance Log (XLS)')
             ->modalDescription(
                 'Upload a ZKTeco / BioTime attendance export (.xls or .xlsx). ' .
-                'The system will scan the Logs sheet and only show employees registered in the system.'
+                'The system will scan the Logs sheet and only show employees registered in the system. ' .
+                'Maximum ' . self::BATCH_LIMIT . ' employees per batch — re-scan after each batch to import the rest.'
             )
             ->modalWidth('2xl')
             ->form([
 
-                // ── Custom upload widget (Alpine + hidden DOM input) ───────────
+                // ── Upload widget ─────────────────────────────────────────────
                 Forms\Components\Placeholder::make('xls_upload_widget')
                     ->label('Biometric Attendance XLS File')
                     ->content(function () {
@@ -97,7 +122,6 @@ class BiometricImportAction extends Action
                     this.xlsPath  = data.path;
                 }
                 document.getElementById('bio-xls-path').value = this.xlsPath;
-                window.dispatchEvent(new CustomEvent('bio-xls-uploaded', { detail: { path: this.xlsPath } }));
             })
             .catch(err => {
                 this.uploading = false;
@@ -115,12 +139,10 @@ class BiometricImportAction extends Action
         this.uploading = false;
         this.xlsPath   = '';
         document.getElementById('bio-xls-path').value = '';
-        window.dispatchEvent(new CustomEvent('bio-xls-uploaded', { detail: { path: '' } }));
         \$refs.fileInput.value = '';
     }
 }" class="w-full">
 
-    <!-- Hidden input that Filament reads as biometric_xls_path field value -->
     <input type="hidden" id="bio-xls-path" name="biometric_xls_path" value="">
 
     <!-- Upload area -->
@@ -134,13 +156,12 @@ class BiometricImportAction extends Action
         <p class="text-sm text-gray-600 dark:text-gray-400">
             <span class="font-medium text-primary-600 dark:text-primary-400">Click to upload</span> or drag and drop
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">ZKTeco / BioTime attendance export (.xls, .xlsx)</p>
+        <p class="text-xs text-gray-500 mt-1">ZKTeco / BioTime attendance export (.xls, .xlsx)</p>
         <input x-ref="fileInput" type="file" accept=".xls,.xlsx" class="hidden" @change="uploadFile(\$event)">
     </div>
 
-    <!-- Uploading state -->
-    <div x-show="uploading"
-         class="border-2 border-primary-300 dark:border-primary-600 rounded-lg p-4 bg-primary-50 dark:bg-primary-950">
+    <!-- Uploading -->
+    <div x-show="uploading" class="border-2 border-primary-300 dark:border-primary-600 rounded-lg p-4 bg-primary-50 dark:bg-primary-950">
         <div class="flex items-center gap-3">
             <svg class="animate-spin h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -153,9 +174,8 @@ class BiometricImportAction extends Action
         </div>
     </div>
 
-    <!-- Uploaded success state -->
-    <div x-show="uploaded"
-         class="border-2 border-green-300 dark:border-green-600 rounded-lg p-4 bg-green-50 dark:bg-green-950">
+    <!-- Uploaded -->
+    <div x-show="uploaded" class="border-2 border-green-300 dark:border-green-600 rounded-lg p-4 bg-green-50 dark:bg-green-950">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <svg class="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,8 +186,7 @@ class BiometricImportAction extends Action
                     <p class="text-xs text-green-500 dark:text-green-400" x-text="fileSize + ' — Upload complete. Click Scan File below.'"></p>
                 </div>
             </div>
-            <button type="button" @click="clearFile()"
-                    class="text-green-400 hover:text-green-600 dark:hover:text-green-200 transition-colors ml-3">
+            <button type="button" @click="clearFile()" class="text-green-400 hover:text-green-600 dark:hover:text-green-200 ml-3">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -175,19 +194,17 @@ class BiometricImportAction extends Action
         </div>
     </div>
 
-    <!-- Error state -->
-    <div x-show="error"
-         class="mt-2 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-700 rounded-lg">
+    <!-- Error -->
+    <div x-show="error" class="mt-2 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-700 rounded-lg">
         <p class="text-sm text-red-600 dark:text-red-400" x-text="error"></p>
-        <button type="button" @click="\$refs.fileInput.click()"
-                class="mt-1 text-xs text-red-500 hover:text-red-700 underline">Try again</button>
+        <button type="button" @click="\$refs.fileInput.click()" class="mt-1 text-xs text-red-500 hover:text-red-700 underline">Try again</button>
     </div>
 
 </div>
 HTML);
                     }),
 
-                // Hidden fields — values set by Scan action
+                // ── Hidden fields ─────────────────────────────────────────────
                 Forms\Components\Hidden::make('biometric_xls_path'),
                 Forms\Components\Hidden::make('xls_period'),
                 Forms\Components\Hidden::make('detected_employees'),
@@ -200,29 +217,25 @@ HTML);
                         ->icon('heroicon-o-magnifying-glass')
                         ->color('info')
                         ->action(function (callable $get, callable $set) {
-                            // Try form state first, then fallback to newest upload
+
                             $fullPath = $get('biometric_xls_path') ?? null;
 
                             if (!$fullPath || !file_exists($fullPath)) {
                                 $fullPath = $this->findNewestXlsImport();
                             }
 
-                            Log::info('[BiometricImport] scan_file (XLS): path check', [
-                                'path' => $fullPath,
-                                'exists' => $fullPath ? file_exists($fullPath) : false,
-                            ]);
-
                             if (!$fullPath || !file_exists($fullPath)) {
-                                Notification::make()
-                                    ->danger()
+                                Notification::make()->danger()
                                     ->title('No file found')
                                     ->body('Please upload an XLS file first, then click Scan.')
-                                    ->persistent()
-                                    ->send();
+                                    ->persistent()->send();
                                 return;
                             }
 
                             $set('biometric_xls_path', $fullPath);
+
+                            // Clear any stale session selection from a previous scan
+                            EmployeeCheckboxList::clearSessionSelection();
 
                             try {
                                 $parser = app(XlsLogParser::class);
@@ -232,40 +245,87 @@ HTML);
                                 $set('xls_period', $period);
 
                                 if ($employees->isEmpty()) {
-                                    Notification::make()
-                                        ->warning()
+                                    Notification::make()->warning()
                                         ->title('No registered employees found in this file')
                                         ->body(
                                             'No employee numbers in the XLS Logs sheet matched any registered user. ' .
                                             'Ensure each user\'s "Employee ID" matches their biometric device number.'
                                         )
-                                        ->persistent()
-                                        ->send();
+                                        ->persistent()->send();
                                     return;
                                 }
 
-                                $options = $employees->mapWithKeys(function ($emp) {
-                                    $label = "{$emp['db_name']} — {$emp['day_count']} day(s), {$emp['punch_count']} punches"
-                                        . " [Device No: {$emp['employee_id']}]";
-                                    return [$emp['user_id'] => $label];
+                                // ── Filter out employees already imported for this period ──────
+                                //
+                                // Query `period_label` with an exact match against the XLS period
+                                // string. This is reliable regardless of when the import runs —
+                                // February data imported in March still matches "2026/02/01 ~ 02/28".
+                                //
+                                // The pluck returns employee_id (users.id) as integers from MySQL.
+                                // We cast to int and compare with (int) $emp['user_id'] to prevent
+                                // a silent type-mismatch false negative.
+                                $alreadyImportedUserIds = collect();
+
+                                if ($period) {
+                                    $alreadyImportedUserIds = EmployeeDtr::query()
+                                        ->whereIn('employee_id', $employees->keys()->values()->toArray())
+                                        ->where('period_label', $period)
+                                        ->pluck('employee_id')
+                                        ->unique()
+                                        ->map(fn($id) => (int) $id);
+                                }
+
+                                $pending = $employees->reject(
+                                    fn($emp) => $alreadyImportedUserIds->contains((int) $emp['user_id'])
+                                );
+                                $doneCount = $employees->count() - $pending->count();
+
+                                if ($pending->isEmpty()) {
+                                    Notification::make()->info()
+                                        ->title('All employees already have DTR for this period')
+                                        ->body(
+                                            "All {$employees->count()} matched employee(s) already received a DTR " .
+                                            "for period: {$period}. No new imports needed."
+                                        )
+                                        ->persistent()->send();
+
+                                    $set('detected_employees', null);
+                                    $set('employee_meta', null);
+                                    return;
+                                }
+
+                                $options = $pending->mapWithKeys(function ($emp) {
+                                    return [
+                                        $emp['user_id'] => "{$emp['db_name']} — {$emp['day_count']} day(s), {$emp['punch_count']} punches [Device No: {$emp['employee_id']}]",
+                                    ];
                                 })->toArray();
 
                                 $set('detected_employees', $options);
-                                $set('employee_meta', $employees->toArray());
+                                $set('employee_meta', $pending->toArray());
 
-                                Notification::make()
-                                    ->success()
-                                    ->title($employees->count() . ' registered employee(s) found')
-                                    ->body('Period: ' . ($period ?: 'unknown') . ' — Select employees below, then click Submit.')
+                                $pendingCount = $pending->count();
+                                $batches = (int) ceil($pendingCount / self::BATCH_LIMIT);
+                                $bodyParts = ['Period: ' . ($period ?: 'unknown')];
+
+                                if ($doneCount > 0) {
+                                    $bodyParts[] = "{$doneCount} already imported (excluded)";
+                                }
+
+                                $bodyParts[] = $pendingCount > self::BATCH_LIMIT
+                                    ? "⚠️ {$pendingCount} remaining — select up to " . self::BATCH_LIMIT . " per batch (~{$batches} batches needed)"
+                                    : 'Select employees below, then click Submit.';
+
+                                Notification::make()->success()
+                                    ->title("{$pendingCount} employee(s) pending DTR import")
+                                    ->body(implode(' | ', $bodyParts))
                                     ->send();
 
                             } catch (\Exception $e) {
-                                Log::error('[BiometricImport] scan_file (XLS): exception', [
+                                Log::error('[BiometricImport] scan_file exception', [
                                     'error' => $e->getMessage(),
                                     'trace' => $e->getTraceAsString(),
                                 ]);
-                                Notification::make()
-                                    ->danger()
+                                Notification::make()->danger()
                                     ->title('Could not scan file')
                                     ->body($e->getMessage())
                                     ->send();
@@ -273,36 +333,33 @@ HTML);
                         }),
                 ]),
 
-                // ── Employee checkbox list (visible after scan) ────────────────
-                Forms\Components\CheckboxList::make('selected_user_ids')
-                    ->label('Registered Employees Found in File')
-                    ->helperText('Only employees whose Device Number matches a registered user are shown.')
-                    ->options(fn(callable $get) => $get('detected_employees') ?? [])
-                    ->columns(1)
-                    ->bulkToggleable()
-                    ->required()
-                    ->visible(fn(callable $get) => filled($get('detected_employees'))),
-
-                Forms\Components\Placeholder::make('scan_summary')
+                // ── Employee list (Livewire component) ────────────────────────
+                Forms\Components\Placeholder::make('employee_list_component')
                     ->label('')
                     ->content(function (callable $get) {
-                        $meta = $get('employee_meta');
-                        $period = $get('xls_period');
+                        $detected = $get('detected_employees') ?? [];
+                        $period = $get('xls_period') ?? '';
+                        $limit = self::BATCH_LIMIT;
 
-                        if (!$meta)
+                        if (empty($detected)) {
                             return '';
-
-                        $periodStr = $period ? " | Period: <strong>{$period}</strong>" : '';
+                        }
 
                         return new \Illuminate\Support\HtmlString(
-                            '<div class="text-xs text-gray-500 dark:text-gray-400 mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded">'
-                            . '✅ <strong>' . count($meta) . '</strong> registered employee(s) found and ready to import.'
-                            . $periodStr
-                            . '</div>'
+                            \Blade::render(
+                                "@livewire('employee-checkbox-list', ['employees' => \$employees, 'limit' => \$limit, 'period' => \$period], key(\$key))",
+                                [
+                                    'employees' => $detected,
+                                    'limit' => $limit,
+                                    'period' => $period,
+                                    'key' => 'ecl-' . md5(json_encode(array_keys($detected)) . $period),
+                                ]
+                            )
                         );
                     })
                     ->visible(fn(callable $get) => filled($get('detected_employees'))),
 
+                // ── Notes ─────────────────────────────────────────────────────
                 Forms\Components\Textarea::make('notes')
                     ->label('Notes (applied to all created DTR records)')
                     ->placeholder('e.g. February 2026 biometric import')
@@ -310,14 +367,23 @@ HTML);
                     ->maxLength(500),
             ])
 
-            // ── Submit action ─────────────────────────────────────────────────
+            // ── Submit ────────────────────────────────────────────────────────
             ->action(function (array $data) {
+
+                ini_set('memory_limit', '512M');
+                set_time_limit(300);
+
                 $fullPath = $data['biometric_xls_path'] ?? null;
                 $period = $data['xls_period'] ?? '';
-                $selectedIds = $data['selected_user_ids'] ?? [];
                 $notes = $data['notes'] ?? null;
 
-                // Fallback to newest file if path was lost between scan and submit
+                // One UUID ties all records from this single Submit click together.
+                // Stored in `import_batch` for auditing.
+                $importBatch = (string) Str::uuid();
+
+                // Read selection from session
+                $selectedIds = EmployeeCheckboxList::getSessionSelection();
+
                 if (!$fullPath || !file_exists($fullPath)) {
                     $fullPath = $this->findNewestXlsImport();
                 }
@@ -338,17 +404,35 @@ HTML);
                     return;
                 }
 
+                // Server-side batch cap
+                if (count($selectedIds) > self::BATCH_LIMIT) {
+                    $selectedIds = array_slice($selectedIds, 0, self::BATCH_LIMIT);
+                }
+
                 $parser = app(XlsLogParser::class);
                 $calculator = app(DtrCalculator::class);
                 $successCount = 0;
                 $errorCount = 0;
                 $errorMessages = [];
 
+                // Parse spreadsheet ONCE
+                try {
+                    $allEmployeeRows = $parser->parseAllEmployees($fullPath, $period);
+                } catch (\Exception $e) {
+                    Notification::make()->danger()
+                        ->title('Failed to parse XLS file')
+                        ->body($e->getMessage())
+                        ->send();
+                    @unlink($fullPath);
+                    EmployeeCheckboxList::clearSessionSelection();
+                    return;
+                }
+
                 foreach ($selectedIds as $userId) {
                     $user = User::find($userId);
 
                     if (!$user) {
-                        $errorMessages[] = "⚠️  User ID {$userId}: not found.";
+                        $errorMessages[] = "⚠️ User ID {$userId}: not found.";
                         $errorCount++;
                         continue;
                     }
@@ -356,17 +440,21 @@ HTML);
                     $deviceId = trim((string) $user->employee_id);
 
                     if ($deviceId === '') {
-                        $errorMessages[] = "⚠️  {$user->name}: no employee_id set.";
+                        $errorMessages[] = "⚠️ {$user->name}: no employee_id set.";
                         $errorCount++;
                         continue;
                     }
 
                     try {
-                        $dtrRows = $parser->parseForEmployee($fullPath, $deviceId, $period);
-                        $calculated = $calculator->calculateFromArray($dtrRows);
+                        $dtrRows = $allEmployeeRows[$deviceId] ?? null;
 
+                        if ($dtrRows === null) {
+                            throw new \RuntimeException("No attendance data found for Device ID: {$deviceId}");
+                        }
+
+                        $calculated = $calculator->calculateFromArray($dtrRows);
                         $safeName = preg_replace('/[^A-Za-z0-9_]/', '_', $user->name);
-                        $filename = "dtr_files/DTR_{$safeName}_{$deviceId}_" . now()->format('Ymd_His') . '.csv';
+                        $filename = 'dtr_files/DTR_' . $safeName . '_' . $deviceId . '_' . now()->format('Ymd_His') . '.csv';
 
                         $this->writeDtrCsv($filename, $calculated);
 
@@ -374,6 +462,13 @@ HTML);
                             'employee_id' => $user->id,
                             'file_path' => $filename,
                             'notes' => $notes,
+                            // CRITICAL: store the XLS period string so re-scan filtering works.
+                            // scan_file queries where('period_label', $period) to exclude
+                            // already-imported employees. Without this value being stored,
+                            // the column stays null and the filter never finds any matches.
+                            'period_label' => $period ?: null,
+                            // Group all records from this Submit click under one UUID.
+                            'import_batch' => $importBatch,
                         ]);
 
                         $user->notify(new DtrUploaded($record));
@@ -382,21 +477,21 @@ HTML);
                     } catch (\Exception $e) {
                         $errorCount++;
                         $errorMessages[] = "❌ {$user->name} (Device ID: {$deviceId}): " . $e->getMessage();
-
-                        Log::error('[BiometricImport] XLS action: employee error', [
+                        Log::error('[BiometricImport] employee error', [
                             'user_id' => $userId,
                             'error' => $e->getMessage(),
                         ]);
                     }
                 }
 
-                // Clean up the temporary XLS file
+                // Always clean up
                 @unlink($fullPath);
+                EmployeeCheckboxList::clearSessionSelection();
 
                 if ($successCount > 0 && $errorCount === 0) {
                     Notification::make()->success()
-                        ->title("✅ Import Complete — {$successCount} employee(s) processed")
-                        ->body('All DTR records created and employees notified.')
+                        ->title("✅ Batch Complete — {$successCount} employee(s) processed")
+                        ->body('DTR records created and employees notified. Re-upload and scan again for the next batch.')
                         ->send();
                 } elseif ($successCount > 0) {
                     Notification::make()->warning()
@@ -412,20 +507,11 @@ HTML);
             });
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Private helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────────────────────
 
-    /**
-     * Find the most recently uploaded XLS/XLSX in the biometric_imports directory.
-     * Used as fallback when Livewire form state loses the path between actions.
-     * Rejects files older than 30 minutes.
-     */
     private function findNewestXlsImport(): ?string
     {
         $dir = Storage::disk('local')->path('biometric_imports');
-
-        Log::info('[BiometricImport] findNewestXlsImport: scanning', ['dir' => $dir]);
 
         if (!is_dir($dir))
             return null;
@@ -442,33 +528,22 @@ HTML);
         }
 
         if ($newest && (time() - $newestTime) > 1800) {
-            Log::warning('[BiometricImport] findNewestXlsImport: file too old', [
-                'file' => $newest,
-                'age' => (time() - $newestTime) . 's',
-            ]);
+            Log::warning('[BiometricImport] findNewestXlsImport: file too old', ['file' => $newest]);
             return null;
         }
-
-        Log::info('[BiometricImport] findNewestXlsImport', [
-            'result' => $newest,
-            'age' => $newest ? (time() - $newestTime) . 's' : null,
-        ]);
 
         return $newest;
     }
 
-    /**
-     * Write a DTR CSV to public storage (used by existing download/PDF flow).
-     */
     private function writeDtrCsv(string $storagePath, array $rows): void
     {
         $csv = Writer::createFromString();
         $csv->insertOne(['EmployeeID', 'Name', 'Date', 'MorningIn', 'MorningOut', 'AfternoonIn', 'AfternoonOut']);
 
         foreach ($rows as $row) {
-            if ($row['IsWeekend'] ?? false) {
+            if ($row['IsWeekend'] ?? false)
                 continue;
-            }
+
             $csv->insertOne([
                 $row['EmployeeID'],
                 $row['Name'],

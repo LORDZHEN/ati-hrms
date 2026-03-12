@@ -9,6 +9,7 @@ use App\Notifications\DtrPdfGenerated;
 use App\Notifications\DtrDeleted;
 use App\Filament\Resources\DailyTimeRecordResource\Actions\BiometricImportAction;
 use Filament\Forms;
+use Illuminate\Support\Facades\DB;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -587,10 +588,32 @@ class DailyTimeRecordResource extends Resource
 
     protected static function getEnhancedFilters(bool $isAdmin): array
     {
+        // Build year options from earliest DTR record up to current year
+        $earliestYear = \App\Models\EmployeeDtr::min(
+            \Illuminate\Support\Facades\DB::raw('YEAR(created_at)')
+        ) ?? now()->year;
+
+        $yearOptions = collect(range(now()->year, (int) $earliestYear))
+            ->mapWithKeys(fn($y) => [$y => (string) $y])
+            ->toArray();
+
+        $monthOptions = [
+            '1' => 'January',
+            '2' => 'February',
+            '3' => 'March',
+            '4' => 'April',
+            '5' => 'May',
+            '6' => 'June',
+            '7' => 'July',
+            '8' => 'August',
+            '9' => 'September',
+            '10' => 'October',
+            '11' => 'November',
+            '12' => 'December',
+        ];
+
         return [
             // ── COLUMN 1: Employee ────────────────────────────────────────────
-            // Multi-select with search. Spans full height of its column.
-            // Admin only — employees always see only their own records via query scope.
             Tables\Filters\SelectFilter::make('employee')
                 ->relationship('employee', 'name')
                 ->searchable()
@@ -602,163 +625,66 @@ class DailyTimeRecordResource extends Resource
                 ->visible(fn() => $isAdmin)
                 ->columnSpan(1),
 
-            // ── COLUMN 2: Upload Period ───────────────────────────────────────
-            // Unified date filter: Quick Preset dropdown + optional custom From/To.
-            // Replaces the old separate "Quick Period" + "Recency" + "date_range"
-            // trio which caused the messy 5-filter layout.
-            //
-            // Logic: Quick Preset is applied first. If the user also sets a custom
-            // From/To date, those take precedence (more specific wins).
-            Tables\Filters\Filter::make('upload_period')
-                ->label('Upload Period')
+            // ── COLUMN 2: Upload Year ─────────────────────────────────────────
+            Tables\Filters\Filter::make('upload_year')
+                ->label('Year')
                 ->columnSpan(1)
                 ->form([
-                    // Quick preset dropdown — single click for common HR queries
-                    Forms\Components\Select::make('preset')
-                        ->label('Quick Select')
-                        ->placeholder('— pick a period —')
+                    Forms\Components\Select::make('year')
+                        ->label('Year')
+                        ->placeholder('All years')
                         ->native(false)
-                        ->options([
-                            'today' => '📅  Today',
-                            'yesterday' => '📅  Yesterday',
-                            'this_week' => '📅  This Week',
-                            'last_week' => '📅  Last Week',
-                            'this_month' => '📅  This Month',
-                            'last_month' => '📅  Last Month',
-                        ])
-                        ->live()
-                        // Auto-fill the From/To pickers when a preset is chosen
-                        // so the user can see and further refine the date range.
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            [$from, $to] = match ($state) {
-                                'today' => [today()->toDateString(), today()->toDateString()],
-                                'yesterday' => [today()->subDay()->toDateString(), today()->subDay()->toDateString()],
-                                'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
-                                'last_week' => [now()->subWeek()->startOfWeek()->toDateString(), now()->subWeek()->endOfWeek()->toDateString()],
-                                'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-                                'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
-                                default => [null, null],
-                            };
-                            $set('from', $from);
-                            $set('to', $to);
-                        }),
-
-                    // Custom From / To — shown below the preset, same column
-                    Forms\Components\Grid::make(2)->schema([
-                        Forms\Components\DatePicker::make('from')
-                            ->label('From')
-                            ->native(false)
-                            ->displayFormat('M d, Y')
-                            ->maxDate(fn(callable $get) => $get('to') ?? now()),
-                        Forms\Components\DatePicker::make('to')
-                            ->label('To')
-                            ->native(false)
-                            ->displayFormat('M d, Y')
-                            ->minDate(fn(callable $get) => $get('from'))
-                            ->maxDate(now()),
-                    ]),
+                        ->options($yearOptions),
                 ])
                 ->query(
                     fn(Builder $query, array $data) => $query
-                        ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('created_at', '>=', $d))
-                        ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('created_at', '<=', $d))
+                        ->when($data['year'] ?? null, fn($q, $y) => $q->whereYear('created_at', $y))
                 )
-                // Active filter chips — one per active boundary, individually removable
                 ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-
-                    if (($data['preset'] ?? null) && !($data['from'] ?? null) && !($data['to'] ?? null)) {
-                        $labels = [
-                            'today' => 'Today',
-                            'yesterday' => 'Yesterday',
-                            'this_week' => 'This Week',
-                            'last_week' => 'Last Week',
-                            'this_month' => 'This Month',
-                            'last_month' => 'Last Month',
-                        ];
-                        $indicators[] = Tables\Filters\Indicator::make('Period: ' . ($labels[$data['preset']] ?? $data['preset']))
-                            ->removeField('preset');
-                    }
-
-                    if ($data['from'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make(
-                            'From: ' . \Carbon\Carbon::parse($data['from'])->format('M d, Y')
-                        )->removeField('from');
-                    }
-
-                    if ($data['to'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make(
-                            'To: ' . \Carbon\Carbon::parse($data['to'])->format('M d, Y')
-                        )->removeField('to');
-                    }
-
-                    return $indicators;
+                    if (!($data['year'] ?? null))
+                        return [];
+                    return [
+                        Tables\Filters\Indicator::make('Year: ' . $data['year'])
+                            ->removeField('year'),
+                    ];
                 }),
 
-            // ── COLUMN 3: Record Attributes ───────────────────────────────────
-            // Two small toggles stacked in column 3 — notes presence and
-            // file integrity. Replaces the old standalone Recency ternary.
-            Tables\Filters\Filter::make('attributes')
-                ->label('Record Attributes')
+            // ── COLUMN 3: Upload Month ────────────────────────────────────────
+            Tables\Filters\Filter::make('upload_month')
+                ->label('Month')
                 ->columnSpan(1)
                 ->form([
-                    Forms\Components\Select::make('has_notes')
-                        ->label('Notes')
+                    Forms\Components\Select::make('month')
+                        ->label('Month')
+                        ->placeholder('All months')
                         ->native(false)
-                        ->placeholder('Any')
-                        ->options([
-                            'yes' => '💬  Has notes',
-                            'no' => '—   No notes',
-                        ]),
-
-                    Forms\Components\Select::make('file_status')
-                        ->label('File Status')
-                        ->native(false)
-                        ->placeholder('Any')
-                        ->options([
-                            'recent' => '🕐  Uploaded last 7 days',
-                            'older' => '📁  Older than 7 days',
-                        ]),
+                        ->options($monthOptions),
                 ])
-                ->query(function (Builder $query, array $data) {
-                    return $query
-                        ->when(
-                            $data['has_notes'] === 'yes',
-                            fn($q) =>
-                            $q->whereNotNull('notes')->where('notes', '!=', '')
-                        )
-                        ->when(
-                            $data['has_notes'] === 'no',
-                            fn($q) =>
-                            $q->where(fn($q) => $q->whereNull('notes')->orWhere('notes', ''))
-                        )
-                        ->when(
-                            $data['file_status'] === 'recent',
-                            fn($q) =>
-                            $q->where('created_at', '>=', now()->subDays(7))
-                        )
-                        ->when(
-                            $data['file_status'] === 'older',
-                            fn($q) =>
-                            $q->where('created_at', '<', now()->subDays(7))
-                        );
-                })
+                ->query(
+                    fn(Builder $query, array $data) => $query
+                        ->when($data['month'] ?? null, fn($q, $m) => $q->whereMonth('created_at', $m))
+                )
                 ->indicateUsing(function (array $data): array {
-                    $indicators = [];
-
-                    if ($data['has_notes'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make(
-                            $data['has_notes'] === 'yes' ? 'Has notes' : 'No notes'
-                        )->removeField('has_notes');
-                    }
-
-                    if ($data['file_status'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make(
-                            $data['file_status'] === 'recent' ? 'Last 7 days' : 'Older than 7 days'
-                        )->removeField('file_status');
-                    }
-
-                    return $indicators;
+                    if (!($data['month'] ?? null))
+                        return [];
+                    $months = [
+                        '1' => 'January',
+                        '2' => 'February',
+                        '3' => 'March',
+                        '4' => 'April',
+                        '5' => 'May',
+                        '6' => 'June',
+                        '7' => 'July',
+                        '8' => 'August',
+                        '9' => 'September',
+                        '10' => 'October',
+                        '11' => 'November',
+                        '12' => 'December',
+                    ];
+                    return [
+                        Tables\Filters\Indicator::make('Month: ' . ($months[$data['month']] ?? $data['month']))
+                            ->removeField('month'),
+                    ];
                 }),
         ];
     }

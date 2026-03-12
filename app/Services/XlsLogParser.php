@@ -7,7 +7,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Shared\Date as XlsDate;
 
 /**
  * XlsLogParser
@@ -41,15 +40,20 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as XlsDate;
  */
 class XlsLogParser
 {
-    // ── Punch assignment thresholds (minutes) ─────────────────────────────────
-    private const MORNING_CUTOFF = '12:30'; // ≤ this → morning session
-    private const DOUBLE_TAP_GRACE = '12:45'; // solo PM punch ≤ this → MorningOut if MorningIn exists
+    // ── Punch assignment thresholds ───────────────────────────────────────────
+    private const MORNING_CUTOFF     = '12:30'; // ≤ this → morning session
+    private const DOUBLE_TAP_GRACE   = '12:45'; // solo PM punch ≤ this → MorningOut if MorningIn exists
     private const AFTERNOON_CUTOFF_IN = '14:00'; // solo PM punch ≤ this (but > double-tap) → AfternoonIn
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Public API
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
      * Scan the XLS and return ONLY employees that exist in the users table.
+     *
+     * Loads the spreadsheet ONCE, parses all employee blocks, then matches
+     * against the DB. The spreadsheet is freed from memory before returning.
      *
      * @param  string $filePath  Absolute path to the .xls / .xlsx file
      * @return Collection  keyed by users.id, each value has keys:
@@ -60,11 +64,15 @@ class XlsLogParser
     public function detectEmployees(string $filePath): Collection
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees = $this->parseLogsSheet($spreadsheet);
+        $employees   = $this->parseLogsSheet($spreadsheet);
+
+        // Free spreadsheet memory immediately — we only need the parsed array
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
 
         Log::info('[XlsLogParser] detectEmployees — XLS employees found', [
             'count' => $employees->count(),
-            'ids' => $employees->keys()->values()->toArray(),
+            'ids'   => $employees->keys()->values()->toArray(),
         ]);
 
         if ($employees->isEmpty()) {
@@ -78,7 +86,7 @@ class XlsLogParser
             ->get();
 
         Log::info('[XlsLogParser] DB employees loaded', [
-            'total' => $allDbUsers->count(),
+            'total'           => $allDbUsers->count(),
             'db_employee_ids' => $allDbUsers->pluck('employee_id', 'id')->toArray(),
         ]);
 
@@ -90,33 +98,33 @@ class XlsLogParser
 
         foreach ($employees as $xlsNo => $xlsData) {
             $trimmedNo = trim((string) $xlsNo);
-            $dbUser = $dbLookup->get($trimmedNo);
+            $dbUser    = $dbLookup->get($trimmedNo);
 
             if (!$dbUser) {
                 Log::debug('[XlsLogParser] No DB match — skipped', [
-                    'xls_no' => $xlsNo,
+                    'xls_no'   => $xlsNo,
                     'xls_name' => $xlsData['xls_name'],
                 ]);
                 continue;
             }
 
             $matched->put($dbUser->id, [
-                'user_id' => $dbUser->id,
-                'db_name' => $dbUser->name,
+                'user_id'     => $dbUser->id,
+                'db_name'     => $dbUser->name,
                 'employee_id' => trim((string) $dbUser->employee_id),
-                'xls_name' => $xlsData['xls_name'],
-                'department' => $xlsData['department'],
-                'days' => $xlsData['days'],
-                'day_count' => count($xlsData['days']),
+                'xls_name'    => $xlsData['xls_name'],
+                'department'  => $xlsData['department'],
+                'days'        => $xlsData['days'],
+                'day_count'   => count($xlsData['days']),
                 'punch_count' => $xlsData['punch_count'],
             ]);
 
             Log::info('[XlsLogParser] Matched', [
-                'user_id' => $dbUser->id,
-                'db_name' => $dbUser->name,
+                'user_id'     => $dbUser->id,
+                'db_name'     => $dbUser->name,
                 'employee_id' => $dbUser->employee_id,
-                'days' => count($xlsData['days']),
-                'punches' => $xlsData['punch_count'],
+                'days'        => count($xlsData['days']),
+                'punches'     => $xlsData['punch_count'],
             ]);
         }
 
@@ -129,21 +137,64 @@ class XlsLogParser
     }
 
     /**
+     * Parse the XLS ONCE and return ALL employees' DTR rows keyed by device ID.
+     *
+     * This is the correct method to use in the import action loop.
+     * Previously, parseForEmployee() was called per employee which reloaded
+     * the entire XLS file on every iteration — with 57 employees and a 575 KB
+     * file this caused memory exhaustion and a white screen crash.
+     *
+     * Now the spreadsheet is loaded exactly once, all employee blocks are
+     * parsed into a plain PHP array, and the spreadsheet is freed immediately.
+     * Each per-employee lookup inside the loop is then a simple array access.
+     *
+     * @param  string $filePath  Absolute path to the .xls / .xlsx file
+     * @param  string $period    Period string e.g. "2026/02/01 ~ 02/28"
+     * @return array  [ 'device_id' => [ dtr_rows... ], ... ]
+     * @throws \Exception
+     */
+    public function parseAllEmployees(string $filePath, string $period = ''): array
+    {
+        $spreadsheet = $this->loadSpreadsheet($filePath);
+        $employees   = $this->parseLogsSheet($spreadsheet);
+
+        // Free the spreadsheet from memory immediately after parsing —
+        // buildDtrRows() works only on the already-extracted plain PHP arrays
+        // so we do not need the Spreadsheet object anymore.
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        $result = [];
+
+        foreach ($employees as $xlsNo => $xlsData) {
+            $result[trim((string) $xlsNo)] = $this->buildDtrRows($xlsData, $period);
+        }
+
+        return $result;
+    }
+
+    /**
      * Parse the XLS and return DTR rows for ONE specific employee.
+     *
+     * Kept for backwards compatibility / single-employee use cases.
+     * For bulk imports use parseAllEmployees() instead.
      *
      * @param  string     $filePath    Absolute path to the .xls / .xlsx file
      * @param  int|string $employeeId  Device employee number (= users.employee_id)
-     * @param  string     $period      Period string from the file header (e.g. "2026/02/01 ~ 02/28")
+     * @param  string     $period      Period string from the file header
      * @return array  DTR rows consumable by DtrCalculator::calculateFromArray()
      * @throws \Exception
      */
     public function parseForEmployee(string $filePath, int|string $employeeId, string $period = ''): array
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees = $this->parseLogsSheet($spreadsheet);
+        $employees   = $this->parseLogsSheet($spreadsheet);
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
 
         $normalizedId = trim((string) $employeeId);
-        $xlsData = $employees->get($normalizedId);
+        $xlsData      = $employees->get($normalizedId);
 
         if (!$xlsData) {
             throw new \Exception("No attendance records found in XLS for Employee ID: {$employeeId}");
@@ -153,16 +204,23 @@ class XlsLogParser
     }
 
     /**
-     * Extract the period string from the Logs sheet header (row 2, col 2).
+     * Extract the period string from the Logs sheet header (row 3, col C).
      * Returns empty string if not found.
+     *
+     * Example raw value: "2026/02/01 ~ 02/28\t( ATI 11 )"
+     * Returns:           "2026/02/01 ~ 02/28"
      */
     public function extractPeriod(string $filePath): string
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $sheet = $this->getLogsSheet($spreadsheet);
+        $sheet       = $this->getLogsSheet($spreadsheet);
 
-        $raw = trim((string) $sheet->getCell('C3')->getValue()); // col C, row 3 (1-indexed)
-        // "2026/02/01 ~ 02/28\t( ATI 11 )" → extract just the date range
+        $raw = trim((string) $sheet->getCell('C3')->getValue());
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        // Strip trailing tab + department name
         $raw = preg_replace('/\t.*$/', '', $raw);
 
         return trim($raw);
@@ -172,6 +230,12 @@ class XlsLogParser
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Load a spreadsheet from an absolute file path.
+     * IOFactory::load() auto-detects .xls vs .xlsx.
+     *
+     * @throws \Exception if the file does not exist.
+     */
     private function loadSpreadsheet(string $filePath): \PhpOffice\PhpSpreadsheet\Spreadsheet
     {
         if (!file_exists($filePath)) {
@@ -181,16 +245,20 @@ class XlsLogParser
         return IOFactory::load($filePath);
     }
 
+    /**
+     * Return the "Logs" worksheet.
+     * Tries by sheet name first, falls back to sheet index 1.
+     *
+     * @throws \Exception if neither is found.
+     */
     private function getLogsSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
     {
-        // Try by name first
         foreach ($spreadsheet->getSheetNames() as $name) {
             if (strtolower(trim($name)) === 'logs') {
                 return $spreadsheet->getSheetByName($name);
             }
         }
 
-        // Fallback: sheet index 1
         if ($spreadsheet->getSheetCount() > 1) {
             return $spreadsheet->getSheet(1);
         }
@@ -199,170 +267,172 @@ class XlsLogParser
     }
 
     /**
-     * Parse the entire Logs sheet and return a collection keyed by XLS employee number.
+     * Parse the entire Logs sheet into a Collection keyed by XLS employee number.
      *
-     * Each value:
-     *   xls_no, xls_name, department, punch_count, days (sorted date strings),
-     *   punches_by_day (assoc array date => [HH:MM, ...])
+     * Each value contains:
+     *   xls_no, xls_name, department, punch_count,
+     *   days          (sorted array of date strings with at least 1 punch),
+     *   punches_by_day (assoc: date => [HH:MM, ...])
+     *
+     * Strategy: read every cell into a plain 2-D PHP array first (one pass),
+     * then walk that array to detect employee header rows ("No :" in col 0)
+     * and parse the punch data row that immediately follows each header.
      */
     private function parseLogsSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): Collection
     {
-        $sheet = $this->getLogsSheet($spreadsheet);
-        $maxRow = $sheet->getHighestRow();
-        $maxCol = $sheet->getHighestColumn();
+        $sheet     = $this->getLogsSheet($spreadsheet);
+        $maxRow    = $sheet->getHighestRow();
+        $maxCol    = $sheet->getHighestColumn();
         $maxColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($maxCol);
 
-        // Read all rows into a plain PHP array first (faster than repeated cell reads)
-        // Note: getCellByColumnAndRow() was removed in PhpSpreadsheet 2.x.
-        // Use getCell() with a coordinate string instead.
+        // ── Read all cells into a plain PHP array (single pass) ───────────────
+        // This is significantly faster than calling getCell() repeatedly inside
+        // the detection loop because it avoids per-call overhead.
         $data = [];
         for ($r = 1; $r <= $maxRow; $r++) {
             $row = [];
             for ($c = 1; $c <= $maxColIdx; $c++) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
-                $row[] = (string) $sheet->getCell($colLetter . $r)->getValue();
+                $row[]     = (string) $sheet->getCell($colLetter . $r)->getValue();
             }
             $data[] = $row;
         }
 
-        // ── Find the period and the year / month ──────────────────────────────
-        // Row 3 (index 2), col 3 (index 2) typically: "2026/02/01 ~ 02/28\t( ATI 11 )"
-        $periodStr = $data[2][2] ?? '';
+        // ── Extract year/month from the period header ─────────────────────────
+        // Row 3 (index 2), col C (index 2): "2026/02/01 ~ 02/28\t( ATI 11 )"
+        $periodStr       = $data[2][2] ?? '';
         [$year, $month] = $this->parseYearMonth($periodStr);
 
-        // ── Parse blocks ──────────────────────────────────────────────────────
-        // Pattern: every 3 rows starting from row 4 (index 3):
-        //   index N:   day-header row  (0.0 1.0 2.0 … in cols 0-27)
-        //   index N+1: employee header ("No :" in col 0, name in col 10, etc.)
-        //   index N+2: punch data row  (newline-separated HH:MM per day-col)
-        //
-        // BUT some employees have 0 punch rows (absent all month), so the
-        // punch data row may itself be empty. We detect employee headers by
-        // checking for "No :" in col[0].
-
+        // ── Walk rows and detect employee blocks ──────────────────────────────
+        // Each block:
+        //   Row i   — employee header  (col[0] === "No :")
+        //   Row i+1 — punch data row   (col K = newline-separated HH:MM for day K)
         $employees = collect();
-        $i = 0;
+        $i         = 0;
+        $total     = count($data);
 
-        while ($i < count($data)) {
+        while ($i < $total) {
             $row = $data[$i];
 
-            // Detect employee header row
-            if (trim($row[0]) === 'No :') {
-                $xlsNo = trim($row[2]);
-                $xlsName = trim($row[10] ?? '');
-                $dept = trim($row[20] ?? '');
+            if (trim($row[0]) !== 'No :') {
+                $i++;
+                continue;
+            }
 
-                if ($xlsNo === '') {
-                    $i++;
+            // ── Employee header row ───────────────────────────────────────────
+            $xlsNo   = trim($row[2]  ?? '');
+            $xlsName = trim($row[10] ?? '');
+            $dept    = trim($row[20] ?? '');
+
+            if ($xlsNo === '') {
+                $i++;
+                continue;
+            }
+
+            // ── Punch data row (immediately follows the header) ───────────────
+            $punchRow = ($i + 1 < $total) ? $data[$i + 1] : [];
+
+            $punchesByDay = [];
+            $punchCount   = 0;
+
+            foreach ($punchRow as $colIdx => $cellValue) {
+                $cellValue = trim($cellValue);
+
+                // Col 0 is always a label/blank; skip it
+                if ($cellValue === '' || $colIdx === 0) {
                     continue;
                 }
 
-                // Next row should be the punch data row
-                $punchRow = ($i + 1 < count($data)) ? $data[$i + 1] : [];
-
-                // Build per-day punch lists
-                // The day-header row just before this employee header has the day numbers.
-                // But we know: col index K corresponds to day K (col 0 is blank, col 1 = day 1, …, col 28 = day 28)
-                $punchesByDay = [];
-                $punchCount = 0;
-
-                foreach ($punchRow as $colIdx => $cellValue) {
-                    $cellValue = trim($cellValue);
-                    if ($cellValue === '' || $colIdx === 0) {
-                        continue;
-                    }
-
-                    // Day number = column index (col 1 → day 1)
-                    $dayNum = $colIdx;
-                    if ($dayNum < 1 || $dayNum > 31) {
-                        continue;
-                    }
-
-                    // Build date string; validate it's a real calendar day
-                    try {
-                        $date = Carbon::createFromDate($year, $month, $dayNum)->format('Y-m-d');
-                    } catch (\Exception) {
-                        continue;
-                    }
-
-                    // Times are newline-delimited within the cell
-                    $times = array_filter(
-                        array_map('trim', explode("\n", $cellValue)),
-                        fn($t) => preg_match('/^\d{1,2}:\d{2}$/', $t)
-                    );
-
-                    if (!empty($times)) {
-                        $punchesByDay[$date] = array_values($times);
-                        $punchCount += count($times);
-                    }
+                // Column index directly maps to day-of-month (col 1 → day 1, …)
+                $dayNum = $colIdx;
+                if ($dayNum < 1 || $dayNum > 31) {
+                    continue;
                 }
 
-                ksort($punchesByDay);
+                // Validate that this day actually exists in the calendar month
+                try {
+                    $date = Carbon::createFromDate($year, $month, $dayNum)->format('Y-m-d');
+                } catch (\Exception) {
+                    continue;
+                }
 
-                $employees->put($xlsNo, [
-                    'xls_no' => $xlsNo,
-                    'xls_name' => $xlsName,
-                    'department' => $dept,
-                    'punch_count' => $punchCount,
-                    'days' => array_keys($punchesByDay),
-                    'punches_by_day' => $punchesByDay,
-                ]);
+                // Times are stored as newline-delimited "HH:MM" strings within one cell
+                $times = array_values(array_filter(
+                    array_map('trim', explode("\n", $cellValue)),
+                    fn($t) => preg_match('/^\d{1,2}:\d{2}$/', $t)
+                ));
 
-                $i += 2; // skip the punch data row we just consumed
-            } else {
-                $i++;
+                if (!empty($times)) {
+                    $punchesByDay[$date] = $times;
+                    $punchCount         += count($times);
+                }
             }
+
+            ksort($punchesByDay);
+
+            $employees->put($xlsNo, [
+                'xls_no'       => $xlsNo,
+                'xls_name'     => $xlsName,
+                'department'   => $dept,
+                'punch_count'  => $punchCount,
+                'days'         => array_keys($punchesByDay),
+                'punches_by_day' => $punchesByDay,
+            ]);
+
+            // Skip the punch data row we just consumed
+            $i += 2;
         }
 
         return $employees;
     }
 
     /**
-     * Convert an employee's punch data into DTR rows for DtrCalculator.
+     * Convert one employee's punch data into a flat array of DTR rows
+     * consumable by DtrCalculator::calculateFromArray().
+     *
+     * Walks every calendar day in the period (including absent days) so the
+     * calculator always receives a complete month-long dataset.
+     * Falls back to punch-days-only if the period string cannot be parsed.
      */
     private function buildDtrRows(array $xlsData, string $period): array
     {
         $rows = [];
-        $tz = config('app.timezone', 'Asia/Manila');
 
-        // Build the full date range from the period string so we include absent days
         [$startDate, $endDate] = $this->parsePeriodRange($period);
 
-        // Walk every calendar day in the period
-        $current = $startDate ? $startDate->copy() : null;
-        $end = $endDate;
+        if ($startDate && $endDate) {
+            // ── Full period walk (preferred) ──────────────────────────────────
+            $current = $startDate->copy();
 
-        if ($current && $end) {
-            while ($current->lte($end)) {
-                $dateStr = $current->format('Y-m-d');
-                $punches = $xlsData['punches_by_day'][$dateStr] ?? [];
-
+            while ($current->lte($endDate)) {
+                $dateStr  = $current->format('Y-m-d');
+                $punches  = $xlsData['punches_by_day'][$dateStr] ?? [];
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID' => $xlsData['xls_no'],
-                    'Name' => $xlsData['xls_name'],
-                    'Date' => $dateStr,
-                    'MorningIn' => $sessions['MorningIn'],
-                    'MorningOut' => $sessions['MorningOut'],
-                    'AfternoonIn' => $sessions['AfternoonIn'],
+                    'EmployeeID'   => $xlsData['xls_no'],
+                    'Name'         => $xlsData['xls_name'],
+                    'Date'         => $dateStr,
+                    'MorningIn'    => $sessions['MorningIn'],
+                    'MorningOut'   => $sessions['MorningOut'],
+                    'AfternoonIn'  => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
 
                 $current->addDay();
             }
         } else {
-            // Fallback: only days with punches
+            // ── Fallback: only days with punches ──────────────────────────────
             foreach ($xlsData['punches_by_day'] as $dateStr => $punches) {
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID' => $xlsData['xls_no'],
-                    'Name' => $xlsData['xls_name'],
-                    'Date' => $dateStr,
-                    'MorningIn' => $sessions['MorningIn'],
-                    'MorningOut' => $sessions['MorningOut'],
-                    'AfternoonIn' => $sessions['AfternoonIn'],
+                    'EmployeeID'   => $xlsData['xls_no'],
+                    'Name'         => $xlsData['xls_name'],
+                    'Date'         => $dateStr,
+                    'MorningIn'    => $sessions['MorningIn'],
+                    'MorningOut'   => $sessions['MorningOut'],
+                    'AfternoonIn'  => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
             }
@@ -372,48 +442,52 @@ class XlsLogParser
     }
 
     /**
-     * Assign a list of raw punch times (sorted chronologically) to the four
+     * Assign a chronologically-sorted list of raw punch times to the four
      * DTR slots: MorningIn, MorningOut, AfternoonIn, AfternoonOut.
      *
-     * Logic mirrors BiometricLogParser::assignSessions() (infer mode only,
-     * since ZKTeco XLS does not carry punch direction):
+     * Rules (infer mode — ZKTeco XLS carries no punch direction):
      *
-     *   Morning  ≤ 12:30 → 1 punch = MorningIn; 2+ = first/last
-     *   Afternoon > 12:30:
-     *     solo ≤ 12:45 + MorningIn present + no MorningOut → MorningOut (double-tap)
-     *     solo ≤ 14:00                                      → AfternoonIn
-     *     solo > 14:00                                      → AfternoonOut
-     *     2+   → first (≤14:00) = AfternoonIn, last = AfternoonOut
+     *   Morning punches (≤ 12:30):
+     *     1 punch  → MorningIn only
+     *     2+ punches → first = MorningIn, last = MorningOut
+     *
+     *   Afternoon punches (> 12:30):
+     *     1 solo punch ≤ 12:45 AND MorningIn set AND MorningOut not set
+     *                  → treat as MorningOut (double-tap on same reader)
+     *     1 solo punch ≤ 14:00 → AfternoonIn
+     *     1 solo punch > 14:00 → AfternoonOut
+     *     2+ punches  → first (≤ 14:00) = AfternoonIn, last = AfternoonOut
      */
     private function assignSessions(array $times): array
     {
-        $morningIn = null;
-        $morningOut = null;
-        $afternoonIn = null;
+        $morningIn    = null;
+        $morningOut   = null;
+        $afternoonIn  = null;
         $afternoonOut = null;
 
-        $cutoffMorning = $this->toMinutes(self::MORNING_CUTOFF);
-        $cutoffDoubleTap = $this->toMinutes(self::DOUBLE_TAP_GRACE);
+        $cutoffMorning     = $this->toMinutes(self::MORNING_CUTOFF);
+        $cutoffDoubleTap   = $this->toMinutes(self::DOUBLE_TAP_GRACE);
         $cutoffAfternoonIn = $this->toMinutes(self::AFTERNOON_CUTOFF_IN);
 
-        $morning = array_values(array_filter($times, fn($t) => $this->toMinutes($t) <= $cutoffMorning));
+        $morning   = array_values(array_filter($times, fn($t) => $this->toMinutes($t) <= $cutoffMorning));
         $afternoon = array_values(array_filter($times, fn($t) => $this->toMinutes($t) > $cutoffMorning));
 
-        // Morning session
+        // ── Morning session ───────────────────────────────────────────────────
         if (count($morning) === 1) {
             $morningIn = $morning[0];
         } elseif (count($morning) >= 2) {
-            $morningIn = $morning[0];
+            $morningIn  = $morning[0];
             $morningOut = end($morning);
         }
 
-        // Afternoon session
+        // ── Afternoon session ─────────────────────────────────────────────────
         if (count($afternoon) === 1) {
-            $solo = $afternoon[0];
+            $solo     = $afternoon[0];
             $soloMins = $this->toMinutes($solo);
 
             if ($soloMins <= $cutoffDoubleTap && $morningIn !== null && $morningOut === null) {
-                $morningOut = $solo; // double-tap: same punch as morning out
+                // Double-tap: employee tapped out right after morning in
+                $morningOut = $solo;
             } elseif ($soloMins <= $cutoffAfternoonIn) {
                 $afternoonIn = $solo;
             } else {
@@ -428,42 +502,47 @@ class XlsLogParser
         }
 
         return [
-            'MorningIn' => $morningIn ?? '',
-            'MorningOut' => $morningOut ?? '',
-            'AfternoonIn' => $afternoonIn ?? '',
+            'MorningIn'    => $morningIn    ?? '',
+            'MorningOut'   => $morningOut   ?? '',
+            'AfternoonIn'  => $afternoonIn  ?? '',
             'AfternoonOut' => $afternoonOut ?? '',
         ];
     }
 
     /**
-     * Parse the year and month from a period string like "2026/02/01 ~ 02/28\t( ATI 11 )".
-     * Returns [year, month] as integers, defaulting to current year/month.
+     * Parse year and month from a period string like "2026/02/01 ~ 02/28\t( ATI 11 )".
+     * Returns [year, month] as integers; defaults to current year/month if unparseable.
      */
     private function parseYearMonth(string $period): array
     {
-        // "2026/02/01 ~ 02/28"
         if (preg_match('/(\d{4})\/(\d{2})/', $period, $m)) {
             return [(int) $m[1], (int) $m[2]];
         }
+
         return [now()->year, now()->month];
     }
 
     /**
-     * Parse start and end Carbon dates from a period string.
-     * Returns [Carbon|null, Carbon|null].
+     * Parse start and end Carbon instances from a period string.
+     * Returns [Carbon, Carbon] on success, [null, null] if unparseable.
+     *
+     * Supported format: "2026/02/01 ~ 02/28"
      */
     private function parsePeriodRange(string $period): array
     {
-        // "2026/02/01 ~ 02/28"
         if (preg_match('/(\d{4})\/(\d{2})\/(\d{2})\s*~\s*(\d{2})\/(\d{2})/', $period, $m)) {
-            $year = (int) $m[1];
+            $year  = (int) $m[1];
             $start = Carbon::createFromDate($year, (int) $m[2], (int) $m[3]);
-            $end = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
+            $end   = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
             return [$start, $end];
         }
+
         return [null, null];
     }
 
+    /**
+     * Convert "HH:MM" to total minutes since midnight for threshold comparisons.
+     */
     private function toMinutes(string $time): int
     {
         [$h, $m] = array_map('intval', explode(':', $time . ':00'));
