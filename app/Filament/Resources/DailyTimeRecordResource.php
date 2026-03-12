@@ -395,17 +395,94 @@ class DailyTimeRecordResource extends Resource
 
                     // ── Download CSV ──────────────────────────────────────────
                     Tables\Actions\Action::make('download')
-                        ->label('Download CSV')
+                        ->label('Download Raw Log')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('gray')
                         ->action(function ($record) {
                             $filePath = self::resolveFilePath($record->file_path);
-                            return Storage::disk('public')->download($filePath);
+                            $fullPath = Storage::disk('public')->path($filePath);
+
+                            if (!file_exists($fullPath)) {
+                                \Filament\Notifications\Notification::make()
+                                    ->danger()
+                                    ->title('File not found')
+                                    ->body('The source file is missing from storage.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Read the CSV
+                            $csv = \League\Csv\Reader::createFromPath($fullPath, 'r');
+                            $csv->setHeaderOffset(0);
+
+                            // Build XLSX using PhpSpreadsheet (already installed for XlsLogParser)
+                            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                            $sheet = $spreadsheet->getActiveSheet();
+                            $sheet->setTitle('DTR Log');
+
+                            // ── Header row ────────────────────────────────────────────────────
+                            $headers = ['EmployeeID', 'Name', 'Date', 'MorningIn', 'MorningOut', 'AfternoonIn', 'AfternoonOut'];
+                            foreach ($headers as $col => $heading) {
+                                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1);
+                                $sheet->getCell($colLetter . '1')->setValue($heading);
+
+                                // Bold + background
+                                $sheet->getCell($colLetter . '1')->getStyle()->applyFromArray([
+                                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F497D']],
+                                    'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                                ]);
+                            }
+
+                            // ── Data rows ─────────────────────────────────────────────────────
+                            $rowNum = 2;
+                            foreach ($csv->getRecords() as $record2) {
+                                $values = [
+                                    $record2['EmployeeID'] ?? '',
+                                    $record2['Name'] ?? '',
+                                    $record2['Date'] ?? '',
+                                    $record2['MorningIn'] ?? '',
+                                    $record2['MorningOut'] ?? '',
+                                    $record2['AfternoonIn'] ?? '',
+                                    $record2['AfternoonOut'] ?? '',
+                                ];
+
+                                foreach ($values as $col => $value) {
+                                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1);
+                                    $sheet->getCell($colLetter . $rowNum)->setValue($value);
+                                }
+
+                                // Zebra stripe
+                                if ($rowNum % 2 === 0) {
+                                    $sheet->getStyle('A' . $rowNum . ':G' . $rowNum)->applyFromArray([
+                                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F2F7FF']],
+                                    ]);
+                                }
+
+                                $rowNum++;
+                            }
+
+                            // ── Auto-fit columns ──────────────────────────────────────────────
+                            foreach (range('A', 'G') as $col) {
+                                $sheet->getColumnDimension($col)->setAutoSize(true);
+                            }
+
+                            // ── Stream as .xlsx ───────────────────────────────────────────────
+                            $xlsxFilename = pathinfo(basename($filePath), PATHINFO_FILENAME) . '.xlsx';
+
+                            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+                            return response()->streamDownload(function () use ($writer) {
+                                $writer->save('php://output');
+                            }, $xlsxFilename, [
+                                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'Cache-Control' => 'max-age=0',
+                            ]);
                         }),
 
                     // ── Download PDF ──────────────────────────────────────────
                     Tables\Actions\Action::make('export_pdf')
-                        ->label('Download PDF')
+                        ->label('Download DTR PDF')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('success')
                         ->requiresConfirmation()
@@ -417,7 +494,7 @@ class DailyTimeRecordResource extends Resource
                     // WHY: onload fade-in gives visual feedback while the
                     //      browser renders the base64 PDF — avoids blank flash.
                     Tables\Actions\Action::make('preview_pdf')
-                        ->label('Preview PDF')
+                        ->label('Preview DTR')
                         ->icon('heroicon-o-eye')
                         ->color('info')
                         ->modalHeading(fn($record) => 'DTR Preview — ' . $record->employee->name)
@@ -450,16 +527,6 @@ class DailyTimeRecordResource extends Resource
                                 ');
                             }
                         }),
-
-                    // ── View Details (slide-over) ─────────────────────────────
-                    Tables\Actions\Action::make('details')
-                        ->label('View Details')
-                        ->icon('heroicon-o-document-magnifying-glass')
-                        ->color('gray')
-                        ->modalHeading(fn($record) => 'DTR: ' . $record->employee->name)
-                        ->modalContent(fn($record) => view('filament.tables.cells.dtr-details', ['record' => $record]))
-                        ->modalSubmitAction(false)
-                        ->slideOver(),
 
                     // ── Delete ────────────────────────────────────────────────
                     // WHY: Moved notification to ->after() so employees are only

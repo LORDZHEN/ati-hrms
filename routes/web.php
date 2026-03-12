@@ -408,25 +408,25 @@ Route::get('/saln/report', function () {
 
     // ── Auth & authorization ──────────────────────────────────────────────
     $user = auth()->user();
-    if (! $user || $user->role !== 'admin') {
+    if (!$user || $user->role !== 'admin') {
         abort(403, 'Unauthorized');
     }
 
     // ── Query parameters ──────────────────────────────────────────────────
     $remarks_filter = request('remarks_filter', 'all'); // all | with_remarks | no_remarks
-    $from           = request('from');
-    $to             = request('to');
-    $period         = request('period', 'monthly');
+    $from = request('from');
+    $to = request('to');
+    $period = request('period', 'monthly');
 
     // ── Resolve from/to when not explicitly provided ──────────────────────
-    if (! $from || ! $to) {
+    if (!$from || !$to) {
         $now = Carbon::now();
 
         [$from, $to] = match ($period) {
-            'weekly'    => [$now->copy()->startOfWeek()->toDateString(),    $now->copy()->endOfWeek()->toDateString()],
+            'weekly' => [$now->copy()->startOfWeek()->toDateString(), $now->copy()->endOfWeek()->toDateString()],
             'quarterly' => [$now->copy()->startOfQuarter()->toDateString(), $now->copy()->endOfQuarter()->toDateString()],
-            'yearly'    => [$now->copy()->startOfYear()->toDateString(),     $now->copy()->endOfYear()->toDateString()],
-            default     => [$now->copy()->startOfMonth()->toDateString(),    $now->copy()->endOfMonth()->toDateString()],
+            'yearly' => [$now->copy()->startOfYear()->toDateString(), $now->copy()->endOfYear()->toDateString()],
+            default => [$now->copy()->startOfMonth()->toDateString(), $now->copy()->endOfMonth()->toDateString()],
         };
     }
 
@@ -465,13 +465,13 @@ Route::get('/saln/report', function () {
         'to',
         'period'
     ))
-    ->setPaper('a4', 'landscape')   // landscape fits the financial columns comfortably
-    ->setOptions([
-        'defaultFont'          => 'sans-serif',
-        'isHtml5ParserEnabled' => true,
-        'isRemoteEnabled'      => false,
-        'dpi'                  => 150,
-    ]);
+        ->setPaper('a4', 'landscape')   // landscape fits the financial columns comfortably
+        ->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'dpi' => 150,
+        ]);
 
     $filename = sprintf(
         'saln-report-%s-%s.pdf',
@@ -483,8 +483,7 @@ Route::get('/saln/report', function () {
 
 })->middleware(['auth'])->name('saln.report');
 
-// Biometric CSV upload endpoint — bypasses Livewire file upload
-Route::post('/biometric/upload-csv', [\App\Http\Controllers\BiometricUploadController::class, 'store'])
+// Biometric XLS upload endpoint
+Route::post('/biometric/upload-xls', [\App\Http\Controllers\BiometricXlsUploadController::class, 'store'])
     ->middleware(['web', 'auth'])
-    ->name('biometric.upload');
-
+    ->name('biometric.upload-xls');

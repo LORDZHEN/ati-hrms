@@ -5,7 +5,7 @@ namespace App\Filament\Resources\DailyTimeRecordResource\Actions;
 use App\Models\EmployeeDtr;
 use App\Models\User;
 use App\Notifications\DtrUploaded;
-use App\Services\BiometricLogParser;
+use App\Services\XlsLogParser;
 use App\Services\DtrCalculator;
 use Filament\Tables\Actions\Action;
 use Filament\Forms;
@@ -16,14 +16,19 @@ use Illuminate\Support\Facades\Storage;
 use League\Csv\Writer;
 
 /**
- * BiometricImportAction — FINAL VERSION v4
+ * BiometricImportAction — XLS Edition
  *
- * KEY INSIGHT: $wire.set() does NOT work from Alpine inside a Filament
- * Table Action modal — the modal form fields are NOT Livewire public properties.
+ * Accepts a ZKTeco / BioTime attendance export (.xls or .xlsx).
+ * Parses the "Logs" sheet to detect all employees with punch data,
+ * matches them against registered users (by employee_id), lets the
+ * admin select which ones to import, then produces DTR CSV records.
  *
- * SOLUTION: Store the uploaded file path in Alpine component state and sync
- * it to a real <input> that Filament reads on form submit. The scan button
- * reads from Alpine state via a custom Alpine event, not from Livewire state.
+ * Upload flow:
+ *   1. Admin clicks "Import Biometric Log" → modal opens.
+ *   2. Admin uploads the .xls / .xlsx file (AJAX upload to /biometric/upload-xls).
+ *   3. Admin clicks "Scan File for Employees" → server parses the Logs sheet,
+ *      matched employees are shown as a checkbox list.
+ *   4. Admin selects employees → clicks Submit → DTR records created.
  */
 class BiometricImportAction extends Action
 {
@@ -41,28 +46,28 @@ class BiometricImportAction extends Action
             ->icon('heroicon-o-arrow-up-tray')
             ->color('warning')
             ->visible(fn() => Auth::user()->isAdmin())
-            ->modalHeading('Import Raw Biometric Attendance Log')
+            ->modalHeading('Import Biometric Attendance Log (XLS)')
             ->modalDescription(
-                'Upload a raw biometric machine export CSV. ' .
-                'The system will scan it and only show employees registered in the system.'
+                'Upload a ZKTeco / BioTime attendance export (.xls or .xlsx). ' .
+                'The system will scan the Logs sheet and only show employees registered in the system.'
             )
             ->modalWidth('2xl')
             ->form([
-                // The upload widget + hidden path input are combined in one Placeholder.
-                // Alpine manages state; the hidden <input id="bio-csv-path"> is what
-                // Filament reads when the form is submitted or scanned.
-                Forms\Components\Placeholder::make('csv_upload_widget')
-                    ->label('Raw Biometric CSV File')
+
+                // ── Custom upload widget (Alpine + hidden DOM input) ───────────
+                Forms\Components\Placeholder::make('xls_upload_widget')
+                    ->label('Biometric Attendance XLS File')
                     ->content(function () {
-                        $uploadUrl = route('biometric.upload');
+                        $uploadUrl = route('biometric.upload-xls');
                         $csrfToken = csrf_token();
+
                         return new \Illuminate\Support\HtmlString(<<<HTML
 <div x-data="{
     fileName: '',
     fileSize: '',
     uploading: false,
     uploaded: false,
-    csvPath: '',
+    xlsPath: '',
     error: '',
 
     uploadFile(event) {
@@ -74,10 +79,10 @@ class BiometricImportAction extends Action
         this.uploading = true;
         this.uploaded  = false;
         this.error     = '';
-        this.csvPath   = '';
+        this.xlsPath   = '';
 
         const fd = new FormData();
-        fd.append('biometric_csv', file);
+        fd.append('biometric_xls', file);
         fd.append('_token', '{$csrfToken}');
 
         fetch('{$uploadUrl}', { method: 'POST', body: fd })
@@ -85,20 +90,20 @@ class BiometricImportAction extends Action
             .then(data => {
                 this.uploading = false;
                 if (data.error) {
-                    this.error  = data.error;
-                    this.csvPath = '';
+                    this.error   = data.error;
+                    this.xlsPath = '';
                 } else {
                     this.uploaded = true;
-                    this.csvPath  = data.path;
+                    this.xlsPath  = data.path;
                 }
-                document.getElementById('bio-csv-path').value = this.csvPath;
-                window.dispatchEvent(new CustomEvent('bio-csv-uploaded', { detail: { path: this.csvPath } }));
+                document.getElementById('bio-xls-path').value = this.xlsPath;
+                window.dispatchEvent(new CustomEvent('bio-xls-uploaded', { detail: { path: this.xlsPath } }));
             })
             .catch(err => {
                 this.uploading = false;
                 this.error     = 'Upload failed: ' + err.message;
-                this.csvPath   = '';
-                document.getElementById('bio-csv-path').value = '';
+                this.xlsPath   = '';
+                document.getElementById('bio-xls-path').value = '';
             });
     },
 
@@ -108,15 +113,15 @@ class BiometricImportAction extends Action
         this.uploaded  = false;
         this.error     = '';
         this.uploading = false;
-        this.csvPath   = '';
-        document.getElementById('bio-csv-path').value = '';
-        window.dispatchEvent(new CustomEvent('bio-csv-uploaded', { detail: { path: '' } }));
+        this.xlsPath   = '';
+        document.getElementById('bio-xls-path').value = '';
+        window.dispatchEvent(new CustomEvent('bio-xls-uploaded', { detail: { path: '' } }));
         \$refs.fileInput.value = '';
     }
 }" class="w-full">
 
-    <!-- Hidden input that Filament reads as biometric_csv_path field value -->
-    <input type="hidden" id="bio-csv-path" name="biometric_csv_path" value="">
+    <!-- Hidden input that Filament reads as biometric_xls_path field value -->
+    <input type="hidden" id="bio-xls-path" name="biometric_xls_path" value="">
 
     <!-- Upload area -->
     <div x-show="!uploaded && !uploading"
@@ -124,13 +129,13 @@ class BiometricImportAction extends Action
          @click="\$refs.fileInput.click()">
         <svg class="mx-auto h-10 w-10 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
         <p class="text-sm text-gray-600 dark:text-gray-400">
             <span class="font-medium text-primary-600 dark:text-primary-400">Click to upload</span> or drag and drop
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">CSV file from ZKTeco / Suprema / Hikvision / Anviz</p>
-        <input x-ref="fileInput" type="file" accept=".csv,.txt" class="hidden" @change="uploadFile(\$event)">
+        <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">ZKTeco / BioTime attendance export (.xls, .xlsx)</p>
+        <input x-ref="fileInput" type="file" accept=".xls,.xlsx" class="hidden" @change="uploadFile(\$event)">
     </div>
 
     <!-- Uploading state -->
@@ -182,32 +187,28 @@ class BiometricImportAction extends Action
 HTML);
                     }),
 
-                // This hidden field receives its value from the #bio-csv-path input
-                // via the scan action reading document.getElementById('bio-csv-path').value
-                Forms\Components\Hidden::make('biometric_csv_path'),
+                // Hidden fields — values set by Scan action
+                Forms\Components\Hidden::make('biometric_xls_path'),
+                Forms\Components\Hidden::make('xls_period'),
                 Forms\Components\Hidden::make('detected_employees'),
                 Forms\Components\Hidden::make('employee_meta'),
 
+                // ── Scan button ───────────────────────────────────────────────
                 Forms\Components\Actions::make([
                     Forms\Components\Actions\Action::make('scan_file')
                         ->label('Scan File for Employees')
                         ->icon('heroicon-o-magnifying-glass')
                         ->color('info')
-                        // Always visible after modal opens — user clicks it after upload
                         ->action(function (callable $get, callable $set) {
-                            // Read path from the hidden DOM input via request data
-                            // Since $wire.set doesn't work, we read from the raw POST
-                            $fullPath = request()->input('components.0.calls.0.params.0.biometric_csv_path')
-                                ?? $get('biometric_csv_path')
-                                ?? null;
+                            // Try form state first, then fallback to newest upload
+                            $fullPath = $get('biometric_xls_path') ?? null;
 
-                            // Fallback: scan biometric_imports for the newest file
                             if (!$fullPath || !file_exists($fullPath)) {
-                                $fullPath = $this->findNewestBiometricImport();
+                                $fullPath = $this->findNewestXlsImport();
                             }
 
-                            Log::info('[BiometricImport] scan_file: path check', [
-                                'path'   => $fullPath,
+                            Log::info('[BiometricImport] scan_file (XLS): path check', [
+                                'path' => $fullPath,
                                 'exists' => $fullPath ? file_exists($fullPath) : false,
                             ]);
 
@@ -215,26 +216,28 @@ HTML);
                                 Notification::make()
                                     ->danger()
                                     ->title('No file found')
-                                    ->body('Please upload a CSV file first, then click Scan.')
+                                    ->body('Please upload an XLS file first, then click Scan.')
                                     ->persistent()
                                     ->send();
                                 return;
                             }
 
-                            // Store it so submit action can find it
-                            $set('biometric_csv_path', $fullPath);
+                            $set('biometric_xls_path', $fullPath);
 
                             try {
-                                $parser    = app(BiometricLogParser::class);
+                                $parser = app(XlsLogParser::class);
                                 $employees = $parser->detectEmployees($fullPath);
+                                $period = $parser->extractPeriod($fullPath);
+
+                                $set('xls_period', $period);
 
                                 if ($employees->isEmpty()) {
                                     Notification::make()
                                         ->warning()
                                         ->title('No registered employees found in this file')
                                         ->body(
-                                            'No Employee IDs matched any registered user. ' .
-                                            'Ensure each user\'s "Employee ID" matches their biometric device ID.'
+                                            'No employee numbers in the XLS Logs sheet matched any registered user. ' .
+                                            'Ensure each user\'s "Employee ID" matches their biometric device number.'
                                         )
                                         ->persistent()
                                         ->send();
@@ -243,7 +246,7 @@ HTML);
 
                                 $options = $employees->mapWithKeys(function ($emp) {
                                     $label = "{$emp['db_name']} — {$emp['day_count']} day(s), {$emp['punch_count']} punches"
-                                        . " [Device ID: {$emp['employee_id']}]";
+                                        . " [Device No: {$emp['employee_id']}]";
                                     return [$emp['user_id'] => $label];
                                 })->toArray();
 
@@ -253,11 +256,11 @@ HTML);
                                 Notification::make()
                                     ->success()
                                     ->title($employees->count() . ' registered employee(s) found')
-                                    ->body('Select employees below, then click Submit.')
+                                    ->body('Period: ' . ($period ?: 'unknown') . ' — Select employees below, then click Submit.')
                                     ->send();
 
                             } catch (\Exception $e) {
-                                Log::error('[BiometricImport] scan_file: exception', [
+                                Log::error('[BiometricImport] scan_file (XLS): exception', [
                                     'error' => $e->getMessage(),
                                     'trace' => $e->getTraceAsString(),
                                 ]);
@@ -270,23 +273,31 @@ HTML);
                         }),
                 ]),
 
+                // ── Employee checkbox list (visible after scan) ────────────────
                 Forms\Components\CheckboxList::make('selected_user_ids')
                     ->label('Registered Employees Found in File')
-                    ->helperText('Only employees whose Device ID matches a registered user are shown.')
+                    ->helperText('Only employees whose Device Number matches a registered user are shown.')
                     ->options(fn(callable $get) => $get('detected_employees') ?? [])
                     ->columns(1)
                     ->bulkToggleable()
                     ->required()
                     ->visible(fn(callable $get) => filled($get('detected_employees'))),
 
-                Forms\Components\Placeholder::make('unregistered_notice')
+                Forms\Components\Placeholder::make('scan_summary')
                     ->label('')
                     ->content(function (callable $get) {
                         $meta = $get('employee_meta');
-                        if (!$meta) return '';
+                        $period = $get('xls_period');
+
+                        if (!$meta)
+                            return '';
+
+                        $periodStr = $period ? " | Period: <strong>{$period}</strong>" : '';
+
                         return new \Illuminate\Support\HtmlString(
                             '<div class="text-xs text-gray-500 dark:text-gray-400 mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded">'
                             . '✅ <strong>' . count($meta) . '</strong> registered employee(s) found and ready to import.'
+                            . $periodStr
                             . '</div>'
                         );
                     })
@@ -299,14 +310,16 @@ HTML);
                     ->maxLength(500),
             ])
 
+            // ── Submit action ─────────────────────────────────────────────────
             ->action(function (array $data) {
-                $fullPath    = $data['biometric_csv_path'] ?? null;
-                $selectedIds = $data['selected_user_ids']  ?? [];
-                $notes       = $data['notes']               ?? null;
+                $fullPath = $data['biometric_xls_path'] ?? null;
+                $period = $data['xls_period'] ?? '';
+                $selectedIds = $data['selected_user_ids'] ?? [];
+                $notes = $data['notes'] ?? null;
 
-                // Fallback to newest file if path lost between scan and submit
+                // Fallback to newest file if path was lost between scan and submit
                 if (!$fullPath || !file_exists($fullPath)) {
-                    $fullPath = $this->findNewestBiometricImport();
+                    $fullPath = $this->findNewestXlsImport();
                 }
 
                 if (!$fullPath || !file_exists($fullPath)) {
@@ -325,10 +338,10 @@ HTML);
                     return;
                 }
 
-                $parser        = app(BiometricLogParser::class);
-                $calculator    = app(DtrCalculator::class);
-                $successCount  = 0;
-                $errorCount    = 0;
+                $parser = app(XlsLogParser::class);
+                $calculator = app(DtrCalculator::class);
+                $successCount = 0;
+                $errorCount = 0;
                 $errorMessages = [];
 
                 foreach ($selectedIds as $userId) {
@@ -341,6 +354,7 @@ HTML);
                     }
 
                     $deviceId = trim((string) $user->employee_id);
+
                     if ($deviceId === '') {
                         $errorMessages[] = "⚠️  {$user->name}: no employee_id set.";
                         $errorCount++;
@@ -348,7 +362,7 @@ HTML);
                     }
 
                     try {
-                        $dtrRows    = $parser->parseForEmployee($fullPath, $deviceId);
+                        $dtrRows = $parser->parseForEmployee($fullPath, $deviceId, $period);
                         $calculated = $calculator->calculateFromArray($dtrRows);
 
                         $safeName = preg_replace('/[^A-Za-z0-9_]/', '_', $user->name);
@@ -358,8 +372,8 @@ HTML);
 
                         $record = EmployeeDtr::create([
                             'employee_id' => $user->id,
-                            'file_path'   => $filename,
-                            'notes'       => $notes,
+                            'file_path' => $filename,
+                            'notes' => $notes,
                         ]);
 
                         $user->notify(new DtrUploaded($record));
@@ -367,14 +381,16 @@ HTML);
 
                     } catch (\Exception $e) {
                         $errorCount++;
-                        $errorMessages[] = "❌ {$user->name} (ID: {$deviceId}): " . $e->getMessage();
-                        Log::error('[BiometricImport] action: employee error', [
+                        $errorMessages[] = "❌ {$user->name} (Device ID: {$deviceId}): " . $e->getMessage();
+
+                        Log::error('[BiometricImport] XLS action: employee error', [
                             'user_id' => $userId,
-                            'error'   => $e->getMessage(),
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
 
+                // Clean up the temporary XLS file
                 @unlink($fullPath);
 
                 if ($successCount > 0 && $errorCount === 0) {
@@ -396,47 +412,54 @@ HTML);
             });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Find the most recently uploaded biometric CSV from our stable directory.
-     * Used as fallback when form state loses the path.
+     * Find the most recently uploaded XLS/XLSX in the biometric_imports directory.
+     * Used as fallback when Livewire form state loses the path between actions.
+     * Rejects files older than 30 minutes.
      */
-    private function findNewestBiometricImport(): ?string
+    private function findNewestXlsImport(): ?string
     {
-        // Storage::disk('local')->path() resolves to storage/app/ on this server,
-        // so 'biometric_imports' → storage/app/biometric_imports/
         $dir = Storage::disk('local')->path('biometric_imports');
 
-        Log::info('[BiometricImport] findNewestBiometricImport: scanning', ['dir' => $dir]);
+        Log::info('[BiometricImport] findNewestXlsImport: scanning', ['dir' => $dir]);
 
-        if (!is_dir($dir)) return null;
+        if (!is_dir($dir))
+            return null;
 
-        $newest     = null;
+        $newest = null;
         $newestTime = 0;
 
-        foreach (glob($dir . '/bio_*.csv') as $file) {
+        foreach (glob($dir . '/bio_*.{xls,xlsx}', GLOB_BRACE) as $file) {
             $mtime = filemtime($file);
             if ($mtime > $newestTime) {
                 $newestTime = $mtime;
-                $newest     = $file;
+                $newest = $file;
             }
         }
 
-        // Reject if older than 30 minutes
         if ($newest && (time() - $newestTime) > 1800) {
-            Log::warning('[BiometricImport] findNewestBiometricImport: file too old', [
-                'file' => $newest, 'age' => (time() - $newestTime) . 's'
+            Log::warning('[BiometricImport] findNewestXlsImport: file too old', [
+                'file' => $newest,
+                'age' => (time() - $newestTime) . 's',
             ]);
             return null;
         }
 
-        Log::info('[BiometricImport] findNewestBiometricImport', [
+        Log::info('[BiometricImport] findNewestXlsImport', [
             'result' => $newest,
-            'age'    => $newest ? (time() - $newestTime) . 's' : null,
+            'age' => $newest ? (time() - $newestTime) . 's' : null,
         ]);
 
         return $newest;
     }
 
+    /**
+     * Write a DTR CSV to public storage (used by existing download/PDF flow).
+     */
     private function writeDtrCsv(string $storagePath, array $rows): void
     {
         $csv = Writer::createFromString();
