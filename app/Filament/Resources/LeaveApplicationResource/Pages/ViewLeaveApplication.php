@@ -3,123 +3,96 @@
 namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
 use App\Filament\Resources\LeaveApplicationResource;
-use App\Filament\Widgets\LeaveCreditWidget;
-use App\Services\LeaveCreditService;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Actions;
+use Filament\Resources\Pages\ViewRecord;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class ViewLeaveApplication extends ViewRecord
 {
     protected static string $resource = LeaveApplicationResource::class;
 
-    // ── Leave balance widget visible to employees viewing their own application
-    protected function getHeaderWidgets(): array
+    public function mount(int|string $record): void
     {
-        return [
-            LeaveCreditWidget::class,
-        ];
+        parent::mount($record);
+        view()->share('isReadOnly', true);
     }
+
+    // =========================================================================
+    //  HEADER ACTIONS
+    //
+    //  ADMIN    : Approve (if not yet approved) | Add/Edit Remarks | Print (approved) | Back
+    //  EMPLOYEE : Print (approved only) | Back
+    //             Admin remarks are shown via the Textarea in the form schema.
+    // =========================================================================
 
     protected function getHeaderActions(): array
     {
+        $isAdmin = Auth::user()->role === 'admin';
+
         return [
 
-            // ── APPROVE ──────────────────────────────────────────────────────
+            // ── ADMIN: Approve ────────────────────────────────────────────────
             Actions\Action::make('approve')
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->visible(
-                    fn() => auth()->user()->role === 'admin'
-                    && $this->record->status === 'pending'
-                )
+                ->visible(fn() => $isAdmin && $this->record->status !== 'approved')
                 ->requiresConfirmation()
                 ->modalHeading('Approve Leave Application')
-                ->modalDescription("Approving will deduct the corresponding leave credits from the employee's balance.")
-                ->modalSubmitActionLabel('Yes, Approve')
+                ->modalDescription('Are you sure you want to approve this leave application?')
                 ->action(function () {
-                    $this->record->update([
-                        'status' => 'approved',
-                        'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                        'date_approved_disapproved' => now(),
-                    ]);
-
-                    app(LeaveCreditService::class)->deductForApplication($this->record);
-
-                    // WHY: Notify AFTER update succeeds so the employee is not
-                    // notified about an approval that then fails to persist.
-                    $this->record->employee->notify(
-                        new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
-                    );
-
+                    $this->record->update(['status' => 'approved']);
+                    $this->record->user?->notify(new \App\Notifications\LeaveApplicationStatusUpdated($this->record));
                     Notification::make()
-                        ->title('Leave Application Approved')
-                        ->body('Leave credits have been deducted from the employee\'s balance.')
                         ->success()
+                        ->title('Leave Application Approved')
+                        ->body('The leave application has been approved and the employee has been notified.')
                         ->send();
+                    $this->redirect($this->getResource()::getUrl('index'));
                 }),
 
-            // ── DISAPPROVE ───────────────────────────────────────────────────
-            Actions\Action::make('disapprove')
-                ->label('Disapprove')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->visible(
-                    fn() => auth()->user()->role === 'admin'
-                    && $this->record->status === 'pending'
-                )
+            // ── ADMIN: Add / Edit Remarks ─────────────────────────────────────
+            Actions\Action::make('remarks')
+                ->label(fn() => blank($this->record->remarks) ? 'Add Remarks' : 'Edit Remarks')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('warning')
+                ->visible(fn() => $isAdmin)
+                ->fillForm(fn() => ['remarks' => $this->record->remarks])
                 ->form([
-                    \Filament\Forms\Components\Textarea::make('disapproval_reason')
-                        ->label('Reason for Disapproval')
+                    \Filament\Forms\Components\Textarea::make('remarks')
+                        ->label('Admin Remarks')
+                        ->rows(5)
                         ->required()
-                        ->rows(4)
-                        ->placeholder('Please provide a clear reason for disapproving this leave application...'),
+                        ->placeholder('Add notes or feedback for the employee...'),
                 ])
-                ->requiresConfirmation()
-                ->modalHeading('Disapprove Leave Application')
-                ->modalSubmitActionLabel('Yes, Disapprove')
                 ->action(function (array $data) {
-                    // Capture status BEFORE the update so credit reversal is correct.
-                    $wasApproved = $this->record->status === 'approved';
-
-                    $this->record->update([
-                        'status' => 'disapproved',
-                        'authorized_officer' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                        'disapproval_reason' => $data['disapproval_reason'],
-                        'date_approved_disapproved' => now(),
-                    ]);
-
-                    // Only reverse credits if leave was previously approved.
-                    if ($wasApproved) {
-                        app(LeaveCreditService::class)->reverseDeduction($this->record);
-                    }
-
-                    $this->record->employee->notify(
-                        new \App\Notifications\LeaveApplicationStatusUpdated($this->record)
-                    );
-
+                    $this->record->update(['remarks' => $data['remarks']]);
+                    $this->record->user?->notify(new \App\Notifications\LeaveApplicationRemarksAdded($this->record));
                     Notification::make()
-                        ->title('Leave Application Disapproved')
-                        ->body($wasApproved ? 'Leave credits have been restored.' : 'Application has been disapproved.')
-                        ->danger()
+                        ->success()
+                        ->title('Remarks Updated')
+                        ->body('Remarks saved and the employee has been notified.')
                         ->send();
+                    // Refresh so remarks are visible immediately
+                    $this->redirect(request()->header('Referer'));
                 }),
 
-            // ── PRINT ─────────────────────────────────────────────────────────
+            // ── ADMIN + EMPLOYEE: Print (approved only) ───────────────────────
             Actions\Action::make('print')
                 ->label('Print Leave Form')
                 ->icon('heroicon-o-printer')
                 ->color('success')
-                ->url(fn() => route('leave_application.print', $this->record))
+                ->visible(fn() => $this->record->status === 'approved')
+                ->url(fn() => route('leave_application.print', $this->record->id))
                 ->openUrlInNewTab(),
 
-            // ── EDIT (employee, pending only) ─────────────────────────────────
-            Actions\EditAction::make()
-                ->visible(
-                    fn() => auth()->user()->role === 'employee'
-                    && $this->record->status === 'pending'
-                ),
+            // ── Back to list ──────────────────────────────────────────────────
+            Actions\Action::make('back')
+                ->label('Back to List')
+                ->icon('heroicon-o-arrow-left')
+                ->color('gray')
+                ->url($this->getResource()::getUrl('index')),
         ];
     }
 }

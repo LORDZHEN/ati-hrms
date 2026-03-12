@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LocatorSlipResource\Pages;
 
 use App\Filament\Resources\LocatorSlipResource;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
@@ -18,20 +19,15 @@ class ListLocatorSlips extends ListRecords
     {
         $actions = [];
 
-        // Employees get the "New Locator Slip" create button.
-        // canCreate() on the Resource already gates this, but we guard
-        // here too so the button never appears for admins.
-        if (auth()->user()->role === 'employee') {
+        // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
+        if (auth()->user()->role === User::ROLE_REGULAR) {
             $actions[] = Actions\CreateAction::make()
                 ->label('New Locator Slip')
                 ->icon('heroicon-o-plus')
                 ->color('primary');
         }
 
-        // Admins get the Generate Report modal.
-        // WHY: This is Filament\Actions\Action (page-level) — safe to use
-        // in getHeaderActions() unlike Tables\Actions\Action which would throw.
-        if (auth()->user()->role === 'admin') {
+        if (auth()->user()->role === User::ROLE_ADMIN) {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
                 ->icon('heroicon-o-document-chart-bar')
@@ -70,22 +66,10 @@ class ListLocatorSlips extends ListRecords
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
                                 match ($state) {
-                                    'weekly' => [
-                                        $set('from', $now->copy()->startOfWeek()->toDateString()),
-                                        $set('to', $now->copy()->endOfWeek()->toDateString()),
-                                    ],
-                                    'monthly' => [
-                                        $set('from', $now->copy()->startOfMonth()->toDateString()),
-                                        $set('to', $now->copy()->endOfMonth()->toDateString()),
-                                    ],
-                                    'quarterly' => [
-                                        $set('from', $now->copy()->startOfQuarter()->toDateString()),
-                                        $set('to', $now->copy()->endOfQuarter()->toDateString()),
-                                    ],
-                                    'yearly' => [
-                                        $set('from', $now->copy()->startOfYear()->toDateString()),
-                                        $set('to', $now->copy()->endOfYear()->toDateString()),
-                                    ],
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
                                     default => null,
                                 };
                             }),
@@ -115,7 +99,6 @@ class ListLocatorSlips extends ListRecords
                         'from' => $data['from'],
                         'to' => $data['to'],
                     ]);
-
                     $this->redirect($url, navigate: false);
                 });
         }

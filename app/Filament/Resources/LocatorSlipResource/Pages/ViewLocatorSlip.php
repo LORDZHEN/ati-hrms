@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\LocatorSlipResource\Pages;
 
 use App\Filament\Resources\LocatorSlipResource;
-use App\Models\LocatorSlip;
+use App\Models\User;
 use App\Notifications\LocatorSlipStatusUpdated;
 use Filament\Actions;
 use Filament\Forms;
@@ -17,8 +17,6 @@ class ViewLocatorSlip extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-
-            // ── APPROVE ──────────────────────────────────────────────────────
             Actions\Action::make('approve')
                 ->label('Approve')
                 ->icon('heroicon-o-check-circle')
@@ -28,9 +26,8 @@ class ViewLocatorSlip extends ViewRecord
                 ->modalDescription('This will mark the locator slip as approved and notify the employee.')
                 ->modalSubmitActionLabel('Yes, Approve')
                 ->visible(
-                    fn() =>
-                    $this->record->status === 'pending' &&
-                    auth()->user()->role === 'admin'
+                    fn() => $this->record->status === 'pending'
+                    && auth()->user()->role === User::ROLE_ADMIN
                 )
                 ->action(function () {
                     $this->record->update([
@@ -39,8 +36,6 @@ class ViewLocatorSlip extends ViewRecord
                         'approved_at' => now(),
                     ]);
 
-                    // WHY: Notify AFTER the update so the employee is never
-                    // notified about an approval that then fails to persist.
                     $this->record->user->notify(new LocatorSlipStatusUpdated($this->record));
 
                     Notification::make()
@@ -50,15 +45,13 @@ class ViewLocatorSlip extends ViewRecord
                         ->send();
                 }),
 
-            // ── DISAPPROVE ───────────────────────────────────────────────────
             Actions\Action::make('disapprove')
                 ->label('Disapprove')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->visible(
-                    fn() =>
-                    $this->record->status === 'pending' &&
-                    auth()->user()->role === 'admin'
+                    fn() => $this->record->status === 'pending'
+                    && auth()->user()->role === User::ROLE_ADMIN
                 )
                 ->form([
                     Forms\Components\Textarea::make('admin_remarks')
@@ -86,7 +79,6 @@ class ViewLocatorSlip extends ViewRecord
                         ->send();
                 }),
 
-            // ── PRINT ─────────────────────────────────────────────────────────
             Actions\Action::make('print')
                 ->label('Print')
                 ->icon('heroicon-o-printer')
@@ -95,12 +87,11 @@ class ViewLocatorSlip extends ViewRecord
                 ->openUrlInNewTab()
                 ->visible(fn() => $this->record->status === 'approved'),
 
-            // ── EDIT ──────────────────────────────────────────────────────────
             Actions\EditAction::make()
                 ->visible(
-                    fn() =>
-                    $this->record->status === 'pending' &&
-                    (auth()->user()->role === 'admin' || auth()->id() === $this->record->user_id)
+                    fn() => $this->record->status === 'pending'
+                    && (auth()->user()->role === User::ROLE_ADMIN
+                        || auth()->id() === $this->record->user_id)
                 ),
         ];
     }

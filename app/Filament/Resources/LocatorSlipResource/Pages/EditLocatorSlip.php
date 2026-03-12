@@ -13,9 +13,6 @@ class EditLocatorSlip extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            // Only pending slips can be deleted.
-            // canDelete() on the Resource enforces this at the model level,
-            // but we gate the button here too for defence-in-depth.
             Actions\DeleteAction::make()
                 ->visible(fn() => $this->record->status === 'pending'),
         ];

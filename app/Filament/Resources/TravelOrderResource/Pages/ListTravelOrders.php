@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TravelOrderResource\Pages;
 
 use App\Filament\Resources\TravelOrderResource;
 use App\Models\TravelOrder;
+use App\Models\User;
 use Carbon\Carbon;
 use Filament\Actions;
 use Filament\Forms\Components\DatePicker;
@@ -17,13 +18,10 @@ class ListTravelOrders extends ListRecords
 {
     protected static string $resource = TravelOrderResource::class;
 
-    // ── Tabs ──────────────────────────────────────────────────────────────────
-    // WHY: Employees see "My Travel Orders" (their own) and "Tagged Travel Orders"
-    // (batch orders they appear in as a traveler). Admins see one "All" tab.
     public function getTabs(): array
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin';
+        $isAdmin = $user->role === User::ROLE_ADMIN;
 
         if ($isAdmin) {
             return [
@@ -42,9 +40,6 @@ class ListTravelOrders extends ListRecords
             'tagged' => \Filament\Resources\Pages\ListRecords\Tab::make('Tagged Travel Orders')
                 ->icon('heroicon-o-tag')
                 ->badge(
-                    // WHY: employee_ids is a JSON array of user IDs (per schema).
-                    // We find batch orders that contain this employee's ID,
-                    // excluding orders they created themselves (those appear in "My" tab).
                     TravelOrder::where('travel_type', 'batch')
                         ->whereJsonContains('employee_ids', $user->id)
                         ->where('created_by', '!=', $user->id)
@@ -59,24 +54,19 @@ class ListTravelOrders extends ListRecords
         ];
     }
 
-    // ── Header Actions ────────────────────────────────────────────────────────
-
     protected function getHeaderActions(): array
     {
         $actions = [];
 
-        // Employees get "New travel order".
-        // canCreate() on the Resource guards this, but we role-check here too.
-        if (Auth::user()->role === 'employee') {
+        // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
+        if (Auth::user()->role === User::ROLE_REGULAR) {
             $actions[] = Actions\CreateAction::make()
                 ->label('New travel order')
                 ->icon('heroicon-o-plus')
                 ->color('primary');
         }
 
-        // Admins get the Generate Report modal action.
-        // Must be Filament\Actions\Action (page-level) — NOT a table action.
-        if (Auth::user()->role === 'admin') {
+        if (Auth::user()->role === User::ROLE_ADMIN) {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
                 ->icon('heroicon-o-document-chart-bar')
@@ -115,22 +105,10 @@ class ListTravelOrders extends ListRecords
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
                                 match ($state) {
-                                    'weekly' => [
-                                        $set('from', $now->copy()->startOfWeek()->toDateString()),
-                                        $set('to', $now->copy()->endOfWeek()->toDateString()),
-                                    ],
-                                    'monthly' => [
-                                        $set('from', $now->copy()->startOfMonth()->toDateString()),
-                                        $set('to', $now->copy()->endOfMonth()->toDateString()),
-                                    ],
-                                    'quarterly' => [
-                                        $set('from', $now->copy()->startOfQuarter()->toDateString()),
-                                        $set('to', $now->copy()->endOfQuarter()->toDateString()),
-                                    ],
-                                    'yearly' => [
-                                        $set('from', $now->copy()->startOfYear()->toDateString()),
-                                        $set('to', $now->copy()->endOfYear()->toDateString()),
-                                    ],
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
                                     default => null,
                                 };
                             }),
@@ -160,7 +138,6 @@ class ListTravelOrders extends ListRecords
                         'from' => $data['from'],
                         'to' => $data['to'],
                     ]);
-
                     $this->redirect($url, navigate: false);
                 });
         }

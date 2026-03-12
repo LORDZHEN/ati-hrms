@@ -75,7 +75,7 @@ class PersonalDataSheetResource extends Resource
     {
         $user = Auth::user();
 
-        // Admins CANNOT edit — they use table actions (approve/disapprove/remarks).
+        // Admins cannot edit — they use table/view actions (approve/remarks/print).
         if ($user->role === 'admin') {
             return false;
         }
@@ -414,38 +414,6 @@ class PersonalDataSheetResource extends Resource
                         })
                         ->deselectRecordsAfterCompletion(),
 
-                    Tables\Actions\BulkAction::make('bulkDisapprove')
-                        ->label('Disapprove Selected')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->visible(fn() => $isAdmin)
-                        ->form([
-                            Textarea::make('remarks')
-                                ->label('Reason for Bulk Disapproval')
-                                ->required()
-                                ->rows(4)
-                                ->placeholder('This reason will be applied to all selected records...'),
-                        ])
-                        ->action(function (Collection $records, array $data) {
-                            $count = 0;
-                            foreach ($records as $record) {
-                                if ($record->status === 'submitted') {
-                                    $record->update([
-                                        'status' => 'disapproved',
-                                        'remarks' => $data['remarks'],
-                                    ]);
-                                    $record->user?->notify(new PDSStatusUpdated($record));
-                                    $count++;
-                                }
-                            }
-                            Notification::make()
-                                ->danger()
-                                ->title('Bulk Disapproval Complete')
-                                ->body("{$count} PDS record(s) have been disapproved.")
-                                ->send();
-                        })
-                        ->deselectRecordsAfterCompletion(),
-
                     Tables\Actions\DeleteBulkAction::make()
                         ->visible(fn() => $isAdmin)
                         ->requiresConfirmation()
@@ -763,6 +731,10 @@ class PersonalDataSheetResource extends Resource
 
     // =========================================================================
     //  CONTEXTUAL ACTIONS
+    //
+    //  ADMIN    : View PDS | Delete
+    //             (Approve / Add-Edit Remarks / Print live on the View page)
+    //  EMPLOYEE : View PDS | Edit PDS (not approved) | Print (approved only)
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
@@ -770,112 +742,54 @@ class PersonalDataSheetResource extends Resource
         return [
             Tables\Actions\ActionGroup::make([
 
+                // ── ADMIN: View PDS ───────────────────────────────────────────
                 Tables\Actions\ViewAction::make()
                     ->label('View PDS')
                     ->icon('heroicon-m-eye')
                     ->color('info')
                     ->visible(fn() => $isAdmin),
 
-                Tables\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn($record) => $isAdmin && $record->status !== 'approved')
-                    ->requiresConfirmation()
-                    ->modalHeading('Approve PDS')
-                    ->modalDescription(fn($record) => 'Are you sure you want to approve the PDS for ' . self::getFullName($record) . '?')
-                    ->action(function ($record) {
-                        $record->update(['status' => 'approved']);
-                        $record->user?->notify(new PDSStatusUpdated($record));
-                        Notification::make()
-                            ->success()
-                            ->title('PDS Approved')
-                            ->body('The Personal Data Sheet has been approved successfully.')
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('disapprove')
-                    ->label('Disapprove')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn($record) => $isAdmin && $record->status === 'submitted')
-                    ->form([
-                        Textarea::make('remarks')
-                            ->label('Reason for Disapproval')
-                            ->required()
-                            ->rows(4)
-                            ->placeholder('Please provide a clear reason for disapproval...'),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'status' => 'disapproved',
-                            'remarks' => $data['remarks'],
-                        ]);
-                        $record->user?->notify(new PDSStatusUpdated($record));
-                        $record->user?->notify(new PDSRemarksAdded($record));
-                        Notification::make()
-                            ->success()
-                            ->title('PDS Disapproved')
-                            ->body('The employee has been notified with your remarks.')
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('remarks')
-                    ->label(fn($record) => blank($record->remarks) ? 'Add Remarks' : 'Edit Remarks')
-                    ->icon('heroicon-o-chat-bubble-left-right')
-                    ->color('warning')
-                    ->visible(fn() => $isAdmin)
-                    ->fillForm(fn($record) => ['remarks' => $record->remarks])
-                    ->form([
-                        Textarea::make('remarks')
-                            ->label('Admin Remarks')
-                            ->rows(5)
-                            ->required()
-                            ->placeholder('Add notes or feedback for the employee...'),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update(['remarks' => $data['remarks']]);
-                        $record->user?->notify(new PDSRemarksAdded($record));
-                        Notification::make()
-                            ->success()
-                            ->title('Remarks Updated')
-                            ->body('Admin remarks have been saved and the employee has been notified.')
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('print')
-                    ->label('Print')
-                    ->icon('heroicon-o-printer')
-                    ->color('success')
-                    ->visible(fn($record) => $record->status === 'approved')
-                    ->url(fn($record) => route('pds.print', $record))
-                    ->openUrlInNewTab(),
-
-                Tables\Actions\EditAction::make()
-                    ->label(
-                        fn($record) => $record->status === 'approved'
-                        ? 'View PDS'
-                        : 'Edit / Resubmit'
-                    )
-                    ->icon(
-                        fn($record) => $record->status === 'approved'
-                        ? 'heroicon-m-eye'
-                        : 'heroicon-m-pencil-square'
-                    )
-                    ->color(
-                        fn($record) => $record->status === 'approved'
-                        ? 'info'
-                        : 'warning'
-                    )
-                    ->visible(
-                        fn($record) =>
-                        Auth::user()->role === User::ROLE_REGULAR &&
-                        $record->user_id === Auth::id()
-                    ),
-
+                // ── ADMIN: Delete ─────────────────────────────────────────────
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
+
+                // ── EMPLOYEE: View PDS ────────────────────────────────────────
+                Tables\Actions\ViewAction::make('employeeView')
+                    ->label('View PDS')
+                    ->icon('heroicon-m-eye')
+                    ->color('info')
+                    ->visible(
+                        fn($record) =>
+                        !$isAdmin &&
+                        $record->user_id === Auth::id()
+                    ),
+
+                // ── EMPLOYEE: Edit / Resubmit ─────────────────────────────────
+                Tables\Actions\EditAction::make()
+                    ->label('Edit PDS')
+                    ->icon('heroicon-m-pencil-square')
+                    ->color('warning')
+                    ->visible(
+                        fn($record) =>
+                        !$isAdmin &&
+                        $record->user_id === Auth::id() &&
+                        $record->status !== 'approved'
+                    ),
+
+                // ── EMPLOYEE: Print (approved only) ───────────────────────────
+                Tables\Actions\Action::make('employeePrint')
+                    ->label('Print PDS')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->visible(
+                        fn($record) =>
+                        !$isAdmin &&
+                        $record->user_id === Auth::id() &&
+                        $record->status === 'approved'
+                    )
+                    ->url(fn($record) => route('pds.print', $record))
+                    ->openUrlInNewTab(),
 
             ])
                 ->label('Actions')

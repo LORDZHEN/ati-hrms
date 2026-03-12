@@ -1,320 +1,378 @@
-{{-- PAGE 1: DECLARANT INFO, SPOUSE, CHILDREN, ASSETS --}}
+{{-- PAGE 1: ANNEX A — Compliance, Declarant/Spouse, Multiple Marriages, Children, Assets --}}
+{{-- 2025 CSC SALN Format — CSC Resolution No. 2500632, Promulgated June 25, 2025 --}}
 @php $ro = $isReadOnly ?? false; $dis = $ro ? 'disabled readonly' : ''; $disCb = $ro ? 'disabled' : ''; @endphp
+
 <div class="saln-form-page">
 
-    <div class="saln-header-date">
-        Revised as of January 2015<br>
-        Per CSC Resolution No. 1500958<br>
-        Promulgated on January 21, 2015
-    </div>
-
-    <div class="saln-form-title">SWORN STATEMENT OF ASSETS, LIABILITIES AND NET WORTH</div>
-
-    @php
-        $asOfFormatted = '';
-        try {
-            $raw = $this->data['as_of_date'] ?? null;
-            if ($raw) $asOfFormatted = \Carbon\Carbon::parse($raw)->format('Y-m-d');
-        } catch (\Exception $e) {}
-    @endphp
-    <div style="text-align:center; margin:6px 0;">
-        <span style="font-weight:bold; font-size:9pt;">As of: </span>
-        {{--
-            We intentionally do NOT use wire:model here.
-            wire:model on a native <input type="date"> causes Livewire to re-set
-            the value after each render using the raw stored string
-            (e.g. "2026-03-08T00:00:00.000000Z"), overwriting our clean value.
-            Instead we use x-model (Alpine) which reads/writes only the
-            Y-m-d portion the browser expects, and we push the clean value
-            back to Livewire via x-on:change.
-        --}}
-        <input type="date"
-               x-data
-               x-model="$el.value"
-               :value="'{{ $asOfFormatted }}'"
-               @if(!$ro)
-               x-on:change="$wire.set('data.as_of_date', $event.target.value)"
-               @endif
-               class="saln-input"
-               style="width:200px; border-bottom:1.5px solid #000; font-size:10pt; font-weight:bold;"
-               {{ $dis }} />
-    </div>
-
-    <div class="saln-required-by">(Required by R.A. 6713)</div>
-
-    {{-- FILING TYPE --}}
-    <div style="margin:8px 0; font-size:8pt;">
-        <div style="font-weight:bold; margin-bottom:5px;">
-            Note: Husband and wife who are both public officials and employees may file the required statements jointly or separately.
+    {{-- ── HEADER ── --}}
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+        <div class="saln-annex-label">ANNEX A</div>
+        <div class="saln-header-ref" style="text-align:right;">
+            2025 SALN Form<br>
+            Per CSC Resolution No. ____________<br>
+            Promulgated on ____________
         </div>
-        <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
-            <label class="saln-checkbox-label">
-                <input type="checkbox" wire:model.live="data.joint_filing" class="saln-checkbox-input" {{ $disCb }}
-                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.separate_filing', false); $wire.set('data.not_applicable', false); }" @endif />
-                Joint Filing
+    </div>
+
+    <div class="saln-form-title">SWORN STATEMENT OF ASSETS, LIABILITIES, AND NET WORTH</div>
+    <div class="saln-form-subtitle">(As required by R.A. No. 6713)</div>
+
+    {{-- ── COMPLIANCE TYPE ── --}}
+    <div class="saln-compliance-block">
+        <div class="comp-title">COMPLIANCE FOR:</div>
+        <div class="saln-compliance-options">
+            <label>
+                <input type="checkbox" wire:model.live="data.compliance_assumption"
+                    class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.compliance_annual',false); $wire.set('data.compliance_exit',false); }" @endif />
+                Assumption of office as of
+                <input type="date" wire:model="data.as_of_date" class="saln-input"
+                    style="width:130px; border-bottom:1px solid #000; display:inline-block;"
+                    @if($ro || !($this->data['compliance_assumption'] ?? false)) disabled @endif />
             </label>
-            <label class="saln-checkbox-label">
-                <input type="checkbox" wire:model.live="data.separate_filing" class="saln-checkbox-input" {{ $disCb }}
-                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.joint_filing', false); $wire.set('data.not_applicable', false); }" @endif />
-                Separate Filing
+            <label>
+                <input type="checkbox" wire:model.live="data.compliance_annual"
+                    class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.compliance_assumption',false); $wire.set('data.compliance_exit',false); }" @endif />
+                Annual filing as of December 31,
+                <input type="text" wire:model="data.as_of_date" class="saln-input"
+                    style="width:55px; border-bottom:1px solid #000; display:inline-block;"
+                    placeholder="YYYY" {{ $ro ? 'disabled' : '' }} />
             </label>
-            <label class="saln-checkbox-label">
-                <input type="checkbox" wire:model.live="data.not_applicable" class="saln-checkbox-input" {{ $disCb }}
-                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.joint_filing', false); $wire.set('data.separate_filing', false); }" @endif />
-                Not Applicable
+            <label>
+                <input type="checkbox" wire:model.live="data.compliance_exit"
+                    class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.compliance_assumption',false); $wire.set('data.compliance_annual',false); }" @endif />
+                Exit as of
+                <input type="date" wire:model="data.as_of_date" class="saln-input"
+                    style="width:130px; border-bottom:1px solid #000; display:inline-block;"
+                    @if($ro || !($this->data['compliance_exit'] ?? false)) disabled @endif />
             </label>
         </div>
     </div>
 
-    {{-- DECLARANT INFORMATION --}}
-    <table style="width:100%; border-collapse:collapse; margin:10px 0;">
+    {{-- ── DECLARANT ── --}}
+    <table style="width:100%; border-collapse:collapse; margin:5px 0;">
         <tr>
-            <td style="font-weight:bold; font-size:8pt; white-space:nowrap; padding:3px 5px; width:90px;">DECLARANT:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:22%;">
+            <td class="saln-pinfo-label" style="width:80px;">DECLARANT:</td>
+            <td class="saln-pinfo-val" style="width:20%;">
                 <input type="text" wire:model="data.declarant_family_name" class="saln-input" placeholder="Family Name" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(Family Name)</div>
+                <div class="saln-name-hint">(Family Name)</div>
             </td>
-            <td style="width:5px;"></td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:22%;">
+            <td style="width:4px;"></td>
+            <td class="saln-pinfo-val" style="width:20%;">
                 <input type="text" wire:model="data.declarant_first_name" class="saln-input" placeholder="First Name" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(First Name)</div>
+                <div class="saln-name-hint">(First Name)</div>
             </td>
-            <td style="width:5px;"></td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:8%;">
+            <td style="width:4px;"></td>
+            <td class="saln-pinfo-val" style="width:6%;">
                 <input type="text" wire:model="data.declarant_middle_initial" class="saln-input" placeholder="M.I." maxlength="5" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(M.I.)</div>
+                <div class="saln-name-hint">(M.I.)</div>
             </td>
-            <td style="font-weight:bold; font-size:8pt; white-space:nowrap; padding:3px 8px;">POSITION:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px;">
+            <td style="width:8px;"></td>
+            <td class="saln-pinfo-label" style="width:80px;">POSITION:</td>
+            <td class="saln-pinfo-val">
                 <input type="text" wire:model="data.declarant_position" class="saln-input" {{ $dis }} />
             </td>
         </tr>
-        <tr style="height:8px;"></tr>
+        <tr style="height:6px;"></tr>
         <tr>
-            <td style="font-weight:bold; font-size:8pt; padding:3px 5px;">ADDRESS:</td>
-            <td colspan="5" style="border-bottom:1px solid #000; padding:1px 2px;">
-                <textarea wire:model="data.declarant_office_address" class="saln-input" rows="2" {{ $dis }}></textarea>
-            </td>
-            <td style="font-weight:bold; font-size:8pt; padding:3px 8px;">AGENCY/OFFICE:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px;">
+            <td class="saln-pinfo-label">AGENCY/ OFFICE:</td>
+            <td class="saln-pinfo-val" colspan="5">
                 <input type="text" wire:model="data.declarant_agency_office" class="saln-input" {{ $dis }} />
+            </td>
+            <td></td>
+            <td class="saln-pinfo-label">OFFICE ADDRESS:</td>
+            <td class="saln-pinfo-val">
+                <textarea wire:model="data.declarant_office_address" class="saln-input" rows="2" {{ $dis }}></textarea>
             </td>
         </tr>
     </table>
 
-    {{-- SPOUSE INFORMATION --}}
-    <table style="width:100%; border-collapse:collapse; margin:8px 0;">
+    <div style="border-top:1px solid #000; margin:4px 0;"></div>
+
+    {{-- ── SPOUSE ── --}}
+    <table style="width:100%; border-collapse:collapse; margin:5px 0;">
         <tr>
-            <td style="font-weight:bold; font-size:8pt; white-space:nowrap; padding:3px 5px; width:90px;">SPOUSE:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:22%;">
+            <td class="saln-pinfo-label" style="width:80px;">SPOUSE:</td>
+            <td class="saln-pinfo-val" style="width:20%;">
                 <input type="text" wire:model="data.spouse_family_name" class="saln-input" placeholder="Family Name" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(Family Name)</div>
+                <div class="saln-name-hint">(Family Name)</div>
             </td>
-            <td style="width:5px;"></td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:22%;">
+            <td style="width:4px;"></td>
+            <td class="saln-pinfo-val" style="width:20%;">
                 <input type="text" wire:model="data.spouse_first_name" class="saln-input" placeholder="First Name" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(First Name)</div>
+                <div class="saln-name-hint">(First Name)</div>
             </td>
-            <td style="width:5px;"></td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px; width:8%;">
+            <td style="width:4px;"></td>
+            <td class="saln-pinfo-val" style="width:6%;">
                 <input type="text" wire:model="data.spouse_middle_initial" class="saln-input" placeholder="M.I." maxlength="5" {{ $dis }} />
-                <div style="text-align:center; font-size:6.5pt; font-style:italic;">(M.I.)</div>
+                <div class="saln-name-hint">(M.I.)</div>
             </td>
-            <td style="font-weight:bold; font-size:8pt; white-space:nowrap; padding:3px 8px;">POSITION:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px;">
-                <input type="text" wire:model="data.spouse_position" class="saln-input" {{ $dis }} />
+            <td style="width:8px;"></td>
+            <td class="saln-pinfo-label" style="width:80px;">POSITION:</td>
+            <td class="saln-pinfo-val">
+                <input type="text" wire:model="data.spouse_position" class="saln-input" placeholder="(if public official/employee)" {{ $dis }} />
             </td>
         </tr>
-        <tr style="height:8px;"></tr>
+        <tr style="height:6px;"></tr>
         <tr>
-            <td></td><td colspan="5"></td>
-            <td style="font-weight:bold; font-size:8pt; padding:3px 8px;">AGENCY/OFFICE:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px;">
+            <td></td><td colspan="5"></td><td></td>
+            <td class="saln-pinfo-label">AGENCY/ OFFICE:</td>
+            <td class="saln-pinfo-val">
                 <input type="text" wire:model="data.spouse_agency_office" class="saln-input" {{ $dis }} />
             </td>
         </tr>
         <tr>
-            <td></td><td colspan="5"></td>
-            <td style="font-weight:bold; font-size:8pt; padding:3px 8px;">OFFICE ADDRESS:</td>
-            <td style="border-bottom:1px solid #000; padding:1px 2px;">
+            <td></td><td colspan="5"></td><td></td>
+            <td class="saln-pinfo-label">OFFICE ADDRESS:</td>
+            <td class="saln-pinfo-val">
                 <textarea wire:model="data.spouse_office_address" class="saln-input" rows="2" {{ $dis }}></textarea>
             </td>
         </tr>
     </table>
 
-    {{-- CHILDREN --}}
+    <div style="border-top:2px solid #000; margin:5px 0;"></div>
+
+    {{-- ── FILING TYPE ── --}}
+    <div style="margin:4px 0; font-size:8pt;">
+        <div style="font-weight:bold; font-size:7.5pt; margin-bottom:4px; text-transform:uppercase;">
+            Spouses, who are both public officials or employees, may file the SALN jointly or separately.<br>
+            The declarant shall check the appropriate box
+        </div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+            <label class="saln-checkbox-label">
+                <input type="checkbox" wire:model.live="data.joint_filing" class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.separate_filing',false); $wire.set('data.not_applicable',false); }" @endif />
+                Joint Filing
+            </label>
+            <label class="saln-checkbox-label">
+                <input type="checkbox" wire:model.live="data.separate_filing" class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.joint_filing',false); $wire.set('data.not_applicable',false); }" @endif />
+                Separate Filing
+            </label>
+            <label class="saln-checkbox-label">
+                <input type="checkbox" wire:model.live="data.not_applicable" class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked){ $wire.set('data.joint_filing',false); $wire.set('data.separate_filing',false); }" @endif />
+                Not Applicable
+            </label>
+        </div>
+    </div>
+
+    {{-- ── MULTIPLE MARRIAGES ── --}}
+    <div class="saln-mm-block">
+        <div class="mm-title">IF WITH MULTIPLE MARRIAGES, INDICATE NAME(S) OF SPOUSES, OTHERWISE CHECK THE "NOT APPLICABLE" BOX.</div>
+        <div style="display:flex; gap:10px; align-items:center; margin:3px 0;">
+            <textarea wire:model="data.multiple_marriages_names" class="saln-input"
+                style="border:1px solid #ccc; border-radius:2px; padding:3px 5px; flex:1;"
+                rows="2" placeholder="Name(s) of spouse(s) from multiple marriages…"
+                @if($ro || ($this->data['multiple_marriages_not_applicable'] ?? false)) disabled @endif></textarea>
+            <label class="saln-checkbox-label" style="white-space:nowrap; flex-shrink:0;">
+                <input type="checkbox" wire:model.live="data.multiple_marriages_not_applicable"
+                    class="saln-checkbox-input" {{ $disCb }}
+                    @if(!$ro) x-on:change="if($event.target.checked) $wire.set('data.multiple_marriages_names','')" @endif />
+                Not Applicable
+            </label>
+        </div>
+    </div>
+
+    <div style="border-top:2px solid #000; margin:5px 0;"></div>
+
+    {{-- ── CHILDREN ── --}}
     <div class="saln-section-header">UNMARRIED CHILDREN BELOW EIGHTEEN (18) YEARS OF AGE LIVING IN DECLARANT'S HOUSEHOLD</div>
 
     <table class="saln-table">
         <thead>
             <tr>
-                <th style="width:55%;">NAME</th>
-                <th style="width:30%;">DATE OF BIRTH</th>
-                <th style="width:15%;">AGE</th>
+                <th style="width:75%;">NAME OF CHILD</th>
+                <th style="width:25%;">AGE</th>
             </tr>
         </thead>
+        <tbody>
+            @foreach($this->data['children'] ?? [] as $index => $child)
+            <tr class="dr">
+                <td class="la" style="padding:2px 4px;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <input type="text" wire:model="data.children.{{ $index }}.name"
+                            placeholder="Full Name of Child" class="saln-input" {{ $dis }} />
+                        @if(!$ro)
+                        <button type="button" wire:click="removeChild({{ $index }})"
+                            class="saln-btn-remove" style="padding:1px 6px; font-size:9pt; flex-shrink:0;">×</button>
+                        @endif
+                    </div>
+                </td>
+                <td style="padding:2px 4px;">
+                    <input type="number" wire:model="data.children.{{ $index }}.age"
+                        placeholder="Age" class="saln-input" min="0" max="17" {{ $dis }} />
+                </td>
+            </tr>
+            @endforeach
+            @for($i = count($this->data['children'] ?? []); $i < 3; $i++)
+            <tr class="dr"><td></td><td></td></tr>
+            @endfor
+        </tbody>
     </table>
-
-    <div style="margin:5px 0;">
-        @foreach($this->data['children'] ?? [] as $index => $child)
-        <div style="display:flex; gap:8px; margin-bottom:5px; align-items:center;">
-            <input type="text" wire:model="data.children.{{ $index }}.name" placeholder="Full Name" class="saln-input" style="flex:2; border-bottom:1px solid #ccc;" {{ $dis }} />
-            @php
-                $dobRaw = $child['date_of_birth'] ?? null;
-                $dobFormatted = '';
-                $dobDisplay   = '';
-                try {
-                    if ($dobRaw) {
-                        $dobCarbon    = \Carbon\Carbon::parse($dobRaw);
-                        $dobFormatted = $dobCarbon->format('Y-m-d');   // for the input value
-                        $dobDisplay   = $dobCarbon->format('M d, Y'); // human-readable label
-                    }
-                } catch (\Exception $e) {}
-            @endphp
-            {{--
-                date_of_birth: parse the raw ISO string (may be "2015-06-16T00:00:00.000000Z")
-                into a clean Y-m-d for the browser.  Use Alpine x-on:change (not wire:model)
-                so Livewire never overwrites the value with the raw ISO string mid-render.
-                Also shows a human-readable date label next to the input.
-            --}}
-            <div style="flex:1.5; display:flex; flex-direction:column; gap:2px;">
-                <input type="date"
-                       x-data
-                       :value="'{{ $dobFormatted }}'"
-                       class="saln-input"
-                       style="border-bottom:1px solid #ccc; width:100%;"
-                       {{ $dis }}
-                       @if(!$ro)
-                       x-on:change="
-                           const v = $event.target.value;
-                           $wire.set('data.children.{{ $index }}.date_of_birth', v);
-                           const dob = new Date(v);
-                           if (!isNaN(dob)) {
-                               const today = new Date();
-                               let age = today.getFullYear() - dob.getFullYear();
-                               const m = today.getMonth() - dob.getMonth();
-                               if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-                               $wire.set('data.children.{{ $index }}.age', age);
-                           }
-                       "
-                       @endif
-                />
-                @if($dobDisplay)
-                <span style="font-size:6.5pt; color:#555; padding-left:2px;">{{ $dobDisplay }}</span>
-                @endif
-            </div>
-            <input type="number"
-                   x-data
-                   :value="'{{ $child['age'] ?? '' }}'"
-                   @if(!$ro)
-                   x-on:change="$wire.set('data.children.{{ $index }}.age', $event.target.value)"
-                   @endif
-                   placeholder="Age"
-                   class="saln-input"
-                   style="flex:0.5; border-bottom:1px solid #ccc;"
-                   {{ $dis }} />
-            @if(!$ro)
-            <button type="button" wire:click="removeChild({{ $index }})" class="saln-btn-remove">×</button>
-            @endif
-        </div>
-        @endforeach
-        @if(!$ro)
+    @if(!$ro)
+    <div style="margin:3px 0 5px;">
         <button type="button" wire:click="addChild" class="saln-btn-add">+ Add Child</button>
-        @endif
     </div>
+    @endif
+    <div style="font-size:7pt; font-style:italic; text-align:center; margin-bottom:2px;">(Continue on separate sheet if necessary)</div>
 
-    <div style="font-size:7pt; font-style:italic; text-align:center; margin:4px 0;">(Continue on separate sheet if necessary)</div>
+    <div style="border-top:2px solid #000; margin:5px 0;"></div>
 
-    {{-- ASSETS --}}
-    <div class="saln-section-header">ASSETS, LIABILITIES AND NETWORTH</div>
-    <div class="saln-section-subtitle">(Including those of the spouse and unmarried children below eighteen (18) years of age living in declarant's household)</div>
+    {{-- ── ASSETS ── --}}
+    <div class="saln-section-header">ASSETS, LIABILITIES AND NETWORTH<sup>ii</sup></div>
+    <div class="saln-section-subtitle">(Including those of the spouse and unmarried children below eighteen (18) years of age living in declarant's household)<sup>ii</sup></div>
 
-    <div style="font-weight:bold; font-size:9pt; margin:8px 0 4px 0;">1. ASSETS</div>
+    <div style="font-weight:bold; font-size:9pt; margin:5px 0 4px;">1. &nbsp;ASSETS</div>
 
     {{-- REAL PROPERTIES --}}
-    <div class="saln-subsection-title">a. Real Properties <span class="saln-subsection-desc">(Land, Buildings, and other Real Estate)</span></div>
+    <div class="saln-subsection-title">a. &nbsp;Real Properties <span class="saln-subsection-desc">(e.g. lot, house and lot, condominium, and improvements)</span></div>
 
     <table class="saln-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width:14%;">DESCRIPTION</th>
-                <th rowspan="2" style="width:9%;">KIND</th>
-                <th rowspan="2" style="width:16%;">EXACT LOCATION</th>
-                <th rowspan="2" style="width:11%;">ASSESSED VALUE</th>
+                <th rowspan="2" style="width:14%;">DESCRIPTION<br><span style="font-weight:normal; font-size:6pt; font-style:italic;">(e.g. lot, house and lot, condominium, and improvements)</span></th>
+                <th rowspan="2" style="width:10%;">KIND<br><span style="font-weight:normal; font-size:6pt; font-style:italic;">(e.g. residential, commercial, industrial, agricultural and mixed use)</span></th>
+                <th rowspan="2" style="width:15%;">EXACT LOCATION</th>
+                <th rowspan="2" style="width:12%;">ASSESSED VALUE<br><span style="font-weight:normal; font-size:6pt; font-style:italic;">(As found in the Tax Declaration of Real Property, if available)</span></th>
                 <th rowspan="2" style="width:13%;">CURRENT FAIR MARKET VALUE</th>
                 <th colspan="3">ACQUISITION</th>
             </tr>
             <tr>
-                <th style="width:9%;">YEAR</th>
+                <th style="width:8%;">YEAR</th>
                 <th style="width:14%;">MODE</th>
                 <th style="width:14%;">COST</th>
             </tr>
         </thead>
-    </table>
-
-    <div style="margin:5px 0;">
-        @foreach($this->data['realProperties'] ?? [] as $index => $prop)
-        <div class="saln-repeater-item">
-            <div class="saln-grid-4-real">
-                <div><label class="saln-field-label">Description</label><textarea wire:model="data.realProperties.{{ $index }}.description" class="saln-input" rows="2" {{ $dis }}></textarea></div>
-                <div><label class="saln-field-label">Kind</label><input type="text" wire:model="data.realProperties.{{ $index }}.kind" class="saln-input" {{ $dis }} /></div>
-                <div><label class="saln-field-label">Exact Location</label><input type="text" wire:model="data.realProperties.{{ $index }}.exact_location" class="saln-input" {{ $dis }} /></div>
-                <div><label class="saln-field-label">Assessed Value (₱)</label><input type="number" wire:model="data.realProperties.{{ $index }}.assessed_value" class="saln-input" step="0.01" {{ $dis }} /></div>
-            </div>
-            <div class="saln-grid-4">
-                <div><label class="saln-field-label">Fair Market Value (₱)</label><input type="number" wire:model="data.realProperties.{{ $index }}.current_fair_market_value" class="saln-input" step="0.01" {{ $dis }} /></div>
-                <div><label class="saln-field-label">Year Acquired</label><input type="number" wire:model="data.realProperties.{{ $index }}.acquisition_year" class="saln-input" placeholder="YYYY" min="1900" max="{{ date('Y') }}" {{ $dis }} /></div>
-                <div><label class="saln-field-label">Mode of Acquisition</label><input type="text" wire:model="data.realProperties.{{ $index }}.mode_of_acquisition" class="saln-input" {{ $dis }} /></div>
-                <div><label class="saln-field-label">Acquisition Cost (₱)</label><input type="number" wire:model="data.realProperties.{{ $index }}.acquisition_cost" class="saln-input" step="0.01" {{ $dis }} /></div>
-            </div>
+        <tbody>
+            @foreach($this->data['realProperties'] ?? [] as $index => $prop)
+            <tr>
+                <td class="la" style="padding:3px 4px;">
+                    <textarea wire:model="data.realProperties.{{ $index }}.description" class="saln-input" rows="2" {{ $dis }}></textarea>
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="text" wire:model="data.realProperties.{{ $index }}.kind" class="saln-input" {{ $dis }} />
+                </td>
+                <td class="la" style="padding:3px 4px;">
+                    <input type="text" wire:model="data.realProperties.{{ $index }}.exact_location" class="saln-input" {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number" wire:model="data.realProperties.{{ $index }}.assessed_value" class="saln-input" step="0.01" {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number"
+                        wire:model="data.realProperties.{{ $index }}.current_fair_market_value"
+                        data-saln="real-fmv"
+                        class="saln-input" step="0.01"
+                        x-on:input="$store.saln.recalculate()"
+                        x-on:change="$store.saln.recalculate()"
+                        {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number" wire:model="data.realProperties.{{ $index }}.acquisition_year" class="saln-input" placeholder="YYYY" min="1900" max="{{ date('Y') }}" {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="text" wire:model="data.realProperties.{{ $index }}.mode_of_acquisition" class="saln-input" {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number" wire:model="data.realProperties.{{ $index }}.acquisition_cost" class="saln-input" step="0.01" {{ $dis }} />
+                </td>
+            </tr>
             @if(!$ro)
-            <button type="button" wire:click="removeRealProperty({{ $index }})" class="saln-btn-remove">Remove</button>
+            <tr style="background:#fff8f8;">
+                <td colspan="8" style="padding:2px 5px; text-align:right; border-top:none;">
+                    <button type="button" wire:click="removeRealProperty({{ $index }})" class="saln-btn-remove">Remove</button>
+                </td>
+            </tr>
             @endif
-        </div>
-        @endforeach
-        @if(!$ro)
+            @endforeach
+            @for($i = count($this->data['realProperties'] ?? []); $i < 2; $i++)
+            <tr class="dr"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            @endfor
+            <tr class="sub-r">
+                <td colspan="4" style="text-align:right; padding:3px 6px;">Subtotal:</td>
+                <td x-data style="padding:3px 5px;"
+                    x-init="$store.saln.recalculate()"
+                    x-text="(() => { let t=0; document.querySelectorAll('[data-saln=real-fmv]').forEach(e=>t+=parseFloat(e.value)||0); return '₱'+t.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); })()">₱0.00</td>
+                <td colspan="3"></td>
+            </tr>
+        </tbody>
+    </table>
+    @if(!$ro)
+    <div style="margin:3px 0 6px;">
         <button type="button" wire:click="addRealProperty" class="saln-btn-add">+ Add Real Property</button>
-        @endif
     </div>
+    @endif
 
     {{-- PERSONAL PROPERTIES --}}
-    <div class="saln-subsection-title" style="margin-top:10px;">b. Personal Properties <span class="saln-subsection-desc">(Vehicles, Jewelry, Cash, Bank Deposits, etc.)</span></div>
+    <div class="saln-subsection-title" style="margin-top:8px;">b. &nbsp;Personal Properties <span class="saln-subsection-desc">(Vehicles, Jewelry, Cash, Bank Deposits, etc.)</span></div>
 
     <table class="saln-table">
         <thead>
             <tr>
                 <th style="width:60%;">DESCRIPTION</th>
-                <th style="width:20%;">YEAR ACQUIRED</th>
-                <th style="width:20%;">ACQUISITION COST/AMOUNT</th>
+                <th style="width:20%;">ACQUISITION YEAR</th>
+                <th style="width:20%;">ACQUISITION COST/ AMOUNT</th>
             </tr>
         </thead>
+        <tbody>
+            @foreach($this->data['personalProperties'] ?? [] as $index => $prop)
+            <tr>
+                <td class="la" style="padding:3px 4px;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <textarea wire:model="data.personalProperties.{{ $index }}.description" class="saln-input" rows="1" {{ $dis }}></textarea>
+                        @if(!$ro)
+                        <button type="button" wire:click="removePersonalProperty({{ $index }})" class="saln-btn-remove" style="flex-shrink:0;">×</button>
+                        @endif
+                    </div>
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number" wire:model="data.personalProperties.{{ $index }}.year_acquired" class="saln-input" placeholder="YYYY" min="1900" max="{{ date('Y') }}" {{ $dis }} />
+                </td>
+                <td style="padding:3px 4px;">
+                    <input type="number"
+                        wire:model="data.personalProperties.{{ $index }}.acquisition_cost"
+                        data-saln="personal-cost"
+                        class="saln-input" step="0.01"
+                        x-on:input="$store.saln.recalculate()"
+                        x-on:change="$store.saln.recalculate()"
+                        {{ $dis }} />
+                </td>
+            </tr>
+            @endforeach
+            @for($i = count($this->data['personalProperties'] ?? []); $i < 3; $i++)
+            <tr class="dr"><td></td><td></td><td></td></tr>
+            @endfor
+            <tr class="sub-r">
+                <td colspan="2" style="text-align:right; padding:3px 6px;">Subtotal:</td>
+                <td x-data style="padding:3px 5px;"
+                    x-init="$store.saln.recalculate()"
+                    x-text="(() => { let t=0; document.querySelectorAll('[data-saln=personal-cost]').forEach(e=>t+=parseFloat(e.value)||0); return '₱'+t.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}); })()">₱0.00</td>
+            </tr>
+        </tbody>
     </table>
-
-    <div style="margin:5px 0;">
-        @foreach($this->data['personalProperties'] ?? [] as $index => $prop)
-        <div class="saln-repeater-item">
-            <div class="saln-grid-2-1">
-                <div><label class="saln-field-label">Description</label><textarea wire:model="data.personalProperties.{{ $index }}.description" class="saln-input" rows="2" {{ $dis }}></textarea></div>
-                <div><label class="saln-field-label">Year Acquired</label><input type="number" wire:model="data.personalProperties.{{ $index }}.year_acquired" class="saln-input" placeholder="YYYY" min="1900" max="{{ date('Y') }}" {{ $dis }} /></div>
-            </div>
-            <div>
-                <label class="saln-field-label">Acquisition Cost/Amount (₱)</label>
-                <input type="number" wire:model="data.personalProperties.{{ $index }}.acquisition_cost" class="saln-input" step="0.01" style="max-width:200px;" {{ $dis }} />
-            </div>
-            @if(!$ro)
-            <button type="button" wire:click="removePersonalProperty({{ $index }})" class="saln-btn-remove" style="margin-top:6px;">Remove</button>
-            @endif
-        </div>
-        @endforeach
-        @if(!$ro)
+    @if(!$ro)
+    <div style="margin:3px 0 5px;">
         <button type="button" wire:click="addPersonalProperty" class="saln-btn-add">+ Add Personal Property</button>
-        @endif
+    </div>
+    @endif
+
+    {{-- TOTAL ASSETS --}}
+    <div x-data class="saln-live-total-bar">
+        <span style="font-size:9pt; font-weight:bold; letter-spacing:0.3px;">TOTAL ASSETS:</span>
+        <span class="total-value"
+            x-text="$store.saln.fmt($store.saln.totalAssets)"
+            x-init="$store.saln.recalculate()">₱0.00</span>
     </div>
 
-    <div style="text-align:right; font-weight:bold; font-size:9pt; border-top:2px solid #000; border-bottom:1px solid #000; padding:4px 5px; margin-top:8px;">
-        TOTAL ASSETS (a+b): &nbsp;
-        <span style="min-width:150px; display:inline-block; border-bottom:1px solid #000; text-align:right; font-size:8pt; color:#555;">(Calculated on save)</span>
+    <div style="display:flex; justify-content:flex-end; margin-top:8px; padding-top:4px; border-top:1px solid #000; font-size:7.5pt; font-style:italic;">
+        Signature/Initial of Declarant: ___________________________
     </div>
 
-    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">SALN Form (Revised 2015), Page 1 of 2</div>
+    <div style="text-align:center; font-size:7.5pt; margin-top:10px; padding-top:4px; border-top:1px solid #ccc;">
+        Page 1 of ___
+    </div>
+
 </div>

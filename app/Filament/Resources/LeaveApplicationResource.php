@@ -13,6 +13,12 @@ use Filament\Tables\Table;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Support\Enums\FontWeight;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
+use App\Notifications\LeaveApplicationStatusUpdated;
+use App\Notifications\LeaveApplicationRemarksAdded;
+use App\Notifications\LeaveApplicationSubmitted;
 use Carbon\Carbon;
 
 class LeaveApplicationResource extends Resource
@@ -43,17 +49,43 @@ class LeaveApplicationResource extends Resource
         return auth()->user()->role === User::ROLE_REGULAR;
     }
 
+    public static function canEdit($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return false;
+        return $record->employee_id === $user->id && $record->status === 'pending';
+    }
+
+    public static function canView($record): bool
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin')
+            return true;
+        return $record->employee_id === $user->id;
+    }
+
     // =========================================================================
-    //  FORM  (unchanged — preserving your full form logic)
+    //  FORM — restores original custom blade view + hidden binding fields
     // =========================================================================
 
     public static function form(Form $form): Form
     {
         return $form->schema([
 
+            // Admin remarks — shown to employee when present (read-only)
+            Forms\Components\Textarea::make('remarks')
+                ->label('Remarks from Admin')
+                ->rows(4)
+                ->columnSpanFull()
+                ->disabled()
+                ->hidden(fn($record) => blank($record?->remarks)),
+
+            // ── Your existing custom CSC Form 6 blade view ────────────────────
             Forms\Components\View::make('filament.resources.leave-application-resource.leave-form')
                 ->columnSpanFull(),
 
+            // ── Hidden binding fields (original form logic preserved) ─────────
             Forms\Components\Section::make('Form Fields (For Validation Only)')
                 ->description('⚠️ Fill out the official CSC Form 6 above. These fields are for data binding.')
                 ->schema([
@@ -263,8 +295,7 @@ class LeaveApplicationResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // Compute once — prevents repeated auth lookups in every closure.
-        $isAdmin = auth()->user()->role === 'admin';
+        $isAdmin = auth()->user()->role === User::ROLE_ADMIN;
 
         return $table
             ->columns(self::getTableColumns($isAdmin))
@@ -279,6 +310,31 @@ class LeaveApplicationResource extends Resource
             ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('bulkApprove')
+                        ->label('Approve Selected')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->visible(fn() => $isAdmin)
+                        ->requiresConfirmation()
+                        ->modalHeading('Approve Multiple Leave Applications')
+                        ->modalDescription('Are you sure you want to approve all selected leave applications?')
+                        ->action(function (Collection $records) {
+                            $count = 0;
+                            foreach ($records as $record) {
+                                if ($record->status !== 'approved') {
+                                    $record->update(['status' => 'approved']);
+                                    $record->employee?->notify(new LeaveApplicationStatusUpdated($record));
+                                    $count++;
+                                }
+                            }
+                            Notification::make()
+                                ->success()
+                                ->title('Bulk Approval Complete')
+                                ->body("{$count} leave application(s) approved.")
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
                     Tables\Actions\DeleteBulkAction::make()
                         ->visible(fn() => $isAdmin),
                 ]),
@@ -305,7 +361,7 @@ class LeaveApplicationResource extends Resource
     }
 
     // =========================================================================
-    //  TABLE COLUMNS
+    //  TABLE COLUMNS — use the actual model field names
     // =========================================================================
 
     protected static function getTableColumns(bool $isAdmin): array
@@ -413,6 +469,17 @@ class LeaveApplicationResource extends Resource
                 ->limit(22)
                 ->tooltip(fn($record) => $record->authorized_officer),
 
+            Tables\Columns\TextColumn::make('remarks')
+                ->label('Remarks')
+                ->limit(40)
+                ->wrap()
+                ->placeholder('—')
+                ->color(fn($record) => filled($record?->remarks) ? 'warning' : 'gray')
+                ->icon(fn($record) => filled($record?->remarks) ? 'heroicon-o-chat-bubble-left-ellipsis' : null)
+                ->iconColor('warning')
+                ->tooltip(fn($record) => $record?->remarks)
+                ->toggleable(isToggledHiddenByDefault: true),
+
             Tables\Columns\IconColumn::make('commutation')
                 ->label('Commutation')
                 ->boolean()
@@ -507,13 +574,11 @@ class LeaveApplicationResource extends Resource
             ->indicateUsing(function (array $data): array {
                 $indicators = [];
                 if ($data['status'] ?? null) {
-                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))
-                        ->removeField('status');
+                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))->removeField('status');
                 }
                 if ($data['type_of_leave'] ?? null) {
                     $label = str_replace('_', ' ', ucwords($data['type_of_leave'], '_'));
-                    $indicators[] = Tables\Filters\Indicator::make('Type: ' . $label)
-                        ->removeField('type_of_leave');
+                    $indicators[] = Tables\Filters\Indicator::make('Type: ' . $label)->removeField('type_of_leave');
                 }
                 return $indicators;
             });
@@ -531,7 +596,6 @@ class LeaveApplicationResource extends Resource
                         'last_month' => '📅  Last Month',
                         'this_week' => '📅  This Week',
                         'this_year' => '📅  This Year',
-                        'custom' => '✏️   Custom range…',
                     ])
                     ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
@@ -572,28 +636,20 @@ class LeaveApplicationResource extends Resource
                     'this_week' => 'This Week',
                     'this_year' => 'This Year',
                 ];
-
                 $indicators = [];
-
+                $preset = $data['preset'] ?? null;
                 if (($data['from'] ?? null) || ($data['to'] ?? null)) {
-                    $preset = $data['preset'] ?? null;
                     if ($preset && isset($presetLabels[$preset])) {
-                        $indicators[] = Tables\Filters\Indicator::make('Period: ' . $presetLabels[$preset])
-                            ->removeField('preset');
+                        $indicators[] = Tables\Filters\Indicator::make('Period: ' . $presetLabels[$preset])->removeField('preset');
                     } else {
                         if ($data['from'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make(
-                                'From: ' . Carbon::parse($data['from'])->format('M d, Y')
-                            )->removeField('from');
+                            $indicators[] = Tables\Filters\Indicator::make('From: ' . Carbon::parse($data['from'])->format('M d, Y'))->removeField('from');
                         }
                         if ($data['to'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make(
-                                'To: ' . Carbon::parse($data['to'])->format('M d, Y')
-                            )->removeField('to');
+                            $indicators[] = Tables\Filters\Indicator::make('To: ' . Carbon::parse($data['to'])->format('M d, Y'))->removeField('to');
                         }
                     }
                 }
-
                 return $indicators;
             });
 
@@ -601,47 +657,65 @@ class LeaveApplicationResource extends Resource
     }
 
     // =========================================================================
-    //  ACTIONS
+    //  CONTEXTUAL ACTIONS
+    //
+    //  ADMIN    : View | Delete
+    //             (Approve / Add-Edit Remarks / Print live on the View page)
+    //  EMPLOYEE : View | Edit (pending only) | Print (approved only)
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
     {
         return [
             Tables\Actions\ActionGroup::make([
-                Tables\Actions\ViewAction::make()
-                    ->icon('heroicon-o-eye')
-                    ->color('info'),
 
+                // ── ADMIN: View ───────────────────────────────────────────────
+                Tables\Actions\ViewAction::make()
+                    ->label('View Application')
+                    ->icon('heroicon-m-eye')
+                    ->color('info')
+                    ->visible(fn() => $isAdmin),
+
+                // ── ADMIN: Delete ─────────────────────────────────────────────
+                Tables\Actions\DeleteAction::make()
+                    ->icon('heroicon-o-trash')
+                    ->visible(fn() => $isAdmin),
+
+                // ── EMPLOYEE: View ────────────────────────────────────────────
+                Tables\Actions\ViewAction::make('employeeView')
+                    ->label('View Application')
+                    ->icon('heroicon-m-eye')
+                    ->color('info')
+                    ->visible(
+                        fn($record) => !$isAdmin && $record->employee_id === Auth::id()
+                    ),
+
+                // ── EMPLOYEE: Edit (pending only) ─────────────────────────────
                 Tables\Actions\EditAction::make()
-                    ->icon('heroicon-o-pencil-square')
+                    ->label('Edit Application')
+                    ->icon('heroicon-m-pencil-square')
                     ->color('warning')
                     ->visible(
                         fn($record) =>
-                        !$isAdmin && $record->status === 'pending'
+                        !$isAdmin &&
+                        $record->employee_id === Auth::id() &&
+                        $record->status === 'pending'
                     ),
 
-                Tables\Actions\Action::make('print')
-                    ->label('Print Form')
+                // ── EMPLOYEE: Print (approved only) ───────────────────────────
+                Tables\Actions\Action::make('employeePrint')
+                    ->label('Print Leave Form')
                     ->icon('heroicon-o-printer')
                     ->color('success')
-                    ->url(fn($record) => route('leave_application.print', $record))
-                    ->openUrlInNewTab()
-                    ->visible(fn($record) => $record->status === 'approved'),
-
-                Tables\Actions\Action::make('view_document')
-                    ->label('View Medical Cert')
-                    ->icon('heroicon-o-document-magnifying-glass')
-                    ->color('primary')
-                    ->url(fn($record) => asset('storage/' . $record->supporting_document))
-                    ->openUrlInNewTab()
-                    ->visible(fn($record) => !empty($record->supporting_document)),
-
-                Tables\Actions\DeleteAction::make()
-                    ->icon('heroicon-o-trash')
                     ->visible(
                         fn($record) =>
-                        !$isAdmin && $record->status === 'pending'
-                    ),
+                        !$isAdmin &&
+                        $record->employee_id === Auth::id() &&
+                        $record->status === 'approved'
+                    )
+                    ->url(fn($record) => route('leave_application.print', $record))
+                    ->openUrlInNewTab(),
+
             ])
                 ->label('Actions')
                 ->icon('heroicon-o-ellipsis-vertical')
@@ -661,9 +735,8 @@ class LeaveApplicationResource extends Resource
         $added = 0;
         while ($added < $days) {
             $result->addDay();
-            if ($result->isWeekday()) {
+            if ($result->isWeekday())
                 $added++;
-            }
         }
         return $result;
     }
@@ -672,16 +745,13 @@ class LeaveApplicationResource extends Resource
     {
         if (!$from || !$to)
             return;
-
         try {
             $fromDate = Carbon::parse($from);
             $toDate = Carbon::parse($to);
-
             if ($toDate->lessThan($fromDate)) {
                 $set('number_of_working_days', 0);
                 return;
             }
-
             $set('number_of_working_days', $fromDate->diffInWeekdays($toDate) + 1);
         } catch (\Exception) {
             $set('number_of_working_days', 0);
@@ -694,7 +764,7 @@ class LeaveApplicationResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin')
+        if (auth()->user()?->role !== User::ROLE_ADMIN)
             return null;
         $count = LeaveApplication::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
@@ -702,14 +772,14 @@ class LeaveApplicationResource extends Resource
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return auth()->user()?->role === 'admin' &&
+        return auth()->user()?->role === User::ROLE_ADMIN &&
             LeaveApplication::where('status', 'pending')->count() > 0
             ? 'warning'
             : null;
     }
 
     // =========================================================================
-    //  RELATIONS / PAGES
+    //  PAGES
     // =========================================================================
 
     public static function getRelations(): array

@@ -14,6 +14,13 @@ class EditPersonalDataSheet extends EditRecord
 {
     protected static string $resource = PersonalDataSheetResource::class;
 
+    // =========================================================================
+    //  HEADER ACTIONS
+    //
+    //  Only show Print when the PDS is approved. No disapprove button here.
+    //  Delete is admin-only or employee's own non-approved PDS.
+    // =========================================================================
+
     protected function getHeaderActions(): array
     {
         return [
@@ -38,11 +45,8 @@ class EditPersonalDataSheet extends EditRecord
     //  RESUBMISSION — step 1: mutate data before save
     //
     //  When an employee saves, force status back to 'submitted' so the admin
-    //  sees the updated PDS in their queue again regardless of prior state
-    //  (submitted or disapproved).
-    //
-    //  Admin saves are left untouched so they can write remarks without
-    //  accidentally resetting status.
+    //  sees the updated PDS in their queue again.
+    //  Admin saves are left untouched.
     // =========================================================================
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -56,14 +60,6 @@ class EditPersonalDataSheet extends EditRecord
 
     // =========================================================================
     //  RESUBMISSION — step 2: after save side-effects
-    //
-    //  created_at is updated to now() so the "Last Submitted" column in the
-    //  table always reflects the most recent submission, not the original
-    //  creation date. updateQuietly() skips model events so we don't trigger
-    //  any unintended listeners.
-    //
-    //  All admins receive a PDSSubmittedNotification in their bell — same
-    //  notification used for initial submissions.
     // =========================================================================
 
     protected function afterSave(): void
@@ -76,10 +72,6 @@ class EditPersonalDataSheet extends EditRecord
 
         // Stamp the resubmission time on created_at.
         $this->record->updateQuietly(['created_at' => now()]);
-
-        // NOTE: TransactionHistory is logged automatically by
-        // PersonalDataSheetObserver::updated() when status changes to
-        // 'submitted' — no manual log needed here.
 
         // Notify all admins of the updated submission.
         $admins = User::where('role', 'admin')->get();
@@ -96,10 +88,6 @@ class EditPersonalDataSheet extends EditRecord
 
     // =========================================================================
     //  FORM ACTIONS
-    //
-    //  Employees see "Resubmit PDS" to make it clear the action triggers a
-    //  new review cycle. Admins see "Save Changes".
-    //  Cancel uses color('gray') — Filament v3 has no 'secondary' color.
     // =========================================================================
 
     protected function getFormActions(): array
@@ -127,7 +115,7 @@ class EditPersonalDataSheet extends EditRecord
     }
 
     // =========================================================================
-    //  LIVEWIRE METHODS FOR REPEATER FIELDS  (unchanged from source)
+    //  LIVEWIRE METHODS FOR REPEATER FIELDS
     // =========================================================================
 
     public function addChild()
@@ -147,14 +135,7 @@ class EditPersonalDataSheet extends EditRecord
     public function addEducation()
     {
         $education = $this->data['education'] ?? [];
-        $education[] = [
-            'level' => '',
-            'school_name' => '',
-            'degree' => '',
-            'from_year' => '',
-            'to_year' => '',
-            'honors' => ''
-        ];
+        $education[] = ['level' => '', 'school_name' => '', 'degree' => '', 'from_year' => '', 'to_year' => '', 'honors' => ''];
         $this->data['education'] = $education;
     }
 
@@ -168,14 +149,7 @@ class EditPersonalDataSheet extends EditRecord
     public function addCivilService()
     {
         $civilService = $this->data['civil_service_eligibility'] ?? [];
-        $civilService[] = [
-            'career_service' => '',
-            'rating' => '',
-            'exam_date' => '',
-            'place' => '',
-            'license_no' => '',
-            'validity' => ''
-        ];
+        $civilService[] = ['career_service' => '', 'rating' => '', 'exam_date' => '', 'place' => '', 'license_no' => '', 'validity' => ''];
         $this->data['civil_service_eligibility'] = $civilService;
     }
 
@@ -189,16 +163,7 @@ class EditPersonalDataSheet extends EditRecord
     public function addWorkExperience()
     {
         $work = $this->data['work_experience'] ?? [];
-        $work[] = [
-            'from' => '',
-            'to' => '',
-            'position' => '',
-            'agency' => '',
-            'salary' => '',
-            'salary_grade' => '',
-            'status' => '',
-            'is_government' => false
-        ];
+        $work[] = ['from' => '', 'to' => '', 'position' => '', 'agency' => '', 'salary' => '', 'salary_grade' => '', 'status' => '', 'is_government' => false];
         $this->data['work_experience'] = $work;
     }
 
@@ -212,13 +177,7 @@ class EditPersonalDataSheet extends EditRecord
     public function addVoluntaryWork()
     {
         $voluntary = $this->data['voluntary_work'] ?? [];
-        $voluntary[] = [
-            'organization_name' => '',
-            'from_date' => '',
-            'to_date' => '',
-            'hours' => '',
-            'position' => ''
-        ];
+        $voluntary[] = ['organization_name' => '', 'from_date' => '', 'to_date' => '', 'hours' => '', 'position' => ''];
         $this->data['voluntary_work'] = $voluntary;
     }
 
@@ -232,14 +191,7 @@ class EditPersonalDataSheet extends EditRecord
     public function addLearningDevelopment()
     {
         $ld = $this->data['learning_development'] ?? [];
-        $ld[] = [
-            'training_title' => '',
-            'from_date' => '',
-            'to_date' => '',
-            'hours' => '',
-            'type' => '',
-            'conducted_by' => ''
-        ];
+        $ld[] = ['training_title' => '', 'from_date' => '', 'to_date' => '', 'hours' => '', 'type' => '', 'conducted_by' => ''];
         $this->data['learning_development'] = $ld;
     }
 

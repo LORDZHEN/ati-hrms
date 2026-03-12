@@ -10,62 +10,118 @@ class Saln extends Model
 {
     protected $fillable = [
         'user_id',
+
+        // ── 2025 Compliance type ──────────────────────────────────────────────
+        'compliance_assumption',
+        'compliance_annual',
+        'compliance_exit',
         'as_of_date',
+
+        // ── Filing type ───────────────────────────────────────────────────────
         'joint_filing',
         'separate_filing',
         'not_applicable',
+
+        // ── Declarant ─────────────────────────────────────────────────────────
         'declarant_family_name',
         'declarant_first_name',
         'declarant_middle_initial',
         'declarant_position',
         'declarant_agency_office',
         'declarant_office_address',
+
+        // ── Spouse ────────────────────────────────────────────────────────────
         'spouse_family_name',
         'spouse_first_name',
         'spouse_middle_initial',
         'spouse_position',
         'spouse_agency_office',
         'spouse_office_address',
+
+        // ── Multiple marriages (2025 new) ─────────────────────────────────────
+        'multiple_marriages_names',
+        'multiple_marriages_not_applicable',
+
+        // ── Flags ─────────────────────────────────────────────────────────────
+        'no_business_interests',
+        'no_relatives_in_government',
+
+        // ── Totals (Annex A — main form) ──────────────────────────────────────
         'total_assets',
         'total_liabilities',
         'net_worth',
-        'has_business_interests',
-        'no_business_interests',
-        'has_relatives_in_government',
-        'no_relatives_in_government',
+
+        // ── Annex B totals (declarant exclusive properties) ───────────────────
+        'annex_b_total_assets',
+        'annex_b_total_liabilities',
+        'annex_b_net_worth',
+
+        // ── Annex C totals (spouse & children exclusive properties) ───────────
+        'annex_c_total_assets',
+        'annex_c_total_liabilities',
+        'annex_c_net_worth',
+
+        // ── Dates / oath ──────────────────────────────────────────────────────
         'date_signed',
-        'declarant_signature',
-        'spouse_signature',
         'declarant_id_presented',
-        'spouse_id_presented',
         'subscribed_sworn_date',
         'person_administering_oath',
+
+        // ── Admin ─────────────────────────────────────────────────────────────
         'remarks',
-        'status',           // ← NEW
-        'resubmitted_at',   // ← NEW
+        'status',
+        'resubmitted_at',
     ];
 
     protected $casts = [
-        'as_of_date'                  => 'date',
-        'date_signed'                 => 'date',
-        'subscribed_sworn_date'       => 'date',
-        'resubmitted_at'              => 'datetime', // ← NEW
-        'joint_filing'                => 'boolean',
-        'separate_filing'             => 'boolean',
-        'not_applicable'              => 'boolean',
-        'has_business_interests'      => 'boolean',
-        'no_business_interests'       => 'boolean',
-        'has_relatives_in_government' => 'boolean',
-        'no_relatives_in_government'  => 'boolean',
-        'total_assets'                => 'decimal:2',
-        'total_liabilities'           => 'decimal:2',
-        'net_worth'                   => 'decimal:2',
+        'as_of_date'            => 'date',
+        'date_signed'           => 'date',
+        'subscribed_sworn_date' => 'date',
+        'resubmitted_at'        => 'datetime',
+
+        // Compliance type booleans
+        'compliance_assumption' => 'boolean',
+        'compliance_annual'     => 'boolean',
+        'compliance_exit'       => 'boolean',
+
+        // Filing type booleans
+        'joint_filing'          => 'boolean',
+        'separate_filing'       => 'boolean',
+        'not_applicable'        => 'boolean',
+
+        // Multiple marriages
+        'multiple_marriages_not_applicable' => 'boolean',
+
+        // Business / relatives
+        'no_business_interests'      => 'boolean',
+        'no_relatives_in_government' => 'boolean',
+
+        // Annex A totals
+        'total_assets'      => 'decimal:2',
+        'total_liabilities' => 'decimal:2',
+        'net_worth'         => 'decimal:2',
+
+        // Annex B totals
+        'annex_b_total_assets'      => 'decimal:2',
+        'annex_b_total_liabilities' => 'decimal:2',
+        'annex_b_net_worth'         => 'decimal:2',
+
+        // Annex C totals
+        'annex_c_total_assets'      => 'decimal:2',
+        'annex_c_total_liabilities' => 'decimal:2',
+        'annex_c_net_worth'         => 'decimal:2',
     ];
+
+    // =========================================================================
+    //  RELATIONSHIPS
+    // =========================================================================
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
+
+    // ── Annex A ───────────────────────────────────────────────────────────────
 
     public function children(): HasMany
     {
@@ -97,190 +153,99 @@ class Saln extends Model
         return $this->hasMany(SalnRelativeGovernment::class);
     }
 
+    // ── Annex B (declarant's exclusive properties) ────────────────────────────
+
+    public function annexBRealProperties(): HasMany
+    {
+        return $this->hasMany(SalnAnnexBRealProperty::class);
+    }
+
+    public function annexBPersonalProperties(): HasMany
+    {
+        return $this->hasMany(SalnAnnexBPersonalProperty::class);
+    }
+
+    public function annexBLiabilities(): HasMany
+    {
+        return $this->hasMany(SalnAnnexBLiability::class);
+    }
+
+    public function annexBBusinessInterests(): HasMany
+    {
+        return $this->hasMany(SalnAnnexBBusinessInterest::class);
+    }
+
+    // ── Annex C (spouse & children's exclusive properties) ────────────────────
+
+    public function annexCRealProperties(): HasMany
+    {
+        return $this->hasMany(SalnAnnexCRealProperty::class);
+    }
+
+    public function annexCPersonalProperties(): HasMany
+    {
+        return $this->hasMany(SalnAnnexCPersonalProperty::class);
+    }
+
+    public function annexCLiabilities(): HasMany
+    {
+        return $this->hasMany(SalnAnnexCLiability::class);
+    }
+
+    public function annexCBusinessInterests(): HasMany
+    {
+        return $this->hasMany(SalnAnnexCBusinessInterest::class);
+    }
+
+    // =========================================================================
+    //  TOTALS CALCULATION
+    // =========================================================================
+
     /**
-     * Calculate and update totals
-     * Call this method after all relationships have been saved
+     * Recalculate and persist ALL totals (Annex A, B, and C).
+     * Call this after all relationships have been saved.
      */
     public function calculateTotals(): void
     {
-        // Refresh relationships to get latest data
-        $this->load(['realProperties', 'personalProperties', 'liabilities']);
+        $this->load([
+            'realProperties', 'personalProperties', 'liabilities',
+            'annexBRealProperties', 'annexBPersonalProperties', 'annexBLiabilities',
+            'annexCRealProperties', 'annexCPersonalProperties', 'annexCLiabilities',
+        ]);
 
-        // Calculate total assets
-        $realPropertiesTotal = $this->realProperties->sum('current_fair_market_value');
-        $personalPropertiesTotal = $this->personalProperties->sum('acquisition_cost');
-        $this->total_assets = $realPropertiesTotal + $personalPropertiesTotal;
-
-        // Calculate total liabilities
+        // ── Annex A ───────────────────────────────────────────────────────────
+        $this->total_assets = $this->realProperties->sum('current_fair_market_value')
+            + $this->personalProperties->sum('acquisition_cost');
         $this->total_liabilities = $this->liabilities->sum('outstanding_balance');
-
-        // Calculate net worth
         $this->net_worth = $this->total_assets - $this->total_liabilities;
 
-        // Save without triggering events to avoid infinite loop
+        // ── Annex B ───────────────────────────────────────────────────────────
+        $this->annex_b_total_assets = $this->annexBRealProperties->sum('current_fair_market_value')
+            + $this->annexBPersonalProperties->sum('acquisition_cost');
+        $this->annex_b_total_liabilities = $this->annexBLiabilities->sum('outstanding_balance');
+        $this->annex_b_net_worth = $this->annex_b_total_assets - $this->annex_b_total_liabilities;
+
+        // ── Annex C ───────────────────────────────────────────────────────────
+        $this->annex_c_total_assets = $this->annexCRealProperties->sum('current_fair_market_value')
+            + $this->annexCPersonalProperties->sum('acquisition_cost');
+        $this->annex_c_total_liabilities = $this->annexCLiabilities->sum('outstanding_balance');
+        $this->annex_c_net_worth = $this->annex_c_total_assets - $this->annex_c_total_liabilities;
+
         $this->saveQuietly();
     }
-}
 
-class SalnChild extends Model
-{
-    protected $fillable = [
-        'saln_id',
-        'name',
-        'date_of_birth',
-        'age',
-    ];
+    // =========================================================================
+    //  ACCESSORS
+    // =========================================================================
 
-    protected $casts = [
-        'date_of_birth' => 'date',
-    ];
-
-    public function saln(): BelongsTo
+    /**
+     * Human-readable compliance type label.
+     */
+    public function getComplianceTypeLabelAttribute(): string
     {
-        return $this->belongsTo(Saln::class);
-    }
-}
-
-class SalnRealProperty extends Model
-{
-    protected $fillable = [
-        'saln_id',
-        'description',
-        'kind',
-        'exact_location',
-        'assessed_value',
-        'current_fair_market_value',
-        'acquisition_year',
-        'mode_of_acquisition',
-        'acquisition_cost',
-    ];
-
-    protected $casts = [
-        'assessed_value' => 'decimal:2',
-        'current_fair_market_value' => 'decimal:2',
-        'acquisition_cost' => 'decimal:2',
-    ];
-
-    public function saln(): BelongsTo
-    {
-        return $this->belongsTo(Saln::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Recalculate totals when real property is created, updated, or deleted
-        static::saved(function ($realProperty) {
-            $realProperty->saln->calculateTotals();
-        });
-
-        static::deleted(function ($realProperty) {
-            $realProperty->saln->calculateTotals();
-        });
-    }
-}
-
-class SalnPersonalProperty extends Model
-{
-    protected $fillable = [
-        'saln_id',
-        'description',
-        'year_acquired',
-        'acquisition_cost',
-    ];
-
-    protected $casts = [
-        'acquisition_cost' => 'decimal:2',
-    ];
-
-    public function saln(): BelongsTo
-    {
-        return $this->belongsTo(Saln::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Recalculate totals when personal property is created, updated, or deleted
-        static::saved(function ($personalProperty) {
-            $personalProperty->saln->calculateTotals();
-        });
-
-        static::deleted(function ($personalProperty) {
-            $personalProperty->saln->calculateTotals();
-        });
-    }
-}
-
-class SalnLiability extends Model
-{
-    protected $fillable = [
-        'saln_id',
-        'nature',
-        'name_of_creditors',
-        'outstanding_balance',
-    ];
-
-    protected $casts = [
-        'outstanding_balance' => 'decimal:2',
-    ];
-
-    public function saln(): BelongsTo
-    {
-        return $this->belongsTo(Saln::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Recalculate totals when liability is created, updated, or deleted
-        static::saved(function ($liability) {
-            $liability->saln->calculateTotals();
-        });
-
-        static::deleted(function ($liability) {
-            $liability->saln->calculateTotals();
-        });
-    }
-}
-
-class SalnBusinessInterest extends Model
-{
-    protected $fillable = [
-        'saln_id',
-        'name_of_entity',
-        'business_address',
-        'nature_of_business_interest',
-        'date_of_acquisition',
-    ];
-
-    protected $casts = [
-        'date_of_acquisition' => 'date',
-    ];
-
-    public function saln(): BelongsTo
-    {
-        return $this->belongsTo(Saln::class);
-    }
-}
-
-class SalnRelativeGovernment extends Model
-{
-    protected $table = 'saln_relatives_government';
-
-    protected $fillable = [
-        'saln_id',
-        'name_of_relative',
-        'relationship',
-        'position',
-        'name_of_agency_office_address',
-    ];
-
-    public function saln(): BelongsTo
-    {
-        return $this->belongsTo(Saln::class);
+        if ($this->compliance_assumption) return 'Assumption of Office';
+        if ($this->compliance_annual)     return 'Annual Filing';
+        if ($this->compliance_exit)       return 'Exit';
+        return '—';
     }
 }

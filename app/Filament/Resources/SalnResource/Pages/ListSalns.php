@@ -23,7 +23,6 @@ class ListSalns extends ListRecords
                 ->icon('heroicon-o-plus'),
         ];
 
-        // Admin-only: generate PDF report
         if (auth()->check() && auth()->user()->role === 'admin') {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
@@ -35,25 +34,39 @@ class ListSalns extends ListRecords
                 ->modalSubmitActionLabel('Generate PDF')
                 ->form([
                     Grid::make(2)->schema([
-                        Select::make('remarks_filter')
-                            ->label('Remarks Status')
+                        Select::make('compliance_type_filter')
+                            ->label('Filing Type')
                             ->options([
-                                'all'          => 'All',
-                                'with_remarks' => 'With Remarks',
-                                'no_remarks'   => 'Without Remarks',
+                                'all' => 'All Types',
+                                'assumption' => 'Assumption of Office',
+                                'annual' => 'Annual Filing',
+                                'exit' => 'Exit',
                             ])
                             ->default('all')
                             ->required()
                             ->native(false),
 
+                        Select::make('remarks_filter')
+                            ->label('Remarks Status')
+                            ->options([
+                                'all' => 'All',
+                                'with_remarks' => 'With Remarks',
+                                'no_remarks' => 'Without Remarks',
+                            ])
+                            ->default('all')
+                            ->required()
+                            ->native(false),
+                    ]),
+
+                    Grid::make(2)->schema([
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly'    => 'This Week',
-                                'monthly'   => 'This Month',
+                                'weekly' => 'This Week',
+                                'monthly' => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly'    => 'This Year',
-                                'custom'    => 'Custom Date Range',
+                                'yearly' => 'This Year',
+                                'custom' => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -61,41 +74,45 @@ class ListSalns extends ListRecords
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
-
                                 match ($state) {
-                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()),    $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()),   $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
                                     'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()),    $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default     => null,
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default => null,
                                 };
                             }),
+
+                        Select::make('status_filter')
+                            ->label('Status')
+                            ->options([
+                                'all' => 'All Statuses',
+                                'submitted' => 'Submitted',
+                                'approved' => 'Approved',
+                                'disapproved' => 'Disapproved',
+                            ])
+                            ->default('all')
+                            ->native(false),
                     ]),
 
                     Grid::make(2)->schema([
                         DatePicker::make('from')
-                            ->label('From Date')
-                            ->required()
-                            ->native(false)
+                            ->label('From Date')->required()->native(false)
                             ->default(Carbon::now()->startOfMonth()->toDateString()),
-
                         DatePicker::make('to')
-                            ->label('To Date')
-                            ->required()
-                            ->native(false)
-                            ->after('from')
+                            ->label('To Date')->required()->native(false)->after('from')
                             ->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
                 ])
                 ->action(function (array $data) {
                     $url = route('saln.report', [
+                        'compliance_type_filter' => $data['compliance_type_filter'] ?? 'all',
                         'remarks_filter' => $data['remarks_filter'] ?? 'all',
-                        'period'         => $data['period'],
-                        'from'           => $data['from'],
-                        'to'             => $data['to'],
+                        'status_filter' => $data['status_filter'] ?? 'all',
+                        'period' => $data['period'],
+                        'from' => $data['from'],
+                        'to' => $data['to'],
                     ]);
-
-                    // Full navigation so browser receives the PDF stream
                     $this->redirect($url, navigate: false);
                 });
         }

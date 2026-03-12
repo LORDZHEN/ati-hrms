@@ -1,7 +1,4 @@
 <?php
-// ============================================================
-// FILE: App\Filament\Resources\LeaveApplicationResource\Pages\CreateLeaveApplication.php
-// ============================================================
 
 namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
@@ -16,8 +13,6 @@ class CreateLeaveApplication extends CreateRecord
 {
     protected static string $resource = LeaveApplicationResource::class;
 
-    // Show leave credit balances above the create form so the employee
-    // can see how many days are left before filing.
     protected function getHeaderWidgets(): array
     {
         return [
@@ -44,8 +39,7 @@ class CreateLeaveApplication extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Notify all admins after the record is confirmed persisted.
-        $admins = User::where('role', 'admin')->get();
+        $admins = User::where('role', User::ROLE_ADMIN)->get();
 
         foreach ($admins as $admin) {
             $admin->notify(new LeaveApplicationSubmitted($this->record));

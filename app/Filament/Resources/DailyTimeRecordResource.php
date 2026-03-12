@@ -722,18 +722,20 @@ class DailyTimeRecordResource extends Resource
         $filePath = self::resolveFilePath($record->file_path);
         $fullPath = Storage::disk('public')->path($filePath);
 
-        // WHY throw_unless: idiomatic Laravel helper — equivalent to
-        // if (! condition) throw new Exception, but reads more expressively.
         throw_unless(
             file_exists($fullPath),
             \RuntimeException::class,
             'CSV source file not found on disk.'
         );
 
-        $calculated = app(\App\Services\DtrCalculator::class)->calculateFromCsv($fullPath);
+        /** @var \App\Services\DtrCalculator $calculator */
+        $calculator = app(\App\Services\DtrCalculator::class);
+        $calculated = $calculator->calculateFromCsv($fullPath);
+        $summary = $calculator->calculateSummary($calculated);
 
         return \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.dtr_pdf', [
             'records' => $calculated,
+            'summary' => $summary,
             'employee' => $record->employee,
         ])->setOptions([
                     'isRemoteEnabled' => true,

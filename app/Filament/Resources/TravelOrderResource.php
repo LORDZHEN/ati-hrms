@@ -715,16 +715,6 @@ class TravelOrderResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->color('info'),
 
-                Tables\Actions\EditAction::make()
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('warning')
-                    ->label(fn(TravelOrder $record) => $record->status === 'rejected' ? 'Revise & Resubmit' : 'Edit')
-                    ->visible(
-                        fn(TravelOrder $record) =>
-                        ($isAdmin && $record->status === 'pending') ||
-                        (!$isAdmin && $record->created_by === Auth::id() && $record->status === 'rejected')
-                    ),
-
                 Tables\Actions\Action::make('print')
                     ->label('Print')
                     ->icon('heroicon-o-printer')

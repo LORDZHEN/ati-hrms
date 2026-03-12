@@ -2,27 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Personal Data Sheet — CS Form No. 212</title>
+<title>Personal Data Sheet — CS Form No. 212 (Revised 2025)</title>
 <style>
-/* =====================================================
-   CS FORM 212 (Revised 2017) — Official CSC PDS
-   Paper: 8.5" × 13" Legal
-   ===================================================== */
 * { box-sizing:border-box; margin:0; padding:0; }
 
 body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 7.5pt;
+    font-size: 7pt;
     color: #000;
     background: #fff;
 }
 
 @page {
     size: 8.5in 13in portrait;
-    margin: 8mm 8mm 8mm 8mm;
+    margin: 5mm 6mm 5mm 6mm;
 }
 
-/* ── Page block ── */
 .page {
     width: 100%;
     page-break-after: always;
@@ -30,7 +25,6 @@ body {
 }
 .page:last-child { page-break-after: auto; }
 
-/* ── All tables ── */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -40,73 +34,64 @@ td, th {
     border: 1px solid #000;
     vertical-align: middle;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 7.5pt;
-    padding: 1px 3px;
+    font-size: 7pt;
+    padding: 1px 2px;
     line-height: 1.2;
     overflow: hidden;
 }
 
-/* ── No-border ── */
 .nb { border: none !important; }
 
-/* ── Title ── */
 .title {
     font-family: 'Arial Black', Arial, sans-serif;
-    font-size: 18pt;
+    font-size: 15pt;
     font-weight: 900;
     text-align: center;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
 }
-.cs-label { font-size: 7.5pt; font-style: italic; }
+.cs-label { font-size: 7pt; font-style: italic; }
 
-/* ── Section header bar ── */
 .sec {
     background: #969696;
-    color: #000000;
+    color: #000;
     font-weight: bold;
-    font-size: 8.5pt;
-    padding: 3px 6px;
+    font-size: 7.5pt;
+    padding: 2px 5px;
     border: 1px solid #000;
-    margin-top: 4px;
+    margin-top: 3px;
     display: block;
 }
 
-/* ── Cell types ── */
-.lc  { background: #C0C0C0; font-size: 7.5pt; }
-.dc  { background: #fff;    font-size: 8pt; }
-.hc  { background: #C0C0C0; font-weight: bold; font-size: 7.5pt; text-align: center; }
-.num { background: #C0C0C0; font-size: 7.5pt; text-align: right; padding-right: 3px; white-space: nowrap; width: 20px; }
+.lc  { background: #C0C0C0; font-size: 7pt; }
+.dc  { background: #fff;    font-size: 7pt; }
+.hc  { background: #C0C0C0; font-weight: bold; font-size: 7pt; text-align: center; }
+.num { background: #C0C0C0; font-size: 7pt; text-align: right; padding-right: 2px; white-space: nowrap; width: 16px; }
 
-/* ── Sub-label inside cell ── */
-.sub { font-size: 6.5pt; display: block; }
+.sub { font-size: 5.5pt; display: block; }
 
-/* ── Checkbox ── */
 .chkbox {
     display: inline-block;
-    width: 9px; height: 9px;
+    width: 8px; height: 8px;
     border: 1px solid #000;
     text-align: center;
-    line-height: 8px;
-    font-size: 9pt;
+    line-height: 7px;
+    font-size: 8pt;
     font-weight: bold;
     vertical-align: middle;
-    margin-right: 2px;
+    margin-right: 1px;
     background: #fff;
 }
-.ci { display: inline-block; margin-right: 6px; font-size: 8pt; white-space: nowrap; vertical-align: middle; }
+.ci { display: inline-block; margin-right: 4px; font-size: 7pt; white-space: nowrap; vertical-align: middle; }
 
-/* ── Note / footer ── */
-.note   { font-size: 7.5pt; font-style: italic; text-align: center; padding: 2px 0; }
-.footer { font-size: 8pt; font-style: italic; text-align: center; margin-top: 5px; }
+.note   { font-size: 7pt; font-style: italic; text-align: center; padding: 1px 0; }
+.footer { font-size: 7pt; font-style: italic; text-align: center; margin-top: 2px; }
 
-/* ── Warning text ── */
-.warn { font-size: 7pt; line-height: 1.4; text-align: justify; margin: 1px 0; }
+.warn { font-size: 6.5pt; line-height: 1.3; text-align: justify; margin: 1px 0; }
 
-/* ── Sig box ── */
 .sigbox {
     border: 1px solid #000;
     text-align: center;
-    font-size: 8pt;
+    font-size: 7pt;
     vertical-align: middle;
 }
 </style>

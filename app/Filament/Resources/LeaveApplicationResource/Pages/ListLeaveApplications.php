@@ -4,6 +4,7 @@ namespace App\Filament\Resources\LeaveApplicationResource\Pages;
 
 use App\Filament\Resources\LeaveApplicationResource;
 use App\Filament\Widgets\LeaveCreditWidget;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Forms\Components\Select;
@@ -15,8 +16,6 @@ class ListLeaveApplications extends ListRecords
 {
     protected static string $resource = LeaveApplicationResource::class;
 
-    // ── Widget: show leave credit balances to employees above the table ───────
-    // canView() inside LeaveCreditWidget already restricts this to employees.
     protected function getHeaderWidgets(): array
     {
         return [
@@ -28,21 +27,15 @@ class ListLeaveApplications extends ListRecords
     {
         $actions = [];
 
-        // Employees get a "New leave application" button.
-        // canCreate() on the Resource already gates this to employees only,
-        // but we guard here too for defence-in-depth.
-        if (auth()->user()->role === 'employee') {
+        // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
+        if (auth()->user()->role === User::ROLE_REGULAR) {
             $actions[] = Actions\CreateAction::make()
                 ->label('New leave application')
                 ->icon('heroicon-o-plus')
                 ->color('primary');
         }
 
-        // Admins get the Generate Report modal.
-        // WHY: This is a page-level Actions\Action (not a table action) so it
-        // can legitimately live in getHeaderActions(). The redirect inside
-        // ->action() navigates to the report route without a full page reload.
-        if (auth()->user()->role === 'admin') {
+        if (auth()->user()->role === User::ROLE_ADMIN) {
             $actions[] = Actions\Action::make('generateReport')
                 ->label('Generate Report')
                 ->icon('heroicon-o-document-chart-bar')
@@ -81,22 +74,10 @@ class ListLeaveApplications extends ListRecords
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
                                 match ($state) {
-                                    'weekly' => [
-                                        $set('from', $now->copy()->startOfWeek()->toDateString()),
-                                        $set('to', $now->copy()->endOfWeek()->toDateString()),
-                                    ],
-                                    'monthly' => [
-                                        $set('from', $now->copy()->startOfMonth()->toDateString()),
-                                        $set('to', $now->copy()->endOfMonth()->toDateString()),
-                                    ],
-                                    'quarterly' => [
-                                        $set('from', $now->copy()->startOfQuarter()->toDateString()),
-                                        $set('to', $now->copy()->endOfQuarter()->toDateString()),
-                                    ],
-                                    'yearly' => [
-                                        $set('from', $now->copy()->startOfYear()->toDateString()),
-                                        $set('to', $now->copy()->endOfYear()->toDateString()),
-                                    ],
+                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
+                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
                                     default => null,
                                 };
                             }),
@@ -126,7 +107,6 @@ class ListLeaveApplications extends ListRecords
                         'from' => $data['from'],
                         'to' => $data['to'],
                     ]);
-
                     $this->redirect($url, navigate: false);
                 });
         }

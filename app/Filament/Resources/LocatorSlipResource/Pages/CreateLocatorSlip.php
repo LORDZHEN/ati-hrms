@@ -31,7 +31,6 @@ class CreateLocatorSlip extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Notify all admins after the record is confirmed persisted.
         $admins = User::where('role', 'admin')->get();
 
         foreach ($admins as $admin) {

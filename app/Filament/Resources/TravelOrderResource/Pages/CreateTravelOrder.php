@@ -15,14 +15,11 @@ class CreateTravelOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Auto-generate travel order number: MM-YYYY-NNN (padded sequence).
-        // Uses the user-selected date field, not created_at, matching the
-        // format visible in the screenshots: 03-2026-001, 03-2026-002, etc.
         $date = \Carbon\Carbon::parse($data['date'] ?? now());
         $month = $date->format('m');
         $year = $date->format('Y');
 
-        $count = \App\Models\TravelOrder::where('travel_order_no', 'like', "{$month}-{$year}-%")
+        $count = TravelOrder::where('travel_order_no', 'like', "{$month}-{$year}-%")
             ->count() + 1;
 
         $data['travel_order_no'] = $month . '-' . $year . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
@@ -33,7 +30,6 @@ class CreateTravelOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Notify all admins once the record is confirmed persisted.
         $admins = User::where('role', 'admin')->get();
 
         foreach ($admins as $admin) {

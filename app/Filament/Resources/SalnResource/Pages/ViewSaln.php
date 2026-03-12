@@ -44,29 +44,6 @@ class ViewSaln extends ViewRecord
                     $this->refreshFormData(['status', 'remarks']);
                 }),
 
-            // ── Disapprove ───────────────────────────────────────────────
-            Actions\Action::make('disapprove')
-                ->label('Disapprove')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->visible(function () use ($isAdmin) {
-                    $this->record->refresh();
-                    return $isAdmin && in_array($this->record->status, ['submitted', 'approved']);
-                })
-                ->form([
-                    \Filament\Forms\Components\Textarea::make('remarks')
-                        ->label('Reason for Disapproval')->required()->rows(3)
-                        ->placeholder('Explain why this SALN is being disapproved...'),
-                ])
-                ->action(function (array $data) {
-                    $this->record->update(['status' => 'disapproved', 'remarks' => $data['remarks']]);
-                    $this->record->user?->notify(new SalnRemarksAdded($this->record));
-                    \Filament\Notifications\Notification::make()
-                        ->title('SALN Disapproved')->danger()->send();
-                    $this->record->refresh();
-                    $this->refreshFormData(['status', 'remarks']);
-                }),
-
             // ── Remarks ──────────────────────────────────────────────────
             Actions\Action::make('remarks')
                 ->label(fn() => blank($this->record->remarks) ? 'Add Remarks' : 'Edit Remarks')
@@ -90,7 +67,8 @@ class ViewSaln extends ViewRecord
             // ── Print ────────────────────────────────────────────────────
             Actions\Action::make('print')
                 ->label('Print SALN')->icon('heroicon-o-printer')->color('success')
-                ->url(fn() => route('saln.print', $this->record))->openUrlInNewTab(),
+                ->url(fn() => route('saln.print', $this->record))->openUrlInNewTab()
+                ->visible(fn() => $isAdmin),
 
             // ── Back ─────────────────────────────────────────────────────
             Actions\Action::make('back')

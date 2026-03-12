@@ -17,13 +17,11 @@ class EditTravelOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            // WHY: Only show Delete on the edit page for employees who own a
-            // rejected order. canDelete() on the Resource enforces the same
-            // rule at the model layer (defence-in-depth).
+            // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
             Actions\DeleteAction::make()
                 ->visible(
                     fn() =>
-                    Auth::user()->role === 'employee' &&
+                    Auth::user()->role === User::ROLE_REGULAR &&
                     $this->record->created_by === Auth::id() &&
                     $this->record->status === 'rejected'
                 ),
@@ -32,8 +30,6 @@ class EditTravelOrder extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // WHY: Editing a rejected order is a resubmission — reset to pending
-        // and clear the rejection remark so the admin reviews fresh.
         $data['status'] = 'pending';
         $data['rejection_remark'] = null;
 
@@ -42,8 +38,7 @@ class EditTravelOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        // Notify all admins that this order has been revised and resubmitted.
-        $admins = User::where('role', 'admin')->get();
+        $admins = User::where('role', User::ROLE_ADMIN)->get();
 
         foreach ($admins as $admin) {
             $admin->notify(new TravelOrderSubmitted($this->record));
