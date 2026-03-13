@@ -14,7 +14,7 @@
 
     {{-- ── Status bar ─────────────────────────────────────────────────────── --}}
     <div class="flex items-center justify-between flex-wrap gap-2 px-3 py-2
-                bg-gray-50 dark:bg-gray-800
+                bg-gray-100 dark:bg-gray-800
                 border border-gray-200 dark:border-gray-700
                 rounded-lg text-xs">
 
@@ -23,8 +23,8 @@
             {{-- Period badge --}}
             @if($period)
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded
-                             bg-blue-50 dark:bg-blue-950
-                             border border-blue-200 dark:border-blue-700
+                             bg-blue-100 dark:bg-blue-950
+                             border border-blue-300 dark:border-blue-700
                              text-blue-700 dark:text-blue-300 font-medium">
                     📅 {{ $period }}
                 </span>
@@ -86,7 +86,7 @@
             wire:loading.attr="disabled"
             wire:target="clearSelection"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
-                   bg-gray-100 hover:bg-gray-200 active:bg-gray-300
+                   bg-gray-200 hover:bg-gray-300 active:bg-gray-400
                    dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500
                    disabled:opacity-60 disabled:cursor-wait
                    text-gray-700 dark:text-gray-200 transition-colors duration-150
@@ -102,12 +102,13 @@
     </div>
 
     {{-- ── Employee list ────────────────────────────────────────────────────── --}}
-    <div class="max-h-80 overflow-y-auto space-y-1 pr-1" wire:loading.class="opacity-50" wire:target="toggle,selectBatch,clearSelection">
+    <div class="max-h-80 overflow-y-auto space-y-1 pr-1"
+         wire:loading.class="opacity-50"
+         wire:target="toggle,selectBatch,clearSelection">
+
         @forelse($employees as $userId => $label)
             @php
                 // CRITICAL: always compare as strings to prevent int/string mismatch.
-                // array_keys() on an array with numeric-string keys returns integers
-                // in PHP, so '5' === 5 fails with strict comparison.
                 $uid        = (string) $userId;
                 $isChecked  = in_array($uid, $selected, true);
                 $isDisabled = !$isChecked && count($selected) >= $limit;
@@ -116,15 +117,30 @@
             <label
                 for="emp-{{ $uid }}"
                 @class([
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors duration-100 select-none',
-                    // ── Checked ──
-                    'bg-blue-50 border-blue-300 dark:bg-blue-950/60 dark:border-blue-600 cursor-pointer'
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-100 select-none',
+
+                    // ── Checked — light mode ──
+                    'bg-blue-50 border-blue-300 cursor-pointer'
+                        => $isChecked && true,
+
+                    // ── Checked — dark mode ──
+                    'dark:bg-blue-900/40 dark:border-blue-500/60'
                         => $isChecked,
-                    // ── Normal ──
-                    'bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800/80 cursor-pointer'
+
+                    // ── Normal unchecked — light mode ──
+                    'bg-white border-gray-200 hover:bg-gray-50 cursor-pointer'
                         => !$isChecked && !$isDisabled,
-                    // ── Disabled (batch full, not selected) ──
-                    'bg-gray-50 border-gray-200 dark:bg-gray-900/40 dark:border-gray-700 opacity-40 cursor-not-allowed pointer-events-none'
+
+                    // ── Normal unchecked — dark mode ──
+                    'dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700/70'
+                        => !$isChecked && !$isDisabled,
+
+                    // ── Disabled — light mode ──
+                    'bg-gray-50 border-gray-200 opacity-40 cursor-not-allowed pointer-events-none'
+                        => $isDisabled,
+
+                    // ── Disabled — dark mode ──
+                    'dark:bg-gray-800/50 dark:border-gray-700'
                         => $isDisabled,
                 ])>
 
@@ -138,24 +154,27 @@
                     wire:click.prevent="toggle('{{ $uid }}')"
                     class="w-4 h-4 flex-shrink-0 rounded
                            text-blue-600 accent-blue-600
-                           border-gray-300 dark:border-gray-600
+                           border-gray-300 dark:border-gray-500
+                           bg-white dark:bg-gray-700
                            focus:ring-blue-500 focus:ring-2
-                           cursor-pointer disabled:cursor-not-allowed"
-                />
+                           cursor-pointer disabled:cursor-not-allowed"/>
 
                 {{-- Label text --}}
                 <span @class([
                     'text-sm leading-snug min-w-0 flex-1 break-words',
                     'text-blue-800 dark:text-blue-200 font-medium' => $isChecked,
-                    'text-gray-700 dark:text-gray-300'             => !$isChecked,
+                    'text-gray-700 dark:text-gray-200'             => !$isChecked && !$isDisabled,
+                    'text-gray-400 dark:text-gray-500'             => $isDisabled,
                 ])>
                     {{ $label }}
                 </span>
 
-                {{-- Check icon (only when selected, gives extra visual confirmation) --}}
+                {{-- Check icon (only when selected) --}}
                 @if($isChecked)
-                    <svg class="w-4 h-4 flex-shrink-0 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    <svg class="w-4 h-4 flex-shrink-0 text-blue-500 dark:text-blue-400"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              stroke-width="2.5" d="M5 13l4 4L19 7"/>
                     </svg>
                 @endif
 

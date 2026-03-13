@@ -8,21 +8,44 @@ use League\Csv\Reader;
 /**
  * DtrCalculator — Philippine Civil Service Commission (CSC) rules
  *
- * Schedule: 08:00–12:00 (AM), 13:00–17:00 (PM)
+ * Schedule : 08:00–12:00 (AM)  |  13:00–17:00 (PM)
  *
- * LATE      = arrival after schedule start (08:00 AM / 13:00 PM)
- * UNDERTIME = departure before schedule end (12:00 AM / 17:00 PM)
- * OVERTIME  = departure after 17:00 PM only (pre-8am arrivals are NOT OT)
+ * LATE      = arrival AFTER schedule start (08:00 AM / 13:00 PM)
+ * UNDERTIME = departure BEFORE schedule end (12:00 noon / 17:00 PM)
+ * OVERTIME  = AfternoonOut AFTER 17:00 PM only (pre-8am arrivals are NOT OT per CSC)
  *
- * All values stored in MINUTES (integers).
- * Formatted strings ("H:MM") provided separately for display.
+ * ── VERIFIED BIOTIME GRACE-PERIOD RULE ────────────────────────────────────
+ * Cross-checked against the actual BioTime XLS export (001_2026_2_MON.xls):
+ *
+ *   undertime_per_session = max(0, schedule_end_minutes − actual_out_minutes − 1)
+ *
+ * i.e. BioTime silently subtracts 1 minute from every early-leave event.
+ * Proof from XLS data:
+ *   JENCARNACION  3 events: (30-1)+(17-1)+(15-1) = 29+16+14 = 59  ✓ Excel=59
+ *   R RUBIS       2 events: (38-1)+(60-1)         = 37+59    = 96  ✓ Excel=96
+ *   R ZAMORA      2 events: (29-1)+(57-1)          = 28+56   = 84  ✓ Excel=84
+ *
+ * The same -1 grace is assumed for AM undertime (no test data contradicts it).
+ *
+ * ── SECONDS-ZERO FIX ──────────────────────────────────────────────────────
+ * Carbon::parse('HH:MM') inherits the current wall-clock seconds.
+ * All times are built with setTime(h, m, 0) and all arithmetic uses raw
+ * Unix-timestamp integer division to guarantee exact minute counts.
  */
 class DtrCalculator
 {
-    private const AM_START = '08:00';
-    private const AM_END   = '12:00';
-    private const PM_START = '13:00';
-    private const PM_END   = '17:00';
+    // Schedule constants (hours / minutes)
+    private const AM_START_H = 8;
+    private const AM_START_M = 0;
+    private const AM_END_H = 12;
+    private const AM_END_M = 0;
+    private const PM_START_H = 13;
+    private const PM_START_M = 0;
+    private const PM_END_H = 17;
+    private const PM_END_M = 0;
+
+    // BioTime grace period deducted from every undertime event (minutes)
+    private const UT_GRACE = 1;
 
     // ── Public entry points ────────────────────────────────────────────────
 
@@ -31,6 +54,7 @@ class DtrCalculator
         if (!file_exists($filePath)) {
             throw new \Exception("CSV file not found: {$filePath}");
         }
+
         $csv = Reader::createFromPath($filePath, 'r');
         $csv->setHeaderOffset(0);
         $csv->addStreamFilter('convert.iconv.UTF-8/UTF-8//IGNORE');
@@ -39,13 +63,14 @@ class DtrCalculator
         foreach ($csv->getRecords() as $record) {
             $rows[] = array_map(fn($v) => trim((string) $v), $record);
         }
+
         return $this->calculateFromArray($rows);
     }
 
     public function calculateFromArray(array $rows): array
     {
-        $calculated  = [];
-        $tz          = config('app.timezone', 'Asia/Manila');
+        $calculated = [];
+        $tz = config('app.timezone', 'Asia/Manila');
 
         foreach ($rows as $offset => $record) {
             $record = array_map(fn($v) => trim((string) $v), $record);
@@ -63,59 +88,56 @@ class DtrCalculator
                 continue;
             }
 
-            // Parse all four punches — null means no punch recorded
-            $amIn  = $this->parseTime($record['MorningIn']    ?? '', $date, $tz);
-            $amOut = $this->parseTime($record['MorningOut']   ?? '', $date, $tz);
-            $pmIn  = $this->parseTime($record['AfternoonIn']  ?? '', $date, $tz);
-            $pmOut = $this->parseTime($record['AfternoonOut'] ?? '', $date, $tz);
+            // Parse all four punches (null = no punch recorded)
+            $amIn = $this->parseTime($record['MorningIn'] ?? '', $date);
+            $amOut = $this->parseTime($record['MorningOut'] ?? '', $date);
+            $pmIn = $this->parseTime($record['AfternoonIn'] ?? '', $date);
+            $pmOut = $this->parseTime($record['AfternoonOut'] ?? '', $date);
 
-            // Official schedule anchors
-            $amStart = $date->copy()->setTimeFromTimeString(self::AM_START);
-            $amEnd   = $date->copy()->setTimeFromTimeString(self::AM_END);
-            $pmStart = $date->copy()->setTimeFromTimeString(self::PM_START);
-            $pmEnd   = $date->copy()->setTimeFromTimeString(self::PM_END);
+            // Schedule anchors — setTime(h, m, 0) guarantees zero seconds
+            $amStart = $this->anchor($date, self::AM_START_H, self::AM_START_M);
+            $amEnd = $this->anchor($date, self::AM_END_H, self::AM_END_M);
+            $pmStart = $this->anchor($date, self::PM_START_H, self::PM_START_M);
+            $pmEnd = $this->anchor($date, self::PM_END_H, self::PM_END_M);
 
-            // ── LATE (minutes arriving after schedule start) ───────────────
-            // AM late: only if amIn exists and is after 08:00
+            // ── LATE ──────────────────────────────────────────────────────
             $lateAm = ($amIn && $amIn->gt($amStart))
-                ? (int) min($amStart->diffInMinutes($amIn), 240)
+                ? min($this->mins($amStart, $amIn), 240)
                 : 0;
 
-            // PM late: only if pmIn exists and is after 13:00
             $latePm = ($pmIn && $pmIn->gt($pmStart))
-                ? (int) min($pmStart->diffInMinutes($pmIn), 240)
+                ? min($this->mins($pmStart, $pmIn), 240)
                 : 0;
 
             $totalLate = $lateAm + $latePm;
 
-            // ── UNDERTIME (minutes leaving before schedule end) ────────────
-            // AM undertime: only if amOut exists AND is before 12:00
-            // If amOut is missing we do NOT count undertime — employee may have
-            // forgotten to punch, not necessarily left early.
-            $utAm = ($amOut && $amOut->lt($amEnd))
-                ? (int) $amOut->diffInMinutes($amEnd)
+            // ── UNDERTIME (early leave) — BioTime grace: subtract 1 min/event ──
+            //
+            // AM undertime: left before 12:00
+            $utAmRaw = ($amOut && $amOut->lt($amEnd))
+                ? $this->mins($amOut, $amEnd)
                 : 0;
+            $utAm = $utAmRaw > 0 ? max(0, $utAmRaw - self::UT_GRACE) : 0;
 
-            // PM undertime: only if pmOut exists AND is before 17:00
-            $utPm = ($pmOut && $pmOut->lt($pmEnd))
-                ? (int) $pmOut->diffInMinutes($pmEnd)
+            // PM undertime: left before 17:00
+            $utPmRaw = ($pmOut && $pmOut->lt($pmEnd))
+                ? $this->mins($pmOut, $pmEnd)
                 : 0;
+            $utPm = $utPmRaw > 0 ? max(0, $utPmRaw - self::UT_GRACE) : 0;
 
             $totalUt = $utAm + $utPm;
 
-            // ── OVERTIME (minutes worked AFTER 17:00 only) ────────────────
-            // Early morning arrivals before 08:00 are NOT overtime (CSC rule).
-            // Only AfternoonOut after 17:00 counts.
+            // ── OVERTIME ──────────────────────────────────────────────────
             $totalOt = ($pmOut && $pmOut->gt($pmEnd))
-                ? (int) $pmEnd->diffInMinutes($pmOut)
+                ? $this->mins($pmEnd, $pmOut)
                 : 0;
 
-            // ── WORKED MINUTES (actual clock time) ────────────────────────
+            // ── WORKED MINUTES ────────────────────────────────────────────
             $workedAm = ($amIn && $amOut && $amOut->gt($amIn))
-                ? (int) $amIn->diffInMinutes($amOut)
+                ? $this->mins($amIn, $amOut)
                 : 0;
             $workedPm = ($pmIn && $pmOut && $pmOut->gt($pmIn))
-                ? (int) $pmIn->diffInMinutes($pmOut)
+                ? $this->mins($pmIn, $pmOut)
                 : 0;
             $totalWorked = $workedAm + $workedPm;
 
@@ -124,36 +146,27 @@ class DtrCalculator
             $hasPm = ($pmIn !== null || $pmOut !== null);
 
             $calculated[] = [
-                // Identity
-                'EmployeeID'       => $record['EmployeeID'],
-                'Name'             => $record['Name'],
-                'Date'             => $date->format('Y-m-d'),
-                'DayOfWeek'        => $date->format('D'),
-
-                // Punch times (HH:MM or empty string)
-                'MorningIn'        => $amIn  ? $amIn->format('H:i')  : '',
-                'MorningOut'       => $amOut ? $amOut->format('H:i') : '',
-                'AfternoonIn'      => $pmIn  ? $pmIn->format('H:i')  : '',
-                'AfternoonOut'     => $pmOut ? $pmOut->format('H:i') : '',
-
-                // Computed durations in MINUTES (integers) — use these in the blade
-                'LateMinutes'      => $totalLate,
+                'EmployeeID' => $record['EmployeeID'],
+                'Name' => $record['Name'],
+                'Date' => $date->format('Y-m-d'),
+                'DayOfWeek' => $date->format('D'),
+                'MorningIn' => $amIn ? $amIn->format('H:i') : '',
+                'MorningOut' => $amOut ? $amOut->format('H:i') : '',
+                'AfternoonIn' => $pmIn ? $pmIn->format('H:i') : '',
+                'AfternoonOut' => $pmOut ? $pmOut->format('H:i') : '',
+                'LateMinutes' => $totalLate,
                 'UndertimeMinutes' => $totalUt,
-                'OvertimeMinutes'  => $totalOt,
-                'WorkedMinutes'    => $totalWorked,
-
-                // Formatted strings (H:MM) for optional display
-                'Late'             => $this->fmt($totalLate),
-                'Undertime'        => $this->fmt($totalUt),
-                'Overtime'         => $this->fmt($totalOt),
-                'WorkedHours'      => $this->fmt($totalWorked),
-
-                // Flags
-                'IsWeekend'        => false,
-                'IsFullAbsent'     => (!$hasAm && !$hasPm),
-                'IsHalfAbsent'     => ($hasAm XOR $hasPm),
-                'HasAmSession'     => $hasAm,
-                'HasPmSession'     => $hasPm,
+                'OvertimeMinutes' => $totalOt,
+                'WorkedMinutes' => $totalWorked,
+                'Late' => $this->fmt($totalLate),
+                'Undertime' => $this->fmt($totalUt),
+                'Overtime' => $this->fmt($totalOt),
+                'WorkedHours' => $this->fmt($totalWorked),
+                'IsWeekend' => false,
+                'IsFullAbsent' => (!$hasAm && !$hasPm),
+                'IsHalfAbsent' => ($hasAm XOR $hasPm),
+                'HasAmSession' => $hasAm,
+                'HasPmSession' => $hasPm,
             ];
         }
 
@@ -162,16 +175,16 @@ class DtrCalculator
 
     /**
      * Compute period summary from calculateFromArray() / calculateFromCsv() output.
-     * Returns all fields needed by the PDF summary row.
      */
     public function calculateSummary(array $rows): array
     {
-        $workingDays = $daysPresent = $absentDays = $halfDays  = 0;
-        $lateDays    = $lateMins    = $utDays     = $utMins    = 0;
-        $otMins      = $workedMins  = 0;
+        $workingDays = $daysPresent = $absentDays = $halfDays = 0;
+        $lateDays = $lateMins = $utDays = $utMins = 0;
+        $otMins = $workedMins = 0;
 
         foreach ($rows as $row) {
-            if ($row['IsWeekend']) continue;
+            if ($row['IsWeekend'])
+                continue;
 
             $workingDays++;
 
@@ -180,7 +193,8 @@ class DtrCalculator
                 continue;
             }
 
-            if ($row['IsHalfAbsent']) $halfDays++;
+            if ($row['IsHalfAbsent'])
+                $halfDays++;
             $daysPresent++;
 
             if ($row['LateMinutes'] > 0) {
@@ -192,76 +206,104 @@ class DtrCalculator
                 $utMins += $row['UndertimeMinutes'];
             }
 
-            $otMins     += $row['OvertimeMinutes'];
+            $otMins += $row['OvertimeMinutes'];
             $workedMins += $row['WorkedMinutes'];
         }
 
         return [
-            // Presence / absence
-            'total_working_days'          => $workingDays,
-            'days_present'                => $daysPresent,
-            'absent_days'                 => $absentDays,
-            'half_days'                   => $halfDays,
-            'absent_days_total'           => $absentDays + ($halfDays * 0.5),  // "AB"
-
-            // Late
-            'late_days'                   => $lateDays,          // "L"
-            'late_total_minutes'          => $lateMins,
-            'late_hours'                  => (int) floor($lateMins / 60),
-            'late_minutes_remainder'      => $lateMins % 60,
-
-            // Undertime / Early Leave
-            'undertime_days'              => $utDays,
-            'undertime_total_minutes'     => $utMins,
-            'undertime_hours'             => (int) floor($utMins / 60),
+            'total_working_days' => $workingDays,
+            'days_present' => $daysPresent,
+            'absent_days' => $absentDays,
+            'half_days' => $halfDays,
+            'absent_days_total' => $absentDays + ($halfDays * 0.5),
+            'late_days' => $lateDays,
+            'late_total_minutes' => $lateMins,
+            'late_hours' => (int) floor($lateMins / 60),
+            'late_minutes_remainder' => $lateMins % 60,
+            'undertime_days' => $utDays,
+            'undertime_total_minutes' => $utMins,
+            'undertime_hours' => (int) floor($utMins / 60),
             'undertime_minutes_remainder' => $utMins % 60,
-
-            // Overtime (after 17:00 only)
-            'overtime_total_minutes'      => $otMins,
-            'overtime_hours'              => (int) floor($otMins / 60),
-            'overtime_minutes_remainder'  => $otMins % 60,
-
-            // Worked
-            'worked_total_minutes'        => $workedMins,
-            'worked_hours'                => (int) floor($workedMins / 60),
-            'worked_minutes_remainder'    => $workedMins % 60,
+            'overtime_total_minutes' => $otMins,
+            'overtime_hours' => (int) floor($otMins / 60),
+            'overtime_minutes_remainder' => $otMins % 60,
+            'worked_total_minutes' => $workedMins,
+            'worked_hours' => (int) floor($workedMins / 60),
+            'worked_minutes_remainder' => $workedMins % 60,
         ];
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**
-     * Parse "HH:MM" into Carbon. Returns null for empty / zero / invalid.
+     * Parse "HH:MM" → Carbon with seconds = 0.
+     * Uses setTime(h, m, 0) — the only reliable way across Carbon v1/v2 —
+     * so that all arithmetic is purely minute-level.
      */
-    private function parseTime(string $value, Carbon $date, string $tz): ?Carbon
+    private function parseTime(string $value, Carbon $date): ?Carbon
     {
         $value = trim($value);
-        if ($value === '' || $value === '00:00' || $value === '0:00') return null;
-        if (!preg_match('/^\d{1,2}:\d{2}$/', $value)) return null;
+        if ($value === '' || $value === '00:00' || $value === '0:00')
+            return null;
+        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $value, $m))
+            return null;
         try {
-            return Carbon::parse($date->format('Y-m-d') . ' ' . $value, $tz);
+            return $date->copy()->setTime((int) $m[1], (int) $m[2], 0);
         } catch (\Exception) {
             return null;
         }
     }
 
-    /** Format integer minutes as "H:MM". */
+    /**
+     * Build a schedule anchor at exact H:M:00.
+     */
+    private function anchor(Carbon $date, int $h, int $m): Carbon
+    {
+        return $date->copy()->setTime($h, $m, 0);
+    }
+
+    /**
+     * Integer whole-minutes between two Carbon instants.
+     * Raw timestamp arithmetic — no Carbon rounding involved.
+     * Both inputs must have seconds = 0 (guaranteed by parseTime / anchor).
+     */
+    private function mins(Carbon $from, Carbon $to): int
+    {
+        return (int) (($to->timestamp - $from->timestamp) / 60);
+    }
+
+    /** Format integer minutes → "H:MM". */
     private function fmt(int $minutes): string
     {
-        if ($minutes <= 0) return '0:00';
+        if ($minutes <= 0)
+            return '0:00';
         return floor($minutes / 60) . ':' . str_pad($minutes % 60, 2, '0', STR_PAD_LEFT);
     }
 
     private function weekendRow(array $record, Carbon $date): array
     {
         return [
-            'EmployeeID' => $record['EmployeeID'], 'Name' => $record['Name'],
-            'Date'       => $date->format('Y-m-d'), 'DayOfWeek' => $date->format('D'),
-            'MorningIn' => '', 'MorningOut' => '', 'AfternoonIn' => '', 'AfternoonOut' => '',
-            'LateMinutes' => 0, 'UndertimeMinutes' => 0, 'OvertimeMinutes' => 0, 'WorkedMinutes' => 0,
-            'Late' => '', 'Undertime' => '', 'Overtime' => '', 'WorkedHours' => '',
-            'IsWeekend' => true, 'IsFullAbsent' => false, 'IsHalfAbsent' => false,
-            'HasAmSession' => false, 'HasPmSession' => false,
+            'EmployeeID' => $record['EmployeeID'],
+            'Name' => $record['Name'],
+            'Date' => $date->format('Y-m-d'),
+            'DayOfWeek' => $date->format('D'),
+            'MorningIn' => '',
+            'MorningOut' => '',
+            'AfternoonIn' => '',
+            'AfternoonOut' => '',
+            'LateMinutes' => 0,
+            'UndertimeMinutes' => 0,
+            'OvertimeMinutes' => 0,
+            'WorkedMinutes' => 0,
+            'Late' => '',
+            'Undertime' => '',
+            'Overtime' => '',
+            'WorkedHours' => '',
+            'IsWeekend' => true,
+            'IsFullAbsent' => false,
+            'IsHalfAbsent' => false,
+            'HasAmSession' => false,
+            'HasPmSession' => false,
         ];
     }
 }

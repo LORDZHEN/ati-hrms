@@ -1,451 +1,411 @@
 {{-- resources/views/exports/dtr_pdf.blade.php --}}
+{{--
+    Philippine Government DTR — Civil Service Form No. 48
+
+    HEADER — exactly 2 rows, matching right-image reference:
+      Row 1: "Department" label | REGULAR (colspan 3)
+      Row 2: "Date" label       | Date value | "No" label | Employee ID
+
+    Wait — re-reading the right image:
+      Col 1 narrow label | Col 2 REGULAR wide | Col 3 "Name" label | Col 4 Employee Name
+      Col 1 "Date" label | Col 2 date value   | Col 3 "No" label   | Col 4 Employee ID
+
+    So: Department cell is ONLY on row 1 (no rowspan).
+        Date cell is ONLY on row 2 (no rowspan).
+        Each row has its OWN left label cell.
+--}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
+@page { size: A4 portrait; margin: 10mm 8mm 10mm 8mm; }
 
-    @page {
-        size: A4 portrait;
-        margin: 8mm 6mm 8mm 6mm;
-    }
+html, body {
+    width: 100%;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', 'Times New Roman', serif;
+    font-size: 8pt;
+    color: #00008B;
+}
 
-    html, body {
-        width: 100%;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 8.5pt;
-        color: #00008B;
-    }
+table { border-collapse: collapse; width: 100%; }
+td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; overflow: hidden; }
 
-    /* ── Title ──────────────────────────────────────────────────── */
-    .header-title {
-        text-align: center;
-        font-size: 12pt;
-        font-weight: bold;
-        margin-bottom: 1px;
-        letter-spacing: 1px;
-    }
-    .header-sub {
-        text-align: center;
-        font-size: 7.5pt;
-        margin-bottom: 4px;
-    }
+.page-title {
+    text-align: center; font-size: 18pt; font-weight: bold;
+    letter-spacing: 3px; color: #00008B; padding-bottom: 1px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', 'Times New Roman', serif;
+}
+.page-subtitle {
+    text-align: center; font-size: 7.5pt; color: #00008B; margin-bottom: 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
 
-    /* ── Employee meta ──────────────────────────────────────────── */
-    .header-meta {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 3px;
-        table-layout: fixed;
-    }
-    .header-meta td {
-        padding: 2px 4px;
-        border: 1px solid #00008B;
-        font-size: 8.5pt;
-        overflow: hidden;
-    }
-    .header-meta td.lbl {
-        font-weight: bold;
-        background: #eeeeff;
-        white-space: nowrap;
-        width: 13%;
-    }
-    .header-meta td.val { width: 37%; }
+/* ── Meta header ── */
+.meta-tbl { table-layout: fixed; }
+/* Left label cells: "Department" row 1, "Date" row 2 */
+.meta-tbl .lbl-left {
+    font-size: 8pt; font-weight: normal; background: #eeeeff;
+    text-align: center; vertical-align: middle; white-space: normal;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+/* "Name" / "No" middle label cells */
+.meta-tbl .lbl-mid {
+    font-size: 8pt; font-weight: normal; background: #eeeeff;
+    text-align: center; vertical-align: middle; white-space: nowrap;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+/* REGULAR / JOB ORDER */
+.meta-tbl .role-cell {
+    font-size: 16pt; font-weight: bold; text-align: center;
+    letter-spacing: 2px; padding: 4px 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+/* Employee name */
+.meta-tbl .name-val {
+    font-size: 14pt; font-weight: bold; text-align: center; padding: 4px 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+/* Date value */
+.meta-tbl .date-val {
+    font-size: 11pt; font-weight: bold; text-align: center; padding: 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+/* Employee ID */
+.meta-tbl .id-val {
+    font-size: 14pt; font-weight: bold; text-align: center; padding: 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
 
-    /* ── Summary table ──────────────────────────────────────────── */
-    .summary-table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-        margin-bottom: 2px;
-    }
-    .summary-table th, .summary-table td {
-        border: 1px solid #00008B;
-        text-align: center;
-        padding: 2px 0;
-        overflow: hidden;
-    }
-    .summary-table thead tr:first-child th {
-        background: #d0d0ff;
-        font-weight: bold;
-        font-size: 7pt;
-        padding: 2px 0;
-    }
-    .summary-table thead tr:last-child th {
-        background: #e8e8ff;
-        font-size: 6.5pt;
-        padding: 1px 0;
-    }
-    .summary-table tbody td {
-        font-size: 9pt;
-        font-weight: bold;
-        padding: 3px 0;
-    }
+/* ── Summary table ── */
+.sum-tbl { table-layout: fixed; }
+.sum-tbl th {
+    text-align: center; font-size: 8pt; font-weight: normal;
+    padding: 2px 1px; background: #d0d0ff;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.sum-tbl th.sub {
+    background: #e4e4ff; font-size: 7pt; font-weight: normal; padding: 1px 0;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.sum-tbl td {
+    font-size: 12pt; font-weight: normal; text-align: center; padding: 3px 1px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
 
-    /* ── Schedule note ──────────────────────────────────────────── */
-    .schedule-note {
-        text-align: center;
-        font-size: 7.5pt;
-        margin: 2px 0;
-        font-style: italic;
-    }
+/* ── Schedule ── */
+.sched-tbl td {
+    font-size: 8.5pt; padding: 3px 5px; border: 1px solid #00008B; text-align: center;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
 
-    /* ── Attendance table ───────────────────────────────────────── */
-    /*
-     * 7 columns — NO overflow columns.
-     * dd/ww(8%) | AM-In(14%) | AM-Out(14%) | PM-In(14%) | PM-Out(14%) | Late-min(18%) | UT/OT-min(18%)
-     * Total: 8+14+14+14+14+18+18 = 100%
-     */
-    .attendance-table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-    }
-    .attendance-table th {
-        border: 1px solid #00008B;
-        text-align: center;
-        padding: 2px 1px;
-        font-weight: bold;
-        overflow: hidden;
-        font-size: 8pt;
-    }
-    .attendance-table th.grp { background: #d0d0ff; font-size: 8.5pt; }
-    .attendance-table th.sub { background: #e8e8ff; font-size: 7.5pt; }
-    .attendance-table td {
-        border: 1px solid #00008B;
-        text-align: center;
-        padding: 2px 1px;
-        font-size: 8.5pt;
-        overflow: hidden;
-    }
-    .attendance-table tr.weekend td { background: #f0f0f0; color: #aaa; }
-    .attendance-table tr.absent  td { background: #fff0f0; }
-    .attendance-table tr.late    td { background: #fff8f0; }
-    .attendance-table tr.ot      td { background: #f0fff0; }
-    .attendance-table td.day-col { font-weight: bold; background: #f5f5ff; font-size: 8pt; }
-    .attendance-table td.num     { font-size: 8pt; }
-    .attendance-table td.lv      { color: #cc0000; font-weight: bold; font-size: 8pt; }
-    .attendance-table td.ov      { color: #006600; font-weight: bold; font-size: 8pt; }
+/* ── Attendance table ── */
+.att-tbl { table-layout: fixed; }
+.att-tbl th.ttl {
+    font-size: 12pt; font-weight: bold; letter-spacing: 1px;
+    text-align: center; background: #ffffff; padding: 4px 0;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.att-tbl th.grp {
+    font-size: 9pt; font-weight: normal; text-align: center;
+    background: #d0d0ff; padding: 2px 0;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.att-tbl th.ddww {
+    font-size: 8pt; font-weight: normal; text-align: center;
+    background: #e4e4ff; vertical-align: middle;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.att-tbl th.sub {
+    font-size: 7.5pt; font-weight: normal; text-align: center;
+    background: #e4e4ff; padding: 2px 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.att-tbl td {
+    font-size: 8pt; text-align: center; padding: 1px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.att-tbl td.dc {
+    font-size: 8pt; font-weight: normal; text-align: left; padding-left: 3px;
+    background: #f5f5ff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.att-tbl tr.wknd td    { background: #f0f0f0; color: #aaaaaa; }
+.att-tbl tr.wknd td.dc { background: #e8e8ee; color: #999999; }
+.att-tbl tr.absent td  { background: #fff5f5; }
 
-    /* ── Signature ──────────────────────────────────────────────── */
-    .sig-section {
-        margin-top: 6px;
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .sig-section td {
-        padding: 2px 4px;
-        vertical-align: top;
-        font-size: 8pt;
-    }
-    .sig-line {
-        display: block;
-        border-bottom: 1px solid #00008B;
-        margin-top: 22px;
-        margin-bottom: 2px;
-    }
-    .sig-name  { text-align: center; font-weight: bold; font-size: 8.5pt; }
-    .sig-label { text-align: center; font-size: 7pt; }
+/* ── Signature ── */
+.sig-tbl { margin-top: 7px; border: none; }
+.sig-tbl td {
+    border: none; vertical-align: top; padding: 2px 3px;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.sig-line  { display: block; border-bottom: 1px solid #00008B; margin-top: 26px; margin-bottom: 2px; }
+.sig-name  { text-align: center; font-weight: bold; font-size: 8.5pt; }
+.sig-label { text-align: center; font-size: 7pt; }
 
-    /* ── Legend ─────────────────────────────────────────────────── */
-    .legend-box {
-        margin-top: 6px;
-        border: 1px solid #bbbbdd;
-        border-radius: 2px;
-        padding: 4px 6px;
-        background: #f8f8ff;
-    }
-    .legend-title {
-        font-size: 7pt;
-        font-weight: bold;
-        margin-bottom: 3px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .legend-grid {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .legend-grid td {
-        font-size: 7pt;
-        padding: 1px 4px 1px 0;
-        vertical-align: top;
-        border: none;
-        line-height: 1.4;
-    }
-    .legend-grid td.term {
-        font-weight: bold;
-        white-space: nowrap;
-        width: 10%;
-        color: #00008B;
-    }
-    .legend-grid td.sep  { width: 1%; color: #888; }
-    .legend-grid td.def  { width: 39%; color: #333; }
+/* ── Legend ── */
+.legend {
+    margin-top: 5px; border: 1px solid #bbbbdd; padding: 3px 5px; background: #f9f9ff;
+    font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
+}
+.legend-title { font-size: 6.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+.legend table { border: none; }
+.legend td    { border: none; font-size: 6.5pt; padding: 0 3px 0 0; line-height: 1.5; color: #333; }
+.legend td.t  { font-weight: bold; white-space: nowrap; color: #00008B; width: 10%; }
+.legend td.s  { width: 1%; color: #888; }
+.legend td.d  { width: 39%; }
 </style>
 </head>
 <body>
 
-    <div class="header-title">DAILY TIME RECORD</div>
-    <div class="header-sub">Civil Service Form No. 48</div>
+@php
+    use Carbon\Carbon;
 
-    {{-- ── Employee meta ─────────────────────────────────────── --}}
-    @php
-        $allRows    = collect($records);
-        $wdRows     = $allRows->where('IsWeekend', false);
-        $firstRow   = $wdRows->first() ?? $allRows->first();
-        $lastRow    = $wdRows->last()  ?? $allRows->last();
-        $periodFrom = $firstRow ? \Carbon\Carbon::parse($firstRow['Date'])->format('Y/m/d') : '—';
-        $periodTo   = $lastRow  ? \Carbon\Carbon::parse($lastRow['Date'])->format('Y/m/d')  : '—';
-        $empName    = $employee->name         ?? ($firstRow['Name'] ?? '—');
-        $empId      = $firstRow['EmployeeID'] ?? '—';
-        $empPos     = $employee->position     ?? 'N/A';
-    @endphp
+    $allRows     = collect($records);
+    $firstRecord = $allRows->first();
 
-    <table class="header-meta">
+    $monthStart  = $firstRecord
+        ? Carbon::parse($firstRecord['Date'])->startOfMonth()
+        : now()->startOfMonth();
+    $daysInMonth = (int) $monthStart->daysInMonth;
+
+    $periodFrom = $monthStart->format('Y/m/d');
+    $periodTo   = $monthStart->copy()->endOfMonth()->format('m/d');
+    $periodFull = $periodFrom . ' ~ ' . $periodTo;
+
+    $empName = $employee->name        ?? ($firstRecord['Name']       ?? '—');
+    $empId   = $employee->employee_id ?? ($firstRecord['EmployeeID'] ?? '—');
+    $empRole = strtolower($employee->role ?? '') === 'job_order' ? 'JOB ORDER' : 'REGULAR';
+
+    $byDay = [];
+    foreach ($records as $row) {
+        $byDay[(int) Carbon::parse($row['Date'])->format('j')] = $row;
+    }
+
+    $ioVal = $lateCount = $lateMins = $earlyCount = $earlyMins = 0;
+
+    for ($d = 1; $d <= $daysInMonth; $d++) {
+        $row = $byDay[$d] ?? null;
+        if (!$row) continue;
+        $mi = trim($row['MorningIn']   ?? '');
+        $mo = trim($row['MorningOut']  ?? '');
+        $ai = trim($row['AfternoonIn'] ?? '');
+        if ($mi !== '' && ($mo !== '' || $ai !== '')) { $ioVal++; }
+        $lm = (int)($row['LateMinutes']      ?? 0);
+        $em = (int)($row['UndertimeMinutes'] ?? 0);
+        if ($lm > 0) { $lateCount++;  $lateMins  += $lm; }
+        if ($em > 0) { $earlyCount++; $earlyMins += $em; }
+    }
+
+    $abVal = $daysInMonth - $ioVal;
+@endphp
+
+{{-- ══ TITLE ══ --}}
+<div class="page-title">DAILY TIME RECORD</div>
+<div class="page-subtitle">Civil Service Form No. 48</div>
+
+{{-- ══ HEADER
+     Row 1: [Department] [    REGULAR    ] [Name] [Employee Name]
+     Row 2: [Date      ] [2026/02/01~02/28] [No  ] [Employee ID  ]
+     NO rowspan — each row has its own left label cell.
+══ --}}
+<table class="meta-tbl">
+    <colgroup>
+        <col style="width:11%">
+        <col style="width:40%">
+        <col style="width:8%">
+        <col style="width:41%">
+    </colgroup>
+    {{-- Row 1 --}}
+    <tr>
+        <td class="lbl-left">Department</td>
+        <td class="role-cell">{{ $empRole }}</td>
+        <td class="lbl-mid">Name</td>
+        <td class="name-val">{{ strtoupper($empName) }}</td>
+    </tr>
+    {{-- Row 2 --}}
+    <tr>
+        <td class="lbl-left">
+            <span style="font-size:7pt;">Date</span>
+        </td>
+        <td class="date-val">{{ $periodFull }}</td>
+        <td class="lbl-mid">No</td>
+        <td class="id-val">{{ $empId }}</td>
+    </tr>
+</table>
+
+{{-- ══ SUMMARY TABLE ══ --}}
+<table class="sum-tbl">
+    <colgroup>
+        <col style="width:7%">
+        <col style="width:6%">
+        <col style="width:7%">
+        <col style="width:8%">
+        <col style="width:8.5%">
+        <col style="width:7%">
+        <col style="width:9.5%">
+        <col style="width:9.5%">
+        <col style="width:9.5%">
+        <col style="width:9.5%">
+    </colgroup>
+    <thead>
         <tr>
-            <td class="lbl">Name:</td>
-            <td class="val">{{ $empName }}</td>
-            <td class="lbl">No.:</td>
-            <td class="val">{{ $empId }}</td>
+            <th rowspan="2">AB</th>
+            <th rowspan="2">L</th>
+            <th rowspan="2">BT</th>
+            <th rowspan="2" style="font-size:7pt; line-height:1.3;">I/O<br>(dd)</th>
+            <th colspan="2">Over(hh)</th>
+            <th colspan="2">Late</th>
+            <th colspan="2">Early Leave</th>
         </tr>
         <tr>
-            <td class="lbl">Period:</td>
-            <td class="val">{{ $periodFrom }} ~ {{ $periodTo }}</td>
-            <td class="lbl">Position:</td>
-            <td class="val">{{ $empPos }}</td>
+            <th class="sub">Over</th>
+            <th class="sub">Sp</th>
+            <th class="sub">(ts)</th>
+            <th class="sub">(min)</th>
+            <th class="sub">(ts)</th>
+            <th class="sub">(min)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ $abVal      ?: '' }}</td>
+            <td></td>
+            <td></td>
+            <td>{{ $ioVal      ?: '' }}</td>
+            <td></td>
+            <td></td>
+            <td>{{ $lateCount  ?: '' }}</td>
+            <td>{{ $lateMins   ?: '' }}</td>
+            <td>{{ $earlyCount ?: '' }}</td>
+            <td>{{ $earlyMins  ?: '' }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{{-- ══ SCHEDULE ══ --}}
+<table class="sched-tbl">
+    <tr>
+        <td>1.&nbsp;&nbsp; 08:00-12:00,&nbsp;&nbsp; 13:00-17:00</td>
+    </tr>
+</table>
+
+{{-- ══ ATTENDANCE TABLE ══ --}}
+<table class="att-tbl">
+    <colgroup>
+        <col style="width:9%">
+        <col style="width:13.5%">
+        <col style="width:13.5%">
+        <col style="width:13.5%">
+        <col style="width:13.5%">
+        <col style="width:18.5%">
+        <col style="width:18.5%">
+    </colgroup>
+    <thead>
+        <tr><th colspan="7" class="ttl">Attendance Table</th></tr>
+        <tr>
+            <th rowspan="2" class="ddww">dd/ww</th>
+            <th colspan="2" class="grp">AM</th>
+            <th colspan="2" class="grp">PM</th>
+            <th colspan="2" class="grp">Over</th>
+        </tr>
+        <tr>
+            <th class="sub">In</th><th class="sub">Out</th>
+            <th class="sub">In</th><th class="sub">Out</th>
+            <th class="sub">In</th><th class="sub">Out</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for ($day = 1; $day <= $daysInMonth; $day++)
+            @php
+                $date      = $monthStart->copy()->addDays($day - 1);
+                $isWeekend = $date->isWeekend();
+                $row       = $byDay[$day] ?? null;
+                $dow       = ucfirst(strtolower(substr($date->format('D'), 0, 2)));
+                $ddww      = str_pad($day, 2, '0', STR_PAD_LEFT) . ' ' . $dow;
+                $mi = trim($row['MorningIn']    ?? '');
+                $mo = trim($row['MorningOut']   ?? '');
+                $ai = trim($row['AfternoonIn']  ?? '');
+                $ao = trim($row['AfternoonOut'] ?? '');
+                $hasPunch  = ($mi !== '' || $mo !== '' || $ai !== '' || $ao !== '');
+                $isAbsent  = !$isWeekend && !$hasPunch;
+                $trClass   = $isWeekend ? 'wknd' : ($isAbsent ? 'absent' : '');
+            @endphp
+            <tr class="{{ $trClass }}">
+                <td class="dc">{{ $ddww }}</td>
+                @if ($isWeekend)
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                @elseif ($isAbsent)
+                    <td colspan="6" style="text-align:center; font-style:italic; font-size:7.5pt; color:#555588;">Absence</td>
+                @else
+                    <td>{{ $mi }}</td><td>{{ $mo }}</td>
+                    <td>{{ $ai }}</td><td>{{ $ao }}</td>
+                    <td></td><td></td>
+                @endif
+            </tr>
+        @endfor
+    </tbody>
+</table>
+
+{{-- ══ SIGNATURE ══ --}}
+<table class="sig-tbl">
+    <tr>
+        <td style="width:57%; font-size:7.5pt; line-height:1.7;">
+            I certify on my honor that the above is a true and correct report of the hours of
+            work performed, record of which was made daily at the time of arrival and departure
+            from office.
+        </td>
+        <td style="width:43%; text-align:center;">
+            <span class="sig-line"></span>
+            <div class="sig-name">{{ strtoupper($empName) }}</div>
+            <div class="sig-label">Signature over Printed Name</div>
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="padding-top:5px; font-size:7.5pt;">
+            Verified as to the prescribed office hours:
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2" style="padding-top:3px;">
+            <span style="display:inline-block; border-bottom:1px solid #00008B; width:220px; margin-bottom:2px;"></span>
+            <div style="font-size:7pt; padding-left:3px;">In Charge of Attendance</div>
+        </td>
+    </tr>
+</table>
+
+{{-- ══ LEGEND ══ --}}
+<div class="legend">
+    <div class="legend-title">&#9432; Legends / Acronyms</div>
+    <table>
+        <tr>
+            <td class="t">AB</td><td class="s">–</td><td class="d">Absent days (daysInMonth − I/O)</td>
+            <td class="t">L</td><td class="s">–</td><td class="d">Leave days (officially filed)</td>
+        </tr>
+        <tr>
+            <td class="t">BT</td><td class="s">–</td><td class="d">Blank per CSF-48 format</td>
+            <td class="t">I/O (dd)</td><td class="s">–</td><td class="d">Days with valid biometric punch</td>
+        </tr>
+        <tr>
+            <td class="t">Over(hh)</td><td class="s">–</td><td class="d">Official overtime hours (per OT order)</td>
+            <td class="t">Sp</td><td class="s">–</td><td class="d">Special day / holiday overtime</td>
+        </tr>
+        <tr>
+            <td class="t">Late (ts)</td><td class="s">–</td><td class="d">No. of late arrivals</td>
+            <td class="t">(min)</td><td class="s">–</td><td class="d">Total late minutes</td>
+        </tr>
+        <tr>
+            <td class="t">Early Leave</td><td class="s">–</td><td class="d">No. of early departures</td>
+            <td class="t">(min)</td><td class="s">–</td><td class="d">Total undertime minutes</td>
+        </tr>
+        <tr>
+            <td class="t">dd/ww</td><td class="s">–</td><td class="d">Day / weekday abbreviation</td>
+            <td class="t">AM / PM</td><td class="s">–</td><td class="d">08:00-12:00 / 13:00-17:00</td>
         </tr>
     </table>
-
-    {{-- ── Summary row ─────────────────────────────────────────── --}}
-    @php
-        $s           = $summary ?? [];
-        $ab          = number_format($s['absent_days_total']        ?? 0, 1);
-        $lateDays    = $s['late_days']                              ?? 0;
-        $btDays      = $s['total_working_days']                     ?? 0;
-        $utDays      = $s['undertime_days']                         ?? 0;
-        $otHrs       = $s['overtime_hours']                         ?? 0;
-        $otMinRem    = $s['overtime_minutes_remainder']             ?? 0;
-        $lateHrs     = $s['late_hours']                             ?? 0;
-        $lateTotMin  = $s['late_total_minutes']                     ?? 0;
-        $earlyHrs    = $s['undertime_hours']                        ?? 0;
-        $earlyTotMin = $s['undertime_total_minutes']                ?? 0;
-    @endphp
-
-    <table class="summary-table">
-        <colgroup>
-            <col style="width:8.5%">  {{-- AB --}}
-            <col style="width:7%">    {{-- L --}}
-            <col style="width:7%">    {{-- BT --}}
-            <col style="width:8%">    {{-- U/O Over --}}
-            <col style="width:7%">    {{-- U/O h --}}
-            <col style="width:7%">    {{-- OT h --}}
-            <col style="width:8%">    {{-- OT min --}}
-            <col style="width:7%">    {{-- Sp --}}
-            <col style="width:9.5%">  {{-- Late h --}}
-            <col style="width:9.5%">  {{-- Late min --}}
-            <col style="width:9.5%">  {{-- EL h --}}
-            <col style="width:9.5%">  {{-- EL min --}}
-        </colgroup>
-        <thead>
-            <tr>
-                <th rowspan="2">AB</th>
-                <th rowspan="2">L</th>
-                <th rowspan="2">BT</th>
-                <th colspan="2">U/O (dit)</th>
-                <th colspan="2">Over(hh)</th>
-                <th rowspan="2">Sp</th>
-                <th colspan="2">Late</th>
-                <th colspan="2">Early Leave</th>
-            </tr>
-            <tr>
-                <th>Over</th><th>(h)</th>
-                <th>(h)</th><th>(min)</th>
-                <th>(h)</th><th>(min)</th>
-                <th>(h)</th><th>(min)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ $ab }}</td>
-                <td>{{ $lateDays }}</td>
-                <td>{{ $btDays }}</td>
-                <td>{{ $utDays }}</td>
-                <td>{{ $otHrs }}</td>
-                <td>{{ $otHrs }}</td>
-                <td>{{ str_pad($otMinRem, 2, '0', STR_PAD_LEFT) }}</td>
-                <td>0</td>
-                <td>{{ $lateHrs }}</td>
-                <td>{{ $lateTotMin }}</td>
-                <td>{{ $earlyHrs }}</td>
-                <td>{{ $earlyTotMin }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="schedule-note">1. 08:00-12:00, 13:00-17:00</div>
-
-    {{-- ── Attendance table ────────────────────────────────────── --}}
-    <table class="attendance-table">
-        <colgroup>
-            <col style="width:8%">   {{-- dd/ww --}}
-            <col style="width:14%">  {{-- AM In --}}
-            <col style="width:14%">  {{-- AM Out --}}
-            <col style="width:14%">  {{-- PM In --}}
-            <col style="width:14%">  {{-- PM Out --}}
-            <col style="width:18%">  {{-- Late (min) --}}
-            <col style="width:18%">  {{-- U/T or OT (min) --}}
-        </colgroup>
-        <thead>
-            <tr>
-                <th rowspan="2" class="sub" style="vertical-align:middle;">dd/ww</th>
-                <th colspan="2" class="grp">AM</th>
-                <th colspan="2" class="grp">PM</th>
-                <th rowspan="2" class="sub" style="vertical-align:middle; line-height:1.3;">Late<br>(min)</th>
-                <th rowspan="2" class="sub" style="vertical-align:middle; line-height:1.3; font-size:7pt;">U/T or OT<br>(min)</th>
-            </tr>
-            <tr>
-                <th class="sub">In</th>
-                <th class="sub">Out</th>
-                <th class="sub">In</th>
-                <th class="sub">Out</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($records as $row)
-                @php
-                    $date         = \Carbon\Carbon::parse($row['Date']);
-                    $dayNum       = str_pad($date->day, 2, '0', STR_PAD_LEFT);
-                    $dayCode      = strtoupper(substr($date->format('D'), 0, 2));
-                    $ddww         = $dayNum . ' ' . $dayCode;
-
-                    $isWeekend    = $row['IsWeekend']         ?? false;
-                    $isFullAbsent = $row['IsFullAbsent']      ?? false;
-                    $lateMin      = (int)($row['LateMinutes']      ?? 0);
-                    $utMin        = (int)($row['UndertimeMinutes']  ?? 0);
-                    $otMin        = (int)($row['OvertimeMinutes']   ?? 0);
-
-                    if ($isWeekend)        $rc = 'weekend';
-                    elseif ($isFullAbsent) $rc = 'absent';
-                    elseif ($lateMin > 0)  $rc = 'late';
-                    elseif ($otMin > 0)    $rc = 'ot';
-                    else                   $rc = '';
-
-                    // U/T or OT column: OT is green (+N), undertime is red (-N)
-                    if ($otMin > 0) {
-                        $utotVal = '+' . $otMin;
-                        $utotCss = 'ov';
-                    } elseif ($utMin > 0) {
-                        $utotVal = '-' . $utMin;
-                        $utotCss = 'lv';
-                    } else {
-                        $utotVal = '';
-                        $utotCss = 'num';
-                    }
-                @endphp
-                <tr class="{{ $rc }}">
-                    <td class="day-col">{{ $ddww }}</td>
-                    @if ($isWeekend)
-                        <td></td><td></td><td></td><td></td>
-                        <td class="num"></td>
-                        <td class="num"></td>
-                    @else
-                        <td>{{ $row['MorningIn']    ?? '' }}</td>
-                        <td>{{ $row['MorningOut']   ?? '' }}</td>
-                        <td>{{ $row['AfternoonIn']  ?? '' }}</td>
-                        <td>{{ $row['AfternoonOut'] ?? '' }}</td>
-                        <td class="{{ $lateMin > 0 ? 'lv' : 'num' }}">{{ $lateMin > 0 ? $lateMin : '' }}</td>
-                        <td class="{{ $utotCss }}">{{ $utotVal }}</td>
-                    @endif
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    {{-- ── Signature ────────────────────────────────────────────── --}}
-    <table class="sig-section">
-        <tr>
-            <td style="width:58%; line-height:1.5;">
-                I certify on my honor that the above is a true and correct report of the
-                hours of work performed, record of which was made daily at the time of
-                arrival and departure from office.
-            </td>
-            <td style="width:42%; text-align:center;">
-                <span class="sig-line"></span>
-                <div class="sig-name">{{ $empName }}</div>
-                <div class="sig-label">Signature over Printed Name</div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="padding-top:5px; font-size:8pt;">
-                Verified as to the prescribed office hours:
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <span style="display:inline-block; border-bottom:1px solid #00008B;
-                      width:200px; margin-top:20px; margin-bottom:2px;"></span>
-                <div style="font-size:7.5pt;">In Charge of Attendance</div>
-            </td>
-        </tr>
-    </table>
-
-    {{-- ── Legend ───────────────────────────────────────────────── --}}
-    <div class="legend-box">
-        <div class="legend-title">&#9432; Legends / Acronyms</div>
-        <table class="legend-grid">
-            <tr>
-                {{-- Column 1 --}}
-                <td class="term">AB</td>
-                <td class="sep">—</td>
-                <td class="def">Absences (full day = 1, half day = 0.5)</td>
-                {{-- Column 2 --}}
-                <td class="term">L</td>
-                <td class="sep">—</td>
-                <td class="def">Number of days with late arrival</td>
-            </tr>
-            <tr>
-                <td class="term">BT</td>
-                <td class="sep">—</td>
-                <td class="def">Total business/working days in period</td>
-                <td class="term">U/O (dit)</td>
-                <td class="sep">—</td>
-                <td class="def">Undertime / Overtime days</td>
-            </tr>
-            <tr>
-                <td class="term">Over(hh)</td>
-                <td class="sep">—</td>
-                <td class="def">Overtime hours &amp; minutes (after 17:00)</td>
-                <td class="term">Sp</td>
-                <td class="sep">—</td>
-                <td class="def">Special days / holidays worked</td>
-            </tr>
-            <tr>
-                <td class="term">Late (h/min)</td>
-                <td class="sep">—</td>
-                <td class="def">Total late: hours &amp; cumulative minutes</td>
-                <td class="term">Early Leave</td>
-                <td class="sep">—</td>
-                <td class="def">Total undertime: hours &amp; cumulative minutes</td>
-            </tr>
-            <tr>
-                <td class="term" style="color:#006600;">+N (OT)</td>
-                <td class="sep">—</td>
-                <td class="def">Overtime minutes earned that day</td>
-                <td class="term" style="color:#cc0000;">−N (U/T)</td>
-                <td class="sep">—</td>
-                <td class="def">Undertime minutes (left before end of shift)</td>
-            </tr>
-            <tr>
-                <td class="term">dd/ww</td>
-                <td class="sep">—</td>
-                <td class="def">Day number / weekday (MO TU WE TH FR SA SU)</td>
-                <td class="term">AM / PM</td>
-                <td class="sep">—</td>
-                <td class="def">Morning (08:00-12:00) / Afternoon (13:00-17:00)</td>
-            </tr>
-        </table>
-    </div>
+</div>
 
 </body>
 </html>
