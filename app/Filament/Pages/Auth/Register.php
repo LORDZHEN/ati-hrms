@@ -101,10 +101,6 @@ class Register extends BaseRegister
                         ->label('Position')
                         ->required(),
 
-                    Forms\Components\TextInput::make('department')
-                        ->label('Department')
-                        ->required(),
-
                     Forms\Components\Select::make('employment_type')
                         ->label('Employment Type')
                         ->options([
