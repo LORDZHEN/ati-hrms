@@ -2,22 +2,24 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Concerns\WorkflowHelper;
 use App\Filament\Resources\PersonalDataSheetResource\Pages;
 use App\Models\PersonalDataSheet;
 use App\Models\User;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
-use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Enums\FiltersLayout;
-use Illuminate\Database\Eloquent\Collection;
 use App\Notifications\PDSStatusUpdated;
 use App\Notifications\PDSRemarksAdded;
 use App\Notifications\PDSSubmittedNotification;
+use App\Services\FilingSeasonService;
+use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Support\Enums\FontWeight;
+use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 use Filament\Forms\Components\{
     View as ViewComponent,
@@ -34,6 +36,8 @@ use Filament\Forms\Components\{
 
 class PersonalDataSheetResource extends Resource
 {
+    use WorkflowHelper;
+
     protected static ?string $model = PersonalDataSheet::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
@@ -44,7 +48,7 @@ class PersonalDataSheetResource extends Resource
     protected static ?string $navigationGroup = 'Documents';
 
     // =========================================================================
-    //  ACCESS CONTROL — Hide entirely from Job Order users
+    //  ACCESS CONTROL
     // =========================================================================
 
     public static function shouldRegisterNavigation(): bool
@@ -57,13 +61,8 @@ class PersonalDataSheetResource extends Resource
         return Auth::user()?->role !== User::ROLE_JOB_ORDER;
     }
 
-    // =========================================================================
-    //  AUTHORIZATION
-    // =========================================================================
-
     public static function canCreate(): bool
     {
-        // Only regular employees can create a PDS, and only if they don't have one yet.
         if (Auth::user()->role !== User::ROLE_REGULAR) {
             return false;
         }
@@ -71,17 +70,23 @@ class PersonalDataSheetResource extends Resource
         return !PersonalDataSheet::where('user_id', Auth::id())->exists();
     }
 
+    /**
+     * Admins never use the edit page — they act via view-page header actions.
+     * Employees may only edit when the workflow gate passes.
+     */
     public static function canEdit($record): bool
     {
         $user = Auth::user();
 
-        // Admins cannot edit — they use table/view actions (approve/remarks/print).
         if ($user->role === 'admin') {
             return false;
         }
 
-        // Regular employees can access their own PDS edit page.
-        return $record->user_id === $user->id;
+        if ($record->user_id !== $user->id) {
+            return false;
+        }
+
+        return static::canEmployeeEdit($record);
     }
 
     public static function canView($record): bool
@@ -90,6 +95,7 @@ class PersonalDataSheetResource extends Resource
         if ($user->role === 'admin') {
             return true;
         }
+
         return $record->user_id === $user->id;
     }
 
@@ -99,9 +105,7 @@ class PersonalDataSheetResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $isLocked = fn($record) =>
-            Auth::user()->role === User::ROLE_REGULAR &&
-            $record?->status === 'approved';
+        $isLocked = static::formDisabledClosure();
 
         return $form->schema([
 
@@ -203,28 +207,24 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('name')->required(),
                             DatePicker::make('birthdate')->required(),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('education')
                         ->schema([
-                            Select::make('level')
-                                ->options([
-                                    'ELEMENTARY' => 'Elementary',
-                                    'SECONDARY' => 'Secondary',
-                                    'VOCATIONAL/TRADE COURSE' => 'Vocational/Trade Course',
-                                    'COLLEGE' => 'College',
-                                    'GRADUATE STUDIES' => 'Graduate Studies',
-                                ])
-                                ->required(),
+                            Select::make('level')->options([
+                                'ELEMENTARY' => 'Elementary',
+                                'SECONDARY' => 'Secondary',
+                                'VOCATIONAL/TRADE COURSE' => 'Vocational/Trade Course',
+                                'COLLEGE' => 'College',
+                                'GRADUATE STUDIES' => 'Graduate Studies',
+                            ])->required(),
                             TextInput::make('school_name')->required(),
                             TextInput::make('degree')->required(),
                             TextInput::make('from_year')->maxLength(4),
                             TextInput::make('to_year')->maxLength(4),
                             TextInput::make('honors'),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('civil_service_eligibility')
                         ->schema([
@@ -235,8 +235,7 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('license_no'),
                             DatePicker::make('validity'),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('work_experience')
                         ->schema([
@@ -249,8 +248,7 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('status'),
                             Radio::make('is_government')->boolean()->inline(),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('voluntary_work')
                         ->schema([
@@ -260,8 +258,7 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('hours')->numeric(),
                             TextInput::make('position'),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('learning_development')
                         ->schema([
@@ -272,23 +269,19 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('type'),
                             TextInput::make('conducted_by'),
                         ])
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('special_skills')
                         ->simple(TextInput::make('skill'))
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('non_academic_distinctions')
                         ->simple(TextInput::make('distinction'))
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Repeater::make('membership_association')
                         ->simple(TextInput::make('organization'))
-                        ->defaultItems(0)
-                        ->disabled($isLocked),
+                        ->defaultItems(0)->disabled($isLocked),
 
                     Radio::make('related_third_degree')->boolean()->inline()->reactive()->disabled($isLocked),
                     Textarea::make('related_third_degree_details')
@@ -349,11 +342,8 @@ class PersonalDataSheetResource extends Resource
                             TextInput::make('address')->required(),
                             TextInput::make('tel'),
                         ])
-                        ->defaultItems(3)
-                        ->minItems(3)
-                        ->maxItems(3)
-                        ->addable(false)
-                        ->deletable(false)
+                        ->defaultItems(3)->minItems(3)->maxItems(3)
+                        ->addable(false)->deletable(false)
                         ->disabled($isLocked),
 
                     TextInput::make('gov_id_type')->disabled($isLocked),
@@ -389,36 +379,68 @@ class PersonalDataSheetResource extends Resource
             ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('bulkApprove')
-                        ->label('Approve Selected')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
+
+                    // ── Bulk Unlock Editing ───────────────────────────────────
+                    Tables\Actions\BulkAction::make('bulkUnlock')
+                        ->label('Unlock Editing')
+                        ->icon('heroicon-o-lock-open')
+                        ->color('info')
                         ->visible(fn() => $isAdmin)
                         ->requiresConfirmation()
-                        ->modalHeading('Approve Multiple PDS')
-                        ->modalDescription('Are you sure you want to approve all selected Personal Data Sheets?')
+                        ->modalHeading('Unlock Editing for Selected Records')
+                        ->modalDescription(
+                            app(FilingSeasonService::class)->isEnabled()
+                            ? 'Allow employees to edit their selected approved PDS records. Filing season is currently OPEN.'
+                            : '⚠️ Filing season is currently CLOSED. Employees will still not be able to edit until filing season is enabled.'
+                        )
+                        ->modalSubmitActionLabel('Yes, Unlock Selected')
                         ->action(function (Collection $records) {
                             $count = 0;
                             foreach ($records as $record) {
-                                if ($record->status !== 'approved') {
-                                    $record->update(['status' => 'approved']);
-                                    $record->user?->notify(new PDSStatusUpdated($record));
+                                if ($record->status === 'approved' && !$record->editing_unlocked) {
+                                    $record->update(['editing_unlocked' => true]);
                                     $count++;
                                 }
                             }
                             Notification::make()
+                                ->title('Editing Unlocked')
+                                ->body("{$count} approved PDS record(s) have been unlocked for editing.")
                                 ->success()
-                                ->title('Bulk Approval Complete')
-                                ->body("{$count} PDS record(s) have been approved.")
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
 
-                    Tables\Actions\DeleteBulkAction::make()
+                    // ── Bulk Lock Editing ─────────────────────────────────────
+                    Tables\Actions\BulkAction::make('bulkLock')
+                        ->label('Lock Editing')
+                        ->icon('heroicon-o-lock-closed')
+                        ->color('danger')
                         ->visible(fn() => $isAdmin)
                         ->requiresConfirmation()
-                        ->modalHeading('Delete Selected PDS')
-                        ->modalDescription('Are you sure you want to delete these records? This action cannot be undone.'),
+                        ->modalHeading('Lock Editing for Selected Records')
+                        ->modalDescription('Prevent employees from editing their selected PDS records. This will re-lock any currently unlocked approved records.')
+                        ->modalSubmitActionLabel('Yes, Lock Selected')
+                        ->action(function (Collection $records) {
+                            $count = 0;
+                            foreach ($records as $record) {
+                                if ($record->status === 'approved' && $record->editing_unlocked) {
+                                    $record->update(['editing_unlocked' => false]);
+                                    $count++;
+                                }
+                            }
+                            Notification::make()
+                                ->title('Editing Locked')
+                                ->body("{$count} PDS record(s) have been locked.")
+                                ->warning()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    // ── Bulk Delete ───────────────────────────────────────────
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => $isAdmin)
+                        ->requiresConfirmation(),
+
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -475,15 +497,6 @@ class PersonalDataSheetResource extends Resource
                 ->placeholder('No mobile')
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            Tables\Columns\TextColumn::make('place_of_birth')
-                ->label('Place of Birth')
-                ->icon('heroicon-o-map-pin')
-                ->iconColor('gray')
-                ->color('gray')
-                ->limit(30)
-                ->placeholder('Not specified')
-                ->toggleable(isToggledHiddenByDefault: true),
-
             Tables\Columns\TextColumn::make('completion_rate')
                 ->label('Completion')
                 ->getStateUsing(fn($record) => self::calculateCompletionRate($record))
@@ -517,6 +530,17 @@ class PersonalDataSheetResource extends Resource
                     default => null,
                 })
                 ->formatStateUsing(fn(string $state): string => ucfirst($state)),
+
+            // Lock status indicator (admin only, approved records)
+            Tables\Columns\IconColumn::make('editing_unlocked')
+                ->label('Edit Lock')
+                ->boolean()
+                ->trueIcon('heroicon-o-lock-open')
+                ->falseIcon('heroicon-o-lock-closed')
+                ->trueColor('success')
+                ->falseColor('danger')
+                ->tooltip(fn($record) => $record->editing_unlocked ? 'Editing Unlocked' : 'Editing Locked')
+                ->visible(fn($record) => $isAdmin && $record?->status === 'approved'),
 
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Last Submitted')
@@ -561,50 +585,36 @@ class PersonalDataSheetResource extends Resource
                                 ->pluck('name', 'name')
                                 ->toArray()
                         )
-                        ->searchable()
-                        ->native(false)
-                        ->placeholder('All employees'),
+                        ->searchable()->native(false)->placeholder('All employees'),
 
                     \Filament\Forms\Components\Select::make('has_remarks')
                         ->label('Admin Remarks')
-                        ->native(false)
-                        ->placeholder('All records')
-                        ->options([
-                            'with' => 'With remarks',
-                            'without' => 'Without remarks',
-                        ]),
+                        ->native(false)->placeholder('All records')
+                        ->options(['with' => 'With remarks', 'without' => 'Without remarks']),
                 ])
                 ->query(
                     fn(Builder $query, array $data) => $query
                         ->when(
                             $data['employee_name'] ?? null,
                             fn($q, $v) =>
-                            $q->where(
-                                fn($q2) =>
-                                $q2->whereRaw("CONCAT(surname, ' ', first_name) LIKE ?", ["%{$v}%"])
-                            )
+                            $q->where(fn($q2) => $q2->whereRaw("CONCAT(surname, ' ', first_name) LIKE ?", ["%{$v}%"]))
                         )
                         ->when(
                             ($data['has_remarks'] ?? null) === 'with',
-                            fn($q) =>
-                            $q->whereNotNull('remarks')->where('remarks', '!=', '')
+                            fn($q) => $q->whereNotNull('remarks')->where('remarks', '!=', '')
                         )
                         ->when(
                             ($data['has_remarks'] ?? null) === 'without',
-                            fn($q) =>
-                            $q->where(fn($q2) => $q2->whereNull('remarks')->orWhere('remarks', ''))
+                            fn($q) => $q->where(fn($q2) => $q2->whereNull('remarks')->orWhere('remarks', ''))
                         )
                 )
                 ->indicateUsing(function (array $data): array {
                     $indicators = [];
-                    if ($data['employee_name'] ?? null) {
-                        $indicators[] = Tables\Filters\Indicator::make('Employee: ' . $data['employee_name'])
-                            ->removeField('employee_name');
-                    }
+                    if ($data['employee_name'] ?? null)
+                        $indicators[] = Tables\Filters\Indicator::make('Employee: ' . $data['employee_name'])->removeField('employee_name');
                     if ($data['has_remarks'] ?? null) {
                         $label = $data['has_remarks'] === 'with' ? 'With remarks' : 'Without remarks';
-                        $indicators[] = Tables\Filters\Indicator::make('Remarks: ' . $label)
-                            ->removeField('has_remarks');
+                        $indicators[] = Tables\Filters\Indicator::make('Remarks: ' . $label)->removeField('has_remarks');
                     }
                     return $indicators;
                 });
@@ -615,114 +625,25 @@ class PersonalDataSheetResource extends Resource
             ->columnSpan(1)
             ->form([
                 \Filament\Forms\Components\Select::make('status')
-                    ->label('Status')
-                    ->native(false)
-                    ->placeholder('All statuses')
+                    ->label('Status')->native(false)->placeholder('All statuses')
                     ->options([
                         'submitted' => '🕐  Submitted',
                         'approved' => '✅  Approved',
                         'disapproved' => '❌  Disapproved',
                     ]),
-
                 \Filament\Forms\Components\Select::make('completion_level')
-                    ->label('Completion Level')
-                    ->native(false)
-                    ->placeholder('All levels')
+                    ->label('Completion Level')->native(false)->placeholder('All levels')
                     ->options([
                         'high' => '✅  High (90%+)',
                         'moderate' => '⚠️   Moderate (70–89%)',
                         'low' => '❌  Low (<70%)',
                     ]),
             ])
-            ->query(
-                fn(Builder $query, array $data) => $query
-                    ->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v))
-            )
+            ->query(fn(Builder $query, array $data) => $query->when($data['status'] ?? null, fn($q, $v) => $q->where('status', $v)))
             ->indicateUsing(function (array $data): array {
                 $indicators = [];
-                if ($data['status'] ?? null) {
-                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))
-                        ->removeField('status');
-                }
-                if ($data['completion_level'] ?? null) {
-                    $labels = ['high' => 'High (90%+)', 'moderate' => 'Moderate (70–89%)', 'low' => 'Low (<70%)'];
-                    $indicators[] = Tables\Filters\Indicator::make('Completion: ' . ($labels[$data['completion_level']] ?? ''))
-                        ->removeField('completion_level');
-                }
-                return $indicators;
-            });
-
-        $filters[] = Tables\Filters\Filter::make('submitted_period')
-            ->label('Submitted Period')
-            ->columnSpan(1)
-            ->form([
-                \Filament\Forms\Components\Select::make('preset')
-                    ->label('Quick Select')
-                    ->placeholder('— pick a period —')
-                    ->native(false)
-                    ->options([
-                        'this_week' => '📅  This Week',
-                        'this_month' => '📅  This Month',
-                        'last_month' => '📅  Last Month',
-                        'this_year' => '📅  This Year',
-                    ])
-                    ->live()
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        [$from, $to] = match ($state) {
-                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
-                            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-                            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
-                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                            default => [null, null],
-                        };
-                        $set('from', $from);
-                        $set('to', $to);
-                    }),
-
-                \Filament\Forms\Components\Grid::make(2)->schema([
-                    \Filament\Forms\Components\DatePicker::make('from')
-                        ->label('From')
-                        ->native(false)
-                        ->displayFormat('M d, Y')
-                        ->maxDate(fn(callable $get) => $get('to') ?? now()),
-                    \Filament\Forms\Components\DatePicker::make('to')
-                        ->label('To')
-                        ->native(false)
-                        ->displayFormat('M d, Y')
-                        ->minDate(fn(callable $get) => $get('from'))
-                        ->maxDate(now()),
-                ]),
-            ])
-            ->query(
-                fn(Builder $query, array $data) => $query
-                    ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('created_at', '>=', $d))
-                    ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('created_at', '<=', $d))
-            )
-            ->indicateUsing(function (array $data): array {
-                $presetLabels = [
-                    'this_week' => 'This Week',
-                    'this_month' => 'This Month',
-                    'last_month' => 'Last Month',
-                    'this_year' => 'This Year',
-                ];
-                $indicators = [];
-                $preset = $data['preset'] ?? null;
-
-                if (($data['from'] ?? null) || ($data['to'] ?? null)) {
-                    if ($preset && isset($presetLabels[$preset])) {
-                        $indicators[] = Tables\Filters\Indicator::make('Submitted: ' . $presetLabels[$preset])
-                            ->removeField('preset');
-                    } else {
-                        if ($data['from'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make('From: ' . \Carbon\Carbon::parse($data['from'])->format('M d, Y'))
-                                ->removeField('from');
-                        }
-                        if ($data['to'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make('To: ' . \Carbon\Carbon::parse($data['to'])->format('M d, Y'))
-                                ->removeField('to');
-                        }
-                    }
-                }
+                if ($data['status'] ?? null)
+                    $indicators[] = Tables\Filters\Indicator::make('Status: ' . ucfirst($data['status']))->removeField('status');
                 return $indicators;
             });
 
@@ -731,10 +652,6 @@ class PersonalDataSheetResource extends Resource
 
     // =========================================================================
     //  CONTEXTUAL ACTIONS
-    //
-    //  ADMIN    : View PDS | Delete
-    //             (Approve / Add-Edit Remarks / Print live on the View page)
-    //  EMPLOYEE : View PDS | Edit PDS (not approved) | Print (approved only)
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
@@ -742,30 +659,58 @@ class PersonalDataSheetResource extends Resource
         return [
             Tables\Actions\ActionGroup::make([
 
-                // ── ADMIN: View PDS ───────────────────────────────────────────
+                // ── ADMIN: View ───────────────────────────────────────────────
                 Tables\Actions\ViewAction::make()
                     ->label('View PDS')
                     ->icon('heroicon-m-eye')
                     ->color('info')
                     ->visible(fn() => $isAdmin),
 
+                // ── ADMIN: Unlock Editing ─────────────────────────────────────
+                Tables\Actions\Action::make('quickUnlock')
+                    ->label('Unlock Editing')
+                    ->icon('heroicon-o-lock-open')
+                    ->color('info')
+                    ->visible(fn($record) => $isAdmin && $record->status === 'approved' && !$record->editing_unlocked)
+                    ->requiresConfirmation()
+                    ->modalDescription(
+                        app(FilingSeasonService::class)->isEnabled()
+                        ? 'Allow the employee to edit this PDS. Filing season is OPEN.'
+                        : '⚠️ Filing season is CLOSED. Employee cannot edit until it is enabled.'
+                    )
+                    ->action(function ($record) {
+                        $record->update(['editing_unlocked' => true]);
+                        Notification::make()->title('Editing Unlocked')->success()->send();
+                    }),
+
+                // ── ADMIN: Lock Editing ───────────────────────────────────────
+                Tables\Actions\Action::make('quickLock')
+                    ->label('Lock Editing')
+                    ->icon('heroicon-o-lock-closed')
+                    ->color('danger')
+                    ->visible(fn($record) => $isAdmin && $record->status === 'approved' && $record->editing_unlocked)
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->update(['editing_unlocked' => false]);
+                        Notification::make()->title('Record Locked')->warning()->send();
+                    }),
+
                 // ── ADMIN: Delete ─────────────────────────────────────────────
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
 
-                // ── EMPLOYEE: View PDS ────────────────────────────────────────
+                // ── EMPLOYEE: View ────────────────────────────────────────────
                 Tables\Actions\ViewAction::make('employeeView')
                     ->label('View PDS')
                     ->icon('heroicon-m-eye')
                     ->color('info')
                     ->visible(
                         fn($record) =>
-                        !$isAdmin &&
-                        $record->user_id === Auth::id()
+                        !$isAdmin && $record->user_id === Auth::id()
                     ),
 
-                // ── EMPLOYEE: Edit / Resubmit ─────────────────────────────────
+                // ── EMPLOYEE: Edit — only when workflow gate passes ────────────
                 Tables\Actions\EditAction::make()
                     ->label('Edit PDS')
                     ->icon('heroicon-m-pencil-square')
@@ -774,7 +719,7 @@ class PersonalDataSheetResource extends Resource
                         fn($record) =>
                         !$isAdmin &&
                         $record->user_id === Auth::id() &&
-                        $record->status !== 'approved'
+                        static::canEmployeeEdit($record)
                     ),
 
                 // ── EMPLOYEE: Print (approved only) ───────────────────────────

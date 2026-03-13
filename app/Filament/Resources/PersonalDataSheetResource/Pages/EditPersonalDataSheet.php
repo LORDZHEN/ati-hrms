@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PersonalDataSheetResource\Pages;
 
+use App\Filament\Concerns\WorkflowHelper;
 use App\Filament\Resources\PersonalDataSheetResource;
 use App\Models\User;
 use App\Notifications\PDSSubmittedNotification;
@@ -12,13 +13,31 @@ use Illuminate\Support\Facades\Auth;
 
 class EditPersonalDataSheet extends EditRecord
 {
+    use WorkflowHelper;
+
     protected static string $resource = PersonalDataSheetResource::class;
 
     // =========================================================================
+    //  BOOT — redirect locked employees away from the edit URL
+    // =========================================================================
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        if (Auth::user()->role !== 'admin' && !static::canEmployeeEdit($this->record)) {
+            Notification::make()
+                ->title('Record is Locked')
+                ->body('This PDS is approved and cannot be edited at this time.')
+                ->warning()
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
+        }
+    }
+
+    // =========================================================================
     //  HEADER ACTIONS
-    //
-    //  Only show Print when the PDS is approved. No disapprove button here.
-    //  Delete is admin-only or employee's own non-approved PDS.
     // =========================================================================
 
     protected function getHeaderActions(): array
@@ -42,56 +61,22 @@ class EditPersonalDataSheet extends EditRecord
     }
 
     // =========================================================================
-    //  RESUBMISSION — step 1: mutate data before save
-    //
-    //  When an employee saves, force status back to 'submitted' so the admin
-    //  sees the updated PDS in their queue again.
-    //  Admin saves are left untouched.
-    // =========================================================================
-
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        if (Auth::user()->role === 'employee') {
-            $data['status'] = 'submitted';
-        }
-
-        return $data;
-    }
-
-    // =========================================================================
-    //  RESUBMISSION — step 2: after save side-effects
-    // =========================================================================
-
-    protected function afterSave(): void
-    {
-        if (Auth::user()->role !== 'employee') {
-            return;
-        }
-
-        $user = Auth::user();
-
-        // Stamp the resubmission time on created_at.
-        $this->record->updateQuietly(['created_at' => now()]);
-
-        // Notify all admins of the updated submission.
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new PDSSubmittedNotification($user, $this->record));
-        }
-
-        Notification::make()
-            ->title('PDS Resubmitted Successfully')
-            ->body('Your Personal Data Sheet has been updated and sent for review.')
-            ->success()
-            ->send();
-    }
-
-    // =========================================================================
-    //  FORM ACTIONS
+    //  FORM ACTIONS — hide save/resubmit when locked
     // =========================================================================
 
     protected function getFormActions(): array
     {
+        // If locked, give only a back button — no save/submit
+        if (!static::canEmployeeEdit($this->record)) {
+            return [
+                Actions\Action::make('back')
+                    ->label('Back to List')
+                    ->url($this->getResource()::getUrl('index'))
+                    ->color('gray')
+                    ->icon('heroicon-o-arrow-left'),
+            ];
+        }
+
         $isEmployee = Auth::user()->role === 'employee';
 
         return [
@@ -108,6 +93,52 @@ class EditPersonalDataSheet extends EditRecord
                 ->icon('heroicon-o-x-mark'),
         ];
     }
+
+    // =========================================================================
+    //  MUTATIONS
+    // =========================================================================
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Belt-and-suspenders: abort even if policy is misconfigured
+        if (Auth::user()->role !== 'admin') {
+            abort_unless(static::canEmployeeEdit($this->record), 403, 'This record is locked.');
+
+            $data['status'] = 'submitted';
+            $data['editing_unlocked'] = false; // re-lock after employee saves
+        }
+
+        return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        if (Auth::user()->role !== 'employee') {
+            Notification::make()->title('PDS Updated')->success()->send();
+            return;
+        }
+
+        $user = Auth::user();
+
+        // Stamp resubmission time
+        $this->record->updateQuietly(['created_at' => now()]);
+
+        // Notify all admins
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new PDSSubmittedNotification($user, $this->record));
+        }
+
+        Notification::make()
+            ->title('PDS Resubmitted Successfully')
+            ->body('Your Personal Data Sheet has been updated and sent for review.')
+            ->success()
+            ->send();
+    }
+
+    // =========================================================================
+    //  REDIRECT
+    // =========================================================================
 
     protected function getRedirectUrl(): string
     {

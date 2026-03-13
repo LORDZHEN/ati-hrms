@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalnResource\Pages;
 
+use App\Filament\Concerns\WorkflowHelper;
 use App\Filament\Resources\SalnResource;
 use App\Models\User;
 use App\Notifications\NewSalnFiled;
@@ -11,61 +12,158 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditSaln extends EditRecord
 {
+    use WorkflowHelper;
+
     protected static string $resource = SalnResource::class;
+
+    // =========================================================================
+    //  BOOT — enforce lock at page level
+    //
+    //  If the employee tries to reach this URL directly but the record is
+    //  locked, redirect them to the view page immediately.
+    // =========================================================================
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        // Policy already blocks the canEdit() gate, but this adds a
+        // belt-and-suspenders redirect so the user sees a friendly message
+        // instead of a 403 error page.
+        if (auth()->user()?->role !== 'admin' && !static::canEmployeeEdit($this->record)) {
+            Notification::make()
+                ->title('Record is Locked')
+                ->body('This SALN is approved and cannot be edited.')
+                ->warning()
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
+        }
+    }
+
+    // =========================================================================
+    //  HEADER ACTIONS
+    // =========================================================================
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('print')
-                ->label('Print SALN')->icon('heroicon-o-printer')->color('success')
-                ->url(fn() => route('saln.print', $this->record))->openUrlInNewTab(),
-
             Actions\DeleteAction::make()
                 ->visible(fn() => auth()->user()?->role === 'admin'),
         ];
     }
 
-    /**
-     * Pre-populate Annex B & C data arrays when the edit form loads.
-     */
+    // =========================================================================
+    //  FORM ACTIONS — Hide save/resubmit for locked records
+    // =========================================================================
+
+    protected function getFormActions(): array
+    {
+        // If the record is locked (approved + not unlocked OR filing season off),
+        // show no editable actions — only a back button.
+        if (!static::canEmployeeEdit($this->record)) {
+            return [
+                Actions\Action::make('back')
+                    ->label('Back to List')
+                    ->url($this->getResource()::getUrl('index'))
+                    ->color('gray')
+                    ->icon('heroicon-o-arrow-left'),
+            ];
+        }
+
+        $isEmployee = auth()->user()->role === 'employee';
+
+        return [
+            Actions\Action::make('save')
+                ->label($isEmployee ? 'Resubmit SALN' : 'Save Changes')
+                ->submit('save')
+                ->color('primary')
+                ->icon($isEmployee ? 'heroicon-o-paper-airplane' : 'heroicon-o-check'),
+
+            Actions\Action::make('cancel')
+                ->label('Cancel')
+                ->url($this->getResource()::getUrl('index'))
+                ->color('gray')
+                ->icon('heroicon-o-x-mark'),
+        ];
+    }
+
+    // =========================================================================
+    //  MUTATIONS — only employees trigger re-submission flow
+    // =========================================================================
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $record = $this->record;
 
         // ── Annex B ───────────────────────────────────────────────────────────
-        $data['annexBRealProperties']    = $record->annexBRealProperties->map->only([
-            'id', 'description', 'kind', 'exact_location', 'assessed_value',
-            'current_fair_market_value', 'acquisition_year', 'mode_of_acquisition', 'acquisition_cost',
+        $data['annexBRealProperties'] = $record->annexBRealProperties->map->only([
+            'id',
+            'description',
+            'kind',
+            'exact_location',
+            'assessed_value',
+            'current_fair_market_value',
+            'acquisition_year',
+            'mode_of_acquisition',
+            'acquisition_cost',
         ])->values()->toArray();
 
         $data['annexBPersonalProperties'] = $record->annexBPersonalProperties->map->only([
-            'id', 'description', 'year_acquired', 'acquisition_cost',
+            'id',
+            'description',
+            'year_acquired',
+            'acquisition_cost',
         ])->values()->toArray();
 
         $data['annexBLiabilities'] = $record->annexBLiabilities->map->only([
-            'id', 'nature', 'name_of_creditors', 'outstanding_balance',
+            'id',
+            'nature',
+            'name_of_creditors',
+            'outstanding_balance',
         ])->values()->toArray();
 
         $data['annexBBusinessInterests'] = $record->annexBBusinessInterests->map->only([
-            'id', 'name_of_entity', 'business_address', 'nature_of_business_interest', 'date_of_acquisition',
+            'id',
+            'name_of_entity',
+            'business_address',
+            'nature_of_business_interest',
+            'date_of_acquisition',
         ])->values()->toArray();
 
         // ── Annex C ───────────────────────────────────────────────────────────
-        $data['annexCRealProperties']    = $record->annexCRealProperties->map->only([
-            'id', 'description', 'kind', 'exact_location', 'assessed_value',
-            'current_fair_market_value', 'acquisition_year', 'mode_of_acquisition', 'acquisition_cost',
+        $data['annexCRealProperties'] = $record->annexCRealProperties->map->only([
+            'id',
+            'description',
+            'kind',
+            'exact_location',
+            'assessed_value',
+            'current_fair_market_value',
+            'acquisition_year',
+            'mode_of_acquisition',
+            'acquisition_cost',
         ])->values()->toArray();
 
         $data['annexCPersonalProperties'] = $record->annexCPersonalProperties->map->only([
-            'id', 'description', 'year_acquired', 'acquisition_cost',
+            'id',
+            'description',
+            'year_acquired',
+            'acquisition_cost',
         ])->values()->toArray();
 
         $data['annexCLiabilities'] = $record->annexCLiabilities->map->only([
-            'id', 'nature', 'name_of_creditors', 'outstanding_balance',
+            'id',
+            'nature',
+            'name_of_creditors',
+            'outstanding_balance',
         ])->values()->toArray();
 
         $data['annexCBusinessInterests'] = $record->annexCBusinessInterests->map->only([
-            'id', 'name_of_entity', 'business_address', 'nature_of_business_interest', 'date_of_acquisition',
+            'id',
+            'name_of_entity',
+            'business_address',
+            'nature_of_business_interest',
+            'date_of_acquisition',
         ])->values()->toArray();
 
         return $data;
@@ -73,9 +171,15 @@ class EditSaln extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (auth()->user()?->role !== 'admin') {
+        $isAdmin = auth()->user()?->role === 'admin';
+
+        if (!$isAdmin) {
+            // Guard: abort if the employee somehow bypassed the UI
+            abort_unless(static::canEmployeeEdit($this->record), 403, 'This record is locked.');
+
             unset($data['person_administering_oath'], $data['subscribed_sworn_date']);
             $data['status'] = 'submitted';
+            $data['editing_unlocked'] = false; // re-lock after employee resubmission
         }
 
         // ── Annex A totals ────────────────────────────────────────────────────
@@ -83,21 +187,21 @@ class EditSaln extends EditRecord
             collect($data['realProperties'] ?? [])->sum('current_fair_market_value')
             + collect($data['personalProperties'] ?? [])->sum('acquisition_cost');
         $data['total_liabilities'] = collect($data['liabilities'] ?? [])->sum('outstanding_balance');
-        $data['net_worth']         = $data['total_assets'] - $data['total_liabilities'];
+        $data['net_worth'] = $data['total_assets'] - $data['total_liabilities'];
 
         // ── Annex B totals ────────────────────────────────────────────────────
         $data['annex_b_total_assets'] =
             collect($data['annexBRealProperties'] ?? [])->sum('current_fair_market_value')
             + collect($data['annexBPersonalProperties'] ?? [])->sum('acquisition_cost');
         $data['annex_b_total_liabilities'] = collect($data['annexBLiabilities'] ?? [])->sum('outstanding_balance');
-        $data['annex_b_net_worth']         = $data['annex_b_total_assets'] - $data['annex_b_total_liabilities'];
+        $data['annex_b_net_worth'] = $data['annex_b_total_assets'] - $data['annex_b_total_liabilities'];
 
         // ── Annex C totals ────────────────────────────────────────────────────
         $data['annex_c_total_assets'] =
             collect($data['annexCRealProperties'] ?? [])->sum('current_fair_market_value')
             + collect($data['annexCPersonalProperties'] ?? [])->sum('acquisition_cost');
         $data['annex_c_total_liabilities'] = collect($data['annexCLiabilities'] ?? [])->sum('outstanding_balance');
-        $data['annex_c_net_worth']         = $data['annex_c_total_assets'] - $data['annex_c_total_liabilities'];
+        $data['annex_c_net_worth'] = $data['annex_c_total_assets'] - $data['annex_c_total_liabilities'];
 
         return $data;
     }
@@ -105,39 +209,57 @@ class EditSaln extends EditRecord
     protected function afterSave(): void
     {
         // Sync Annex B relationships
-        $this->syncAnnexRelationships('annexBRealProperties',    'annexBRealProperties');
-        $this->syncAnnexRelationships('annexBPersonalProperties','annexBPersonalProperties');
-        $this->syncAnnexRelationships('annexBLiabilities',       'annexBLiabilities');
+        $this->syncAnnexRelationships('annexBRealProperties', 'annexBRealProperties');
+        $this->syncAnnexRelationships('annexBPersonalProperties', 'annexBPersonalProperties');
+        $this->syncAnnexRelationships('annexBLiabilities', 'annexBLiabilities');
         $this->syncAnnexRelationships('annexBBusinessInterests', 'annexBBusinessInterests');
 
         // Sync Annex C relationships
-        $this->syncAnnexRelationships('annexCRealProperties',    'annexCRealProperties');
-        $this->syncAnnexRelationships('annexCPersonalProperties','annexCPersonalProperties');
-        $this->syncAnnexRelationships('annexCLiabilities',       'annexCLiabilities');
+        $this->syncAnnexRelationships('annexCRealProperties', 'annexCRealProperties');
+        $this->syncAnnexRelationships('annexCPersonalProperties', 'annexCPersonalProperties');
+        $this->syncAnnexRelationships('annexCLiabilities', 'annexCLiabilities');
         $this->syncAnnexRelationships('annexCBusinessInterests', 'annexCBusinessInterests');
 
         $this->record->calculateTotals();
         $this->record->updateQuietly(['resubmitted_at' => now()]);
 
-        User::where('role', 'admin')->get()->each(
-            fn($admin) => $admin->notify(new NewSalnFiled($this->record))
-        );
+        // Only notify admins when an employee resubmits
+        if (auth()->user()?->role !== 'admin') {
+            User::where('role', 'admin')->get()->each(
+                fn($admin) => $admin->notify(new NewSalnFiled($this->record))
+            );
 
-        Notification::make()
-            ->title('SALN Resubmitted Successfully')
-            ->body('Your SALN has been updated and filed for review.')
-            ->success()->send();
+            Notification::make()
+                ->title('SALN Resubmitted Successfully')
+                ->body('Your SALN has been updated and filed for review.')
+                ->success()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('SALN Updated')
+                ->body('Changes saved successfully.')
+                ->success()
+                ->send();
+        }
     }
 
-    /**
-     * Sync (delete-then-recreate) Annex B/C items for a given relationship.
-     * Items with an 'id' are updated; new items (no 'id') are created; any
-     * existing ids NOT present in the new data are deleted.
-     */
+    // =========================================================================
+    //  REDIRECT
+    // =========================================================================
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    // =========================================================================
+    //  SYNC HELPER
+    // =========================================================================
+
     protected function syncAnnexRelationships(string $dataKey, string $relationshipMethod): void
     {
-        $items      = $this->data[$dataKey] ?? [];
-        $relation   = $this->record->{$relationshipMethod}();
+        $items = $this->data[$dataKey] ?? [];
+        $relation = $this->record->{$relationshipMethod}();
         $existingIds = $relation->pluck('id')->toArray();
         $incomingIds = collect($items)->pluck('id')->filter()->toArray();
 
@@ -159,23 +281,6 @@ class EditSaln extends EditRecord
         }
     }
 
-    protected function getFormActions(): array
-    {
-        return [
-            Actions\Action::make('save')
-                ->label('Resubmit SALN')->submit('save')->color('primary')
-                ->icon('heroicon-o-paper-airplane'),
-            Actions\Action::make('cancel')
-                ->label('Cancel')->url($this->getResource()::getUrl('index'))
-                ->color('gray')->icon('heroicon-o-x-mark'),
-        ];
-    }
-
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
-
     // =========================================================================
     //  LIVEWIRE HELPERS — ANNEX A
     // =========================================================================
@@ -184,74 +289,73 @@ class EditSaln extends EditRecord
     {
         $this->data['children'][] = ['name' => '', 'age' => ''];
     }
-
-    public function removeChild(int $index): void
+    public function removeChild(int $i): void
     {
-        array_splice($this->data['children'], $index, 1);
+        array_splice($this->data['children'], $i, 1);
     }
 
     public function addRealProperty(): void
     {
         $this->data['realProperties'][] = [
-            'description' => '', 'kind' => '', 'exact_location' => '',
-            'assessed_value' => '', 'current_fair_market_value' => '',
-            'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => '',
+            'description' => '',
+            'kind' => '',
+            'exact_location' => '',
+            'assessed_value' => '',
+            'current_fair_market_value' => '',
+            'acquisition_year' => '',
+            'mode_of_acquisition' => '',
+            'acquisition_cost' => '',
         ];
     }
-
-    public function removeRealProperty(int $index): void
+    public function removeRealProperty(int $i): void
     {
-        array_splice($this->data['realProperties'], $index, 1);
+        array_splice($this->data['realProperties'], $i, 1);
     }
 
     public function addPersonalProperty(): void
     {
-        $this->data['personalProperties'][] = [
-            'description' => '', 'year_acquired' => '', 'acquisition_cost' => '',
-        ];
+        $this->data['personalProperties'][] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
     }
-
-    public function removePersonalProperty(int $index): void
+    public function removePersonalProperty(int $i): void
     {
-        array_splice($this->data['personalProperties'], $index, 1);
+        array_splice($this->data['personalProperties'], $i, 1);
     }
 
     public function addLiability(): void
     {
-        $this->data['liabilities'][] = [
-            'nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => '',
-        ];
+        $this->data['liabilities'][] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
     }
-
-    public function removeLiability(int $index): void
+    public function removeLiability(int $i): void
     {
-        array_splice($this->data['liabilities'], $index, 1);
+        array_splice($this->data['liabilities'], $i, 1);
     }
 
     public function addBusinessInterest(): void
     {
         $this->data['businessInterests'][] = [
-            'name_of_entity' => '', 'business_address' => '',
-            'nature_of_business_interest' => '', 'date_of_acquisition' => '',
+            'name_of_entity' => '',
+            'business_address' => '',
+            'nature_of_business_interest' => '',
+            'date_of_acquisition' => '',
         ];
     }
-
-    public function removeBusinessInterest(int $index): void
+    public function removeBusinessInterest(int $i): void
     {
-        array_splice($this->data['businessInterests'], $index, 1);
+        array_splice($this->data['businessInterests'], $i, 1);
     }
 
     public function addRelativeInGovernment(): void
     {
         $this->data['relativesInGovernment'][] = [
-            'name_of_relative' => '', 'relationship' => '',
-            'position' => '', 'name_of_agency_office_address' => '',
+            'name_of_relative' => '',
+            'relationship' => '',
+            'position' => '',
+            'name_of_agency_office_address' => '',
         ];
     }
-
-    public function removeRelativeInGovernment(int $index): void
+    public function removeRelativeInGovernment(int $i): void
     {
-        array_splice($this->data['relativesInGovernment'], $index, 1);
+        array_splice($this->data['relativesInGovernment'], $i, 1);
     }
 
     // =========================================================================
@@ -261,52 +365,51 @@ class EditSaln extends EditRecord
     public function addAnnexBRealProperty(): void
     {
         $this->data['annexBRealProperties'][] = [
-            'description' => '', 'kind' => '', 'exact_location' => '',
-            'assessed_value' => '', 'current_fair_market_value' => '',
-            'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => '',
+            'description' => '',
+            'kind' => '',
+            'exact_location' => '',
+            'assessed_value' => '',
+            'current_fair_market_value' => '',
+            'acquisition_year' => '',
+            'mode_of_acquisition' => '',
+            'acquisition_cost' => '',
         ];
     }
-
-    public function removeAnnexBRealProperty(int $index): void
+    public function removeAnnexBRealProperty(int $i): void
     {
-        array_splice($this->data['annexBRealProperties'], $index, 1);
+        array_splice($this->data['annexBRealProperties'], $i, 1);
     }
 
     public function addAnnexBPersonalProperty(): void
     {
-        $this->data['annexBPersonalProperties'][] = [
-            'description' => '', 'year_acquired' => '', 'acquisition_cost' => '',
-        ];
+        $this->data['annexBPersonalProperties'][] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
     }
-
-    public function removeAnnexBPersonalProperty(int $index): void
+    public function removeAnnexBPersonalProperty(int $i): void
     {
-        array_splice($this->data['annexBPersonalProperties'], $index, 1);
+        array_splice($this->data['annexBPersonalProperties'], $i, 1);
     }
 
     public function addAnnexBLiability(): void
     {
-        $this->data['annexBLiabilities'][] = [
-            'nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => '',
-        ];
+        $this->data['annexBLiabilities'][] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
     }
-
-    public function removeAnnexBLiability(int $index): void
+    public function removeAnnexBLiability(int $i): void
     {
-        array_splice($this->data['annexBLiabilities'], $index, 1);
+        array_splice($this->data['annexBLiabilities'], $i, 1);
     }
 
     public function addAnnexBBusinessInterest(): void
     {
         $this->data['annexBBusinessInterests'][] = [
-            'name_of_entity' => '', 'business_address' => '',
-            'nature_of_business_interest' => '', 'date_of_acquisition' => '',
+            'name_of_entity' => '',
+            'business_address' => '',
+            'nature_of_business_interest' => '',
+            'date_of_acquisition' => '',
         ];
     }
-
-    public function removeAnnexBBusinessInterest(int $index): void
+    public function removeAnnexBBusinessInterest(int $i): void
     {
-        array_splice($this->data['annexBBusinessInterests'], $index, 1);
+        array_splice($this->data['annexBBusinessInterests'], $i, 1);
     }
 
     // =========================================================================
@@ -316,51 +419,50 @@ class EditSaln extends EditRecord
     public function addAnnexCRealProperty(): void
     {
         $this->data['annexCRealProperties'][] = [
-            'description' => '', 'kind' => '', 'exact_location' => '',
-            'assessed_value' => '', 'current_fair_market_value' => '',
-            'acquisition_year' => '', 'mode_of_acquisition' => '', 'acquisition_cost' => '',
+            'description' => '',
+            'kind' => '',
+            'exact_location' => '',
+            'assessed_value' => '',
+            'current_fair_market_value' => '',
+            'acquisition_year' => '',
+            'mode_of_acquisition' => '',
+            'acquisition_cost' => '',
         ];
     }
-
-    public function removeAnnexCRealProperty(int $index): void
+    public function removeAnnexCRealProperty(int $i): void
     {
-        array_splice($this->data['annexCRealProperties'], $index, 1);
+        array_splice($this->data['annexCRealProperties'], $i, 1);
     }
 
     public function addAnnexCPersonalProperty(): void
     {
-        $this->data['annexCPersonalProperties'][] = [
-            'description' => '', 'year_acquired' => '', 'acquisition_cost' => '',
-        ];
+        $this->data['annexCPersonalProperties'][] = ['description' => '', 'year_acquired' => '', 'acquisition_cost' => ''];
     }
-
-    public function removeAnnexCPersonalProperty(int $index): void
+    public function removeAnnexCPersonalProperty(int $i): void
     {
-        array_splice($this->data['annexCPersonalProperties'], $index, 1);
+        array_splice($this->data['annexCPersonalProperties'], $i, 1);
     }
 
     public function addAnnexCLiability(): void
     {
-        $this->data['annexCLiabilities'][] = [
-            'nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => '',
-        ];
+        $this->data['annexCLiabilities'][] = ['nature' => '', 'name_of_creditors' => '', 'outstanding_balance' => ''];
     }
-
-    public function removeAnnexCLiability(int $index): void
+    public function removeAnnexCLiability(int $i): void
     {
-        array_splice($this->data['annexCLiabilities'], $index, 1);
+        array_splice($this->data['annexCLiabilities'], $i, 1);
     }
 
     public function addAnnexCBusinessInterest(): void
     {
         $this->data['annexCBusinessInterests'][] = [
-            'name_of_entity' => '', 'business_address' => '',
-            'nature_of_business_interest' => '', 'date_of_acquisition' => '',
+            'name_of_entity' => '',
+            'business_address' => '',
+            'nature_of_business_interest' => '',
+            'date_of_acquisition' => '',
         ];
     }
-
-    public function removeAnnexCBusinessInterest(int $index): void
+    public function removeAnnexCBusinessInterest(int $i): void
     {
-        array_splice($this->data['annexCBusinessInterests'], $index, 1);
+        array_splice($this->data['annexCBusinessInterests'], $i, 1);
     }
 }

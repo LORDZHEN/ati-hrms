@@ -71,45 +71,54 @@ class Saln extends Model
         'remarks',
         'status',
         'resubmitted_at',
+
+        // ── Workflow Lock (added for approval lock feature) ───────────────────
+        //    false  = editing locked after approval  (default)
+        //    true   = admin has unlocked for employee re-editing
+        'editing_unlocked',
     ];
 
     protected $casts = [
-        'as_of_date'            => 'date',
-        'date_signed'           => 'date',
+        // ── Dates ─────────────────────────────────────────────────────────────
+        'as_of_date' => 'date',
+        'date_signed' => 'date',
         'subscribed_sworn_date' => 'date',
-        'resubmitted_at'        => 'datetime',
+        'resubmitted_at' => 'datetime',
 
-        // Compliance type booleans
+        // ── Compliance type booleans ──────────────────────────────────────────
         'compliance_assumption' => 'boolean',
-        'compliance_annual'     => 'boolean',
-        'compliance_exit'       => 'boolean',
+        'compliance_annual' => 'boolean',
+        'compliance_exit' => 'boolean',
 
-        // Filing type booleans
-        'joint_filing'          => 'boolean',
-        'separate_filing'       => 'boolean',
-        'not_applicable'        => 'boolean',
+        // ── Filing type booleans ──────────────────────────────────────────────
+        'joint_filing' => 'boolean',
+        'separate_filing' => 'boolean',
+        'not_applicable' => 'boolean',
 
-        // Multiple marriages
+        // ── Multiple marriages ────────────────────────────────────────────────
         'multiple_marriages_not_applicable' => 'boolean',
 
-        // Business / relatives
-        'no_business_interests'      => 'boolean',
+        // ── Business / relatives flags ────────────────────────────────────────
+        'no_business_interests' => 'boolean',
         'no_relatives_in_government' => 'boolean',
 
-        // Annex A totals
-        'total_assets'      => 'decimal:2',
+        // ── Annex A totals ────────────────────────────────────────────────────
+        'total_assets' => 'decimal:2',
         'total_liabilities' => 'decimal:2',
-        'net_worth'         => 'decimal:2',
+        'net_worth' => 'decimal:2',
 
-        // Annex B totals
-        'annex_b_total_assets'      => 'decimal:2',
+        // ── Annex B totals ────────────────────────────────────────────────────
+        'annex_b_total_assets' => 'decimal:2',
         'annex_b_total_liabilities' => 'decimal:2',
-        'annex_b_net_worth'         => 'decimal:2',
+        'annex_b_net_worth' => 'decimal:2',
 
-        // Annex C totals
-        'annex_c_total_assets'      => 'decimal:2',
+        // ── Annex C totals ────────────────────────────────────────────────────
+        'annex_c_total_assets' => 'decimal:2',
         'annex_c_total_liabilities' => 'decimal:2',
-        'annex_c_net_worth'         => 'decimal:2',
+        'annex_c_net_worth' => 'decimal:2',
+
+        // ── Workflow lock ─────────────────────────────────────────────────────
+        'editing_unlocked' => 'boolean',
     ];
 
     // =========================================================================
@@ -208,9 +217,15 @@ class Saln extends Model
     public function calculateTotals(): void
     {
         $this->load([
-            'realProperties', 'personalProperties', 'liabilities',
-            'annexBRealProperties', 'annexBPersonalProperties', 'annexBLiabilities',
-            'annexCRealProperties', 'annexCPersonalProperties', 'annexCLiabilities',
+            'realProperties',
+            'personalProperties',
+            'liabilities',
+            'annexBRealProperties',
+            'annexBPersonalProperties',
+            'annexBLiabilities',
+            'annexCRealProperties',
+            'annexCPersonalProperties',
+            'annexCLiabilities',
         ]);
 
         // ── Annex A ───────────────────────────────────────────────────────────
@@ -243,9 +258,21 @@ class Saln extends Model
      */
     public function getComplianceTypeLabelAttribute(): string
     {
-        if ($this->compliance_assumption) return 'Assumption of Office';
-        if ($this->compliance_annual)     return 'Annual Filing';
-        if ($this->compliance_exit)       return 'Exit';
+        if ($this->compliance_assumption)
+            return 'Assumption of Office';
+        if ($this->compliance_annual)
+            return 'Annual Filing';
+        if ($this->compliance_exit)
+            return 'Exit';
         return '—';
+    }
+
+    /**
+     * Whether the record is currently locked for employee editing.
+     * A record is locked when it is approved AND editing_unlocked is false.
+     */
+    public function isEditingLocked(): bool
+    {
+        return $this->status === 'approved' && !$this->editing_unlocked;
     }
 }

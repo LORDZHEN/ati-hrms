@@ -2,28 +2,33 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Concerns\WorkflowHelper;
 use App\Models\Saln;
 use App\Models\User;
+use App\Services\FilingSeasonService;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Support\Enums\FontWeight;
+use Filament\Tables;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use App\Notifications\SalnRemarksAdded;
 use App\Filament\Resources\SalnResource\Pages;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\View as ViewComponent;
-use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
-use App\Notifications\SalnRemarksAdded;
-use Carbon\Carbon;
 
 class SalnResource extends Resource
 {
+    use WorkflowHelper;
+
     protected static ?string $model = Saln::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'SALN';
@@ -49,24 +54,39 @@ class SalnResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (Auth::user()->role !== User::ROLE_REGULAR)
+        if (Auth::user()->role !== User::ROLE_REGULAR) {
             return false;
+        }
+
         return !Saln::where('user_id', Auth::id())->exists();
     }
 
+    /**
+     * Admins cannot use the edit page — they act via the View page actions.
+     * Employees may only edit when the workflow gate passes.
+     */
     public static function canEdit($record): bool
     {
         $user = Auth::user();
-        if ($user->role === 'admin')
+
+        if ($user->role === 'admin') {
             return false;
-        return $record->user_id === $user->id;
+        }
+
+        if ($record->user_id !== $user->id) {
+            return false;
+        }
+
+        return static::canEmployeeEdit($record);
     }
 
     public static function canView($record): bool
     {
         $user = Auth::user();
-        if ($user->role === 'admin')
+        if ($user->role === 'admin') {
             return true;
+        }
+
         return $record->user_id === $user->id;
     }
 
@@ -76,191 +96,181 @@ class SalnResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $isLocked = static::formDisabledClosure();
         $isAdmin = fn() => Auth::user()?->role === 'admin';
 
         return $form->schema([
 
             self::buildAdminRemarksSection($isAdmin),
 
-            // The visual SALN form (pages 1–4 via Blade)
             ViewComponent::make('filament.resources.saln-resource.saln-form')
                 ->columnSpanFull(),
 
-            // Hidden data-binding section (collapsed by default)
             Section::make('Form Fields (For Validation Only)')
                 ->description('⚠️ Please fill out the official SALN form above. These fields are for data binding.')
                 ->schema([
 
-                    // ── COMPLIANCE TYPE ───────────────────────────────────────
                     Section::make('Compliance Type')->schema([
                         Grid::make(3)->schema([
                             Forms\Components\Checkbox::make('compliance_assumption')
-                                ->label('Assumption of Office')->live()
+                                ->label('Assumption of Office')->live()->disabled($isLocked)
                                 ->afterStateUpdated(fn($state, callable $set) =>
                                     $state ? ($set('compliance_annual', false) && $set('compliance_exit', false)) : null),
                             Forms\Components\Checkbox::make('compliance_annual')
-                                ->label('Annual Filing')->live()
+                                ->label('Annual Filing')->live()->disabled($isLocked)
                                 ->afterStateUpdated(fn($state, callable $set) =>
                                     $state ? ($set('compliance_assumption', false) && $set('compliance_exit', false)) : null),
                             Forms\Components\Checkbox::make('compliance_exit')
-                                ->label('Exit')->live()
+                                ->label('Exit')->live()->disabled($isLocked)
                                 ->afterStateUpdated(fn($state, callable $set) =>
                                     $state ? ($set('compliance_assumption', false) && $set('compliance_annual', false)) : null),
                         ]),
                         Forms\Components\DatePicker::make('as_of_date')
                             ->label('As of Date')->required()
-                            ->default(fn() => now()->toDateString())->native(false),
+                            ->default(fn() => now()->toDateString())->native(false)
+                            ->disabled($isLocked),
                     ])->compact(),
 
-                    // ── FILING TYPE ───────────────────────────────────────────
                     Grid::make(3)->schema([
-                        Forms\Components\Checkbox::make('joint_filing')->label('Joint Filing')->live()
+                        Forms\Components\Checkbox::make('joint_filing')->label('Joint Filing')->live()->disabled($isLocked)
                             ->afterStateUpdated(fn($state, callable $set) =>
                                 $state ? ($set('separate_filing', false) && $set('not_applicable', false)) : null),
-                        Forms\Components\Checkbox::make('separate_filing')->label('Separate Filing')->live()
+                        Forms\Components\Checkbox::make('separate_filing')->label('Separate Filing')->live()->disabled($isLocked)
                             ->afterStateUpdated(fn($state, callable $set) =>
                                 $state ? ($set('joint_filing', false) && $set('not_applicable', false)) : null),
-                        Forms\Components\Checkbox::make('not_applicable')->label('Not Applicable')->live()
+                        Forms\Components\Checkbox::make('not_applicable')->label('Not Applicable')->live()->disabled($isLocked)
                             ->afterStateUpdated(fn($state, callable $set) =>
                                 $state ? ($set('joint_filing', false) && $set('separate_filing', false)) : null),
                     ]),
 
-                    // ── DECLARANT ─────────────────────────────────────────────
                     Grid::make(4)->schema([
-                        Forms\Components\TextInput::make('declarant_family_name')->label('Family Name')->required()
-                            ->default(fn() => Auth::user()?->last_name),
-                        Forms\Components\TextInput::make('declarant_first_name')->label('First Name')->required()->columnSpan(2)
-                            ->default(fn() => Auth::user()?->first_name),
-                        Forms\Components\TextInput::make('declarant_middle_initial')->label('M.I.')->maxLength(5)
-                            ->default(fn() => substr(Auth::user()?->middle_name ?? '', 0, 1)),
+                        Forms\Components\TextInput::make('declarant_family_name')->label('Family Name')->required()->disabled($isLocked),
+                        Forms\Components\TextInput::make('declarant_first_name')->label('First Name')->required()->columnSpan(2)->disabled($isLocked),
+                        Forms\Components\TextInput::make('declarant_middle_initial')->label('M.I.')->maxLength(5)->disabled($isLocked),
                     ]),
                     Grid::make(2)->schema([
-                        Forms\Components\TextInput::make('declarant_position')->label('Position')->required()
-                            ->default(fn() => Auth::user()?->position),
-                        Forms\Components\TextInput::make('declarant_agency_office')->label('Agency/Office')->required()
-                            ->default(fn() => Auth::user()?->department),
+                        Forms\Components\TextInput::make('declarant_position')->label('Position')->required()->disabled($isLocked),
+                        Forms\Components\TextInput::make('declarant_agency_office')->label('Agency/Office')->required()->disabled($isLocked),
                     ]),
-                    Forms\Components\Textarea::make('declarant_office_address')->label('Office Address')->required()->rows(2)
-                        ->default(fn() => implode(', ', array_filter([
-                            Auth::user()?->purok_street,
-                            Auth::user()?->city_municipality,
-                            Auth::user()?->province,
-                        ]))),
+                    Forms\Components\Textarea::make('declarant_office_address')->label('Office Address')->required()->rows(2)->disabled($isLocked),
 
-                    // ── SPOUSE ────────────────────────────────────────────────
                     Grid::make(4)->schema([
-                        Forms\Components\TextInput::make('spouse_family_name')->label('Spouse Family Name'),
-                        Forms\Components\TextInput::make('spouse_first_name')->label('Spouse First Name')->columnSpan(2),
-                        Forms\Components\TextInput::make('spouse_middle_initial')->label('M.I.')->maxLength(5),
+                        Forms\Components\TextInput::make('spouse_family_name')->label('Spouse Family Name')->disabled($isLocked),
+                        Forms\Components\TextInput::make('spouse_first_name')->label('Spouse First Name')->columnSpan(2)->disabled($isLocked),
+                        Forms\Components\TextInput::make('spouse_middle_initial')->label('M.I.')->maxLength(5)->disabled($isLocked),
                     ]),
                     Grid::make(2)->schema([
-                        Forms\Components\TextInput::make('spouse_position')->label('Spouse Position'),
-                        Forms\Components\TextInput::make('spouse_agency_office')->label('Spouse Agency/Office'),
+                        Forms\Components\TextInput::make('spouse_position')->label('Spouse Position')->disabled($isLocked),
+                        Forms\Components\TextInput::make('spouse_agency_office')->label('Spouse Agency/Office')->disabled($isLocked),
                     ]),
-                    Forms\Components\Textarea::make('spouse_office_address')->label('Spouse Office Address')->rows(2),
+                    Forms\Components\Textarea::make('spouse_office_address')->label('Spouse Office Address')->rows(2)->disabled($isLocked),
 
-                    // ── MULTIPLE MARRIAGES ────────────────────────────────────
                     Forms\Components\Textarea::make('multiple_marriages_names')
-                        ->label('Multiple Marriages — Name(s) of Spouse(s)')->rows(2)
-                        ->helperText('If with multiple marriages, indicate name(s) of spouse(s). Leave blank if Not Applicable.'),
+                        ->label('Multiple Marriages — Name(s) of Spouse(s)')->rows(2)->disabled($isLocked),
                     Forms\Components\Checkbox::make('multiple_marriages_not_applicable')
-                        ->label('Not Applicable (Multiple Marriages)'),
+                        ->label('Not Applicable (Multiple Marriages)')->disabled($isLocked),
 
                     // ── ANNEX A — CHILDREN ────────────────────────────────────
                     Repeater::make('children')->relationship('children')->label('Unmarried Children Below 18')
                         ->schema([
                             Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('name')->label('Full Name')->required(),
-                                Forms\Components\TextInput::make('age')->label('Age')->integer()->suffix('years old')->required(),
+                                Forms\Components\TextInput::make('name')->label('Full Name')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('age')->label('Age')->integer()->suffix('years old')->required()->disabled($isLocked),
                             ]),
                         ])
                         ->columns(1)->addActionLabel('Add Child')->reorderable(false)->collapsible()
-                        ->itemLabel(fn(array $state): ?string => $state['name'] ?? 'Child')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['name'] ?? 'Child')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ── ANNEX A — REAL PROPERTIES ─────────────────────────────
                     Repeater::make('realProperties')->relationship('realProperties')->label('Real Properties (Annex A)')
                         ->schema([
                             Grid::make(4)->schema([
-                                Forms\Components\Textarea::make('description')->label('Description')->required()->rows(2)->columnSpan(2),
-                                Forms\Components\TextInput::make('kind')->label('Kind')->required(),
-                                Forms\Components\TextInput::make('exact_location')->label('Location')->required(),
+                                Forms\Components\Textarea::make('description')->label('Description')->required()->rows(2)->columnSpan(2)->disabled($isLocked),
+                                Forms\Components\TextInput::make('kind')->label('Kind')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('exact_location')->label('Location')->required()->disabled($isLocked),
                             ]),
                             Grid::make(4)->schema([
-                                Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱')->required(),
-                                Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱')->required(),
-                                Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->required(),
-                                Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired')->required(),
+                                Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired')->required()->disabled($isLocked),
                             ]),
-                            Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->required(),
+                            Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->required()->disabled($isLocked),
                         ])
                         ->columns(1)->addActionLabel('Add Real Property')->reorderable(false)->collapsible()
-                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ── ANNEX A — PERSONAL PROPERTIES ────────────────────────
                     Repeater::make('personalProperties')->relationship('personalProperties')->label('Personal Properties (Annex A)')
                         ->schema([
                             Grid::make(3)->schema([
-                                Forms\Components\Textarea::make('description')->label('Description')->required()->rows(2)->columnSpan(2),
-                                Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->required(),
+                                Forms\Components\Textarea::make('description')->label('Description')->required()->rows(2)->columnSpan(2)->disabled($isLocked),
+                                Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->required()->disabled($isLocked),
                             ]),
-                            Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost/Amount')->numeric()->prefix('₱')->required(),
+                            Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost/Amount')->numeric()->prefix('₱')->required()->disabled($isLocked),
                         ])
                         ->columns(1)->addActionLabel('Add Personal Property')->reorderable(false)->collapsible()
-                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ── ANNEX A — LIABILITIES ─────────────────────────────────
                     Repeater::make('liabilities')->relationship('liabilities')->label('Liabilities (Annex A)')
                         ->schema([
                             Grid::make(3)->schema([
-                                Forms\Components\TextInput::make('nature')->label('Nature')->required(),
-                                Forms\Components\TextInput::make('name_of_creditors')->label('Creditor')->required(),
-                                Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱')->required(),
+                                Forms\Components\TextInput::make('nature')->label('Nature')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('name_of_creditors')->label('Creditor')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱')->required()->disabled($isLocked),
                             ]),
                         ])
                         ->columns(1)->addActionLabel('Add Liability')->reorderable(false)->collapsible()
-                        ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ── ANNEX A — BUSINESS INTERESTS ──────────────────────────
                     Forms\Components\Checkbox::make('no_business_interests')
-                        ->label('I/We do not have any business interest or financial connection'),
+                        ->label('I/We do not have any business interest or financial connection')->disabled($isLocked),
                     Repeater::make('businessInterests')->relationship('businessInterests')->label('Business Interests (Annex A)')
                         ->schema([
                             Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('name_of_entity')->label('Business Name')->required(),
-                                Forms\Components\Textarea::make('business_address')->label('Business Address')->required()->rows(2),
+                                Forms\Components\TextInput::make('name_of_entity')->label('Business Name')->required()->disabled($isLocked),
+                                Forms\Components\Textarea::make('business_address')->label('Business Address')->required()->rows(2)->disabled($isLocked),
                             ]),
                             Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest')->required(),
-                                Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->required()->native(false),
+                                Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest')->required()->disabled($isLocked),
+                                Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->required()->native(false)->disabled($isLocked),
                             ]),
                         ])
                         ->columns(1)->addActionLabel('Add Business Interest')->reorderable(false)->collapsible()
                         ->visible(fn($get) => !$get('no_business_interests'))
-                        ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ── ANNEX A — RELATIVES IN GOVERNMENT ────────────────────
                     Forms\Components\Checkbox::make('no_relatives_in_government')
-                        ->label('I/We do not know of any relative/s in the government service'),
+                        ->label('I/We do not know of any relative/s in the government service')->disabled($isLocked),
                     Repeater::make('relativesInGovernment')->relationship('relativesInGovernment')->label('Relatives in Government (Annex A)')
                         ->schema([
                             Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('name_of_relative')->label('Name of Relative')->required(),
-                                Forms\Components\TextInput::make('relationship')->label('Relationship')->required(),
+                                Forms\Components\TextInput::make('name_of_relative')->label('Name of Relative')->required()->disabled($isLocked),
+                                Forms\Components\TextInput::make('relationship')->label('Relationship')->required()->disabled($isLocked),
                             ]),
                             Grid::make(2)->schema([
-                                Forms\Components\TextInput::make('position')->label('Position')->required(),
-                                Forms\Components\Textarea::make('name_of_agency_office_address')->label('Agency/Office and Address')->required()->rows(2),
+                                Forms\Components\TextInput::make('position')->label('Position')->required()->disabled($isLocked),
+                                Forms\Components\Textarea::make('name_of_agency_office_address')->label('Agency/Office and Address')->required()->rows(2)->disabled($isLocked),
                             ]),
                         ])
                         ->columns(1)->addActionLabel('Add Relative')->reorderable(false)->collapsible()
                         ->visible(fn($get) => !$get('no_relatives_in_government'))
-                        ->itemLabel(fn(array $state): ?string => $state['name_of_relative'] ?? 'Relative')->defaultItems(0),
+                        ->itemLabel(fn(array $state): ?string => $state['name_of_relative'] ?? 'Relative')->defaultItems(0)
+                        ->disabled($isLocked),
 
                     // ─────────────────────────────────────────────────────────
                     //  ANNEX B — Declarant's Exclusive Properties
                     // ─────────────────────────────────────────────────────────
                     Section::make('Annex B — Additional Sheet (Declarant)')
-                        ->description('Declarant\'s exclusive properties not listed in Annex A.')
+                        ->description("Declarant's exclusive properties not listed in Annex A.")
                         ->collapsed()->collapsible()
                         ->schema([
 
@@ -269,69 +279,73 @@ class SalnResource extends Resource
                                 ->relationship('annexBRealProperties')
                                 ->schema([
                                     Grid::make(4)->schema([
-                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2),
-                                        Forms\Components\TextInput::make('kind')->label('Kind'),
-                                        Forms\Components\TextInput::make('exact_location')->label('Location'),
+                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2)->disabled($isLocked),
+                                        Forms\Components\TextInput::make('kind')->label('Kind')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('exact_location')->label('Location')->disabled($isLocked),
                                     ]),
                                     Grid::make(4)->schema([
-                                        Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱'),
-                                        Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱'),
-                                        Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y')),
-                                        Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired'),
+                                        Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->disabled($isLocked),
+                                        Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired')->disabled($isLocked),
                                     ]),
-                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱'),
+                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->disabled($isLocked),
                                 ])
                                 ->columns(1)->addActionLabel('Add Real Property')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexBPersonalPropertiesRepeater')
                                 ->label('Personal Properties (Annex B)')
                                 ->relationship('annexBPersonalProperties')
                                 ->schema([
                                     Grid::make(3)->schema([
-                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2),
-                                        Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y')),
+                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2)->disabled($isLocked),
+                                        Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->disabled($isLocked),
                                     ]),
-                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱'),
+                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->disabled($isLocked),
                                 ])
                                 ->columns(1)->addActionLabel('Add Personal Property')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexBLiabilitiesRepeater')
                                 ->label('Liabilities (Annex B)')
                                 ->relationship('annexBLiabilities')
                                 ->schema([
                                     Grid::make(3)->schema([
-                                        Forms\Components\TextInput::make('nature')->label('Nature'),
-                                        Forms\Components\TextInput::make('name_of_creditors')->label('Creditor'),
-                                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱'),
+                                        Forms\Components\TextInput::make('nature')->label('Nature')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('name_of_creditors')->label('Creditor')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱')->disabled($isLocked),
                                     ]),
                                 ])
                                 ->columns(1)->addActionLabel('Add Liability')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexBBusinessInterestsRepeater')
                                 ->label('Business Interests (Annex B)')
                                 ->relationship('annexBBusinessInterests')
                                 ->schema([
                                     Grid::make(2)->schema([
-                                        Forms\Components\TextInput::make('name_of_entity')->label('Business Name'),
-                                        Forms\Components\Textarea::make('business_address')->label('Business Address')->rows(2),
+                                        Forms\Components\TextInput::make('name_of_entity')->label('Business Name')->disabled($isLocked),
+                                        Forms\Components\Textarea::make('business_address')->label('Business Address')->rows(2)->disabled($isLocked),
                                     ]),
                                     Grid::make(2)->schema([
-                                        Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest'),
-                                        Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->native(false),
+                                        Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest')->disabled($isLocked),
+                                        Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->native(false)->disabled($isLocked),
                                     ]),
                                 ])
                                 ->columns(1)->addActionLabel('Add Business Interest')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0)
+                                ->disabled($isLocked),
                         ]),
 
                     // ─────────────────────────────────────────────────────────
                     //  ANNEX C — Spouse & Children's Exclusive Properties
                     // ─────────────────────────────────────────────────────────
                     Section::make('Annex C — Additional Sheet (Spouse & Children)')
-                        ->description('Exclusive properties of the declarant\'s spouse and unmarried children below 18.')
+                        ->description("Exclusive properties of the declarant's spouse and unmarried children below 18.")
                         ->collapsed()->collapsible()
                         ->schema([
 
@@ -340,68 +354,72 @@ class SalnResource extends Resource
                                 ->relationship('annexCRealProperties')
                                 ->schema([
                                     Grid::make(4)->schema([
-                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2),
-                                        Forms\Components\TextInput::make('kind')->label('Kind'),
-                                        Forms\Components\TextInput::make('exact_location')->label('Location'),
+                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2)->disabled($isLocked),
+                                        Forms\Components\TextInput::make('kind')->label('Kind')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('exact_location')->label('Location')->disabled($isLocked),
                                     ]),
                                     Grid::make(4)->schema([
-                                        Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱'),
-                                        Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱'),
-                                        Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y')),
-                                        Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired'),
+                                        Forms\Components\TextInput::make('assessed_value')->label('Assessed Value')->numeric()->prefix('₱')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('current_fair_market_value')->label('Fair Market Value')->numeric()->prefix('₱')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('acquisition_year')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->disabled($isLocked),
+                                        Forms\Components\TextInput::make('mode_of_acquisition')->label('How Acquired')->disabled($isLocked),
                                     ]),
-                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱'),
+                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->disabled($isLocked),
                                 ])
                                 ->columns(1)->addActionLabel('Add Real Property')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexCPersonalPropertiesRepeater')
                                 ->label('Personal Properties (Annex C)')
                                 ->relationship('annexCPersonalProperties')
                                 ->schema([
                                     Grid::make(3)->schema([
-                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2),
-                                        Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y')),
+                                        Forms\Components\Textarea::make('description')->label('Description')->rows(2)->columnSpan(2)->disabled($isLocked),
+                                        Forms\Components\TextInput::make('year_acquired')->label('Year Acquired')->numeric()->minValue(1900)->maxValue(date('Y'))->disabled($isLocked),
                                     ]),
-                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱'),
+                                    Forms\Components\TextInput::make('acquisition_cost')->label('Acquisition Cost')->numeric()->prefix('₱')->disabled($isLocked),
                                 ])
                                 ->columns(1)->addActionLabel('Add Personal Property')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['description'] ?? 'Property')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexCLiabilitiesRepeater')
                                 ->label('Liabilities (Annex C)')
                                 ->relationship('annexCLiabilities')
                                 ->schema([
                                     Grid::make(3)->schema([
-                                        Forms\Components\TextInput::make('nature')->label('Nature'),
-                                        Forms\Components\TextInput::make('name_of_creditors')->label('Creditor'),
-                                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱'),
+                                        Forms\Components\TextInput::make('nature')->label('Nature')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('name_of_creditors')->label('Creditor')->disabled($isLocked),
+                                        Forms\Components\TextInput::make('outstanding_balance')->label('Outstanding Balance')->numeric()->prefix('₱')->disabled($isLocked),
                                     ]),
                                 ])
                                 ->columns(1)->addActionLabel('Add Liability')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['nature'] ?? 'Liability')->defaultItems(0)
+                                ->disabled($isLocked),
 
                             Repeater::make('annexCBusinessInterestsRepeater')
                                 ->label('Business Interests (Annex C)')
                                 ->relationship('annexCBusinessInterests')
                                 ->schema([
                                     Grid::make(2)->schema([
-                                        Forms\Components\TextInput::make('name_of_entity')->label('Business Name'),
-                                        Forms\Components\Textarea::make('business_address')->label('Business Address')->rows(2),
+                                        Forms\Components\TextInput::make('name_of_entity')->label('Business Name')->disabled($isLocked),
+                                        Forms\Components\Textarea::make('business_address')->label('Business Address')->rows(2)->disabled($isLocked),
                                     ]),
                                     Grid::make(2)->schema([
-                                        Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest'),
-                                        Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->native(false),
+                                        Forms\Components\TextInput::make('nature_of_business_interest')->label('Nature of Interest')->disabled($isLocked),
+                                        Forms\Components\DatePicker::make('date_of_acquisition')->label('Date of Acquisition')->native(false)->disabled($isLocked),
                                     ]),
                                 ])
                                 ->columns(1)->addActionLabel('Add Business Interest')->reorderable(false)->collapsible()
-                                ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0),
+                                ->itemLabel(fn(array $state): ?string => $state['name_of_entity'] ?? 'Business')->defaultItems(0)
+                                ->disabled($isLocked),
                         ]),
 
                     // ── DATES & OATH ──────────────────────────────────────────
                     Grid::make(2)->schema([
                         Forms\Components\DatePicker::make('date_signed')
-                            ->label('Date Signed')->default(now())->native(false),
+                            ->label('Date Signed')->default(now())->native(false)->disabled($isLocked),
                         Forms\Components\DatePicker::make('subscribed_sworn_date')
                             ->label('Subscribed and Sworn Date')->default(now())->native(false)
                             ->visible(fn() => $isAdmin())->required(fn() => $isAdmin()),
@@ -415,7 +433,7 @@ class SalnResource extends Resource
                         ->label('Declarant Government Issued ID')
                         ->image()->directory('saln/declarant-ids')->visibility('private')
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                        ->maxSize(5120)->imageEditor(),
+                        ->maxSize(5120)->imageEditor()->disabled($isLocked),
 
                     Forms\Components\Hidden::make('total_assets'),
                     Forms\Components\Hidden::make('total_liabilities'),
@@ -472,7 +490,67 @@ class SalnResource extends Resource
             ->actions(self::getContextualActions($isAdmin))
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()->visible(fn() => $isAdmin),
+
+                    // ── Bulk Unlock Editing ───────────────────────────────────
+                    Tables\Actions\BulkAction::make('bulkUnlock')
+                        ->label('Unlock Editing')
+                        ->icon('heroicon-o-lock-open')
+                        ->color('info')
+                        ->visible(fn() => $isAdmin)
+                        ->requiresConfirmation()
+                        ->modalHeading('Unlock Editing for Selected Records')
+                        ->modalDescription(
+                            app(FilingSeasonService::class)->isEnabled()
+                            ? 'Allow employees to edit their selected approved SALN records. Filing season is currently OPEN.'
+                            : '⚠️ Filing season is currently CLOSED. Employees will still not be able to edit until filing season is enabled.'
+                        )
+                        ->modalSubmitActionLabel('Yes, Unlock Selected')
+                        ->action(function (Collection $records) {
+                            $count = 0;
+                            foreach ($records as $record) {
+                                if ($record->status === 'approved' && !$record->editing_unlocked) {
+                                    $record->update(['editing_unlocked' => true]);
+                                    $count++;
+                                }
+                            }
+                            Notification::make()
+                                ->title('Editing Unlocked')
+                                ->body("{$count} approved SALN record(s) have been unlocked for editing.")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    // ── Bulk Lock Editing ─────────────────────────────────────
+                    Tables\Actions\BulkAction::make('bulkLock')
+                        ->label('Lock Editing')
+                        ->icon('heroicon-o-lock-closed')
+                        ->color('danger')
+                        ->visible(fn() => $isAdmin)
+                        ->requiresConfirmation()
+                        ->modalHeading('Lock Editing for Selected Records')
+                        ->modalDescription('Prevent employees from editing their selected SALN records. This will re-lock any currently unlocked approved records.')
+                        ->modalSubmitActionLabel('Yes, Lock Selected')
+                        ->action(function (Collection $records) {
+                            $count = 0;
+                            foreach ($records as $record) {
+                                if ($record->status === 'approved' && $record->editing_unlocked) {
+                                    $record->update(['editing_unlocked' => false]);
+                                    $count++;
+                                }
+                            }
+                            Notification::make()
+                                ->title('Editing Locked')
+                                ->body("{$count} SALN record(s) have been locked.")
+                                ->warning()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    // ── Bulk Delete ───────────────────────────────────────────
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => $isAdmin),
+
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
@@ -528,6 +606,16 @@ class SalnResource extends Resource
                     'submitted' => 'heroicon-o-clock',
                     default => null,
                 }),
+
+            Tables\Columns\IconColumn::make('editing_unlocked')
+                ->label('Edit Lock')
+                ->boolean()
+                ->trueIcon('heroicon-o-lock-open')
+                ->falseIcon('heroicon-o-lock-closed')
+                ->trueColor('success')
+                ->falseColor('danger')
+                ->tooltip(fn($record) => $record->editing_unlocked ? 'Editing Unlocked' : 'Editing Locked')
+                ->visible(fn($record) => $isAdmin && $record?->status === 'approved'),
 
             Tables\Columns\TextColumn::make('compliance_type_label')
                 ->label('Filing Type')
@@ -649,91 +737,16 @@ class SalnResource extends Resource
             ->options(['submitted' => 'Submitted', 'approved' => 'Approved', 'disapproved' => 'Disapproved'])
             ->placeholder('All Statuses');
 
-        $filters[] = Tables\Filters\Filter::make('year_and_period')
-            ->label('Year & Period')->columnSpan(1)
-            ->form([
-                \Filament\Forms\Components\Select::make('year')->label('Year')
-                    ->options(fn() => Saln::selectRaw('YEAR(as_of_date) as year')->distinct()->orderByDesc('year')->pluck('year', 'year')->toArray())
-                    ->native(false)->placeholder('All years'),
-                \Filament\Forms\Components\Select::make('preset')->label('Quick Select')
-                    ->placeholder('— pick a period —')->native(false)
-                    ->options(['this_month' => '📅 This Month', 'last_month' => '📅 Last Month', 'this_year' => '📅 This Year'])
-                    ->live()
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        [$from, $to] = match ($state) {
-                            'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-                            'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
-                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                            default => [null, null],
-                        };
-                        $set('from', $from);
-                        $set('to', $to);
-                    }),
-                \Filament\Forms\Components\Grid::make(2)->schema([
-                    \Filament\Forms\Components\DatePicker::make('from')->label('From')->native(false)->displayFormat('M d, Y'),
-                    \Filament\Forms\Components\DatePicker::make('to')->label('To')->native(false)->displayFormat('M d, Y'),
-                ]),
-            ])
-            ->query(
-                fn(Builder $query, array $data) => $query
-                    ->when($data['year'] ?? null, fn($q, $v) => $q->whereYear('as_of_date', $v))
-                    ->when($data['from'] ?? null, fn($q, $d) => $q->whereDate('as_of_date', '>=', $d))
-                    ->when($data['to'] ?? null, fn($q, $d) => $q->whereDate('as_of_date', '<=', $d))
-            )
-            ->indicateUsing(function (array $data): array {
-                $labels = ['this_month' => 'This Month', 'last_month' => 'Last Month', 'this_year' => 'This Year'];
-                $indicators = [];
-                if ($data['year'] ?? null)
-                    $indicators[] = Tables\Filters\Indicator::make('Year: ' . $data['year'])->removeField('year');
-                if (($data['from'] ?? null) || ($data['to'] ?? null)) {
-                    $preset = $data['preset'] ?? null;
-                    if ($preset && isset($labels[$preset]))
-                        $indicators[] = Tables\Filters\Indicator::make('Period: ' . $labels[$preset])->removeField('preset');
-                    else {
-                        if ($data['from'] ?? null)
-                            $indicators[] = Tables\Filters\Indicator::make('From: ' . Carbon::parse($data['from'])->format('M d, Y'))->removeField('from');
-                        if ($data['to'] ?? null)
-                            $indicators[] = Tables\Filters\Indicator::make('To: ' . Carbon::parse($data['to'])->format('M d, Y'))->removeField('to');
-                    }
-                }
-                return $indicators;
-            });
-
-        $filters[] = Tables\Filters\Filter::make('net_worth_range')
-            ->label('Net Worth Range')->columnSpan(1)
-            ->form([
-                \Filament\Forms\Components\TextInput::make('min_net_worth')->label('Minimum Net Worth')->numeric()->prefix('₱'),
-                \Filament\Forms\Components\TextInput::make('max_net_worth')->label('Maximum Net Worth')->numeric()->prefix('₱'),
-            ])
-            ->query(
-                fn(Builder $query, array $data) => $query
-                    ->when($data['min_net_worth'] ?? null, fn($q, $v) => $q->where('net_worth', '>=', $v))
-                    ->when($data['max_net_worth'] ?? null, fn($q, $v) => $q->where('net_worth', '<=', $v))
-            )
-            ->indicateUsing(function (array $data): array {
-                $indicators = [];
-                if ($data['min_net_worth'] ?? null)
-                    $indicators[] = Tables\Filters\Indicator::make('Min NW: ₱' . number_format($data['min_net_worth']))->removeField('min_net_worth');
-                if ($data['max_net_worth'] ?? null)
-                    $indicators[] = Tables\Filters\Indicator::make('Max NW: ₱' . number_format($data['max_net_worth']))->removeField('max_net_worth');
-                return $indicators;
-            });
-
         return $filters;
     }
 
     // =========================================================================
-    //  ACTIONS
-    // =========================================================================
-
-    // =========================================================================
-    //  ACTIONS  (replace the existing getContextualActions method)
+    //  CONTEXTUAL ACTIONS
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
     {
         if ($isAdmin) {
-            // ── Admin: View SALN + Delete only ────────────────────────────
             return [
                 Tables\Actions\ActionGroup::make([
 
@@ -741,6 +754,45 @@ class SalnResource extends Resource
                         ->label('View SALN')
                         ->icon('heroicon-o-eye')
                         ->color('info'),
+
+                    Tables\Actions\Action::make('quickApprove')
+                        ->label('Approve')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->visible(fn(Saln $record) => in_array($record->status, ['submitted', 'disapproved']))
+                        ->requiresConfirmation()
+                        ->action(function (Saln $record) {
+                            $record->update(['status' => 'approved', 'editing_unlocked' => false]);
+                            $record->user?->notify(new \App\Notifications\SalnStatusUpdated($record));
+                            Notification::make()->title('SALN Approved')->success()->send();
+                        }),
+
+                    Tables\Actions\Action::make('quickUnlock')
+                        ->label('Unlock Editing')
+                        ->icon('heroicon-o-lock-open')
+                        ->color('info')
+                        ->visible(fn(Saln $record) => $record->status === 'approved' && !$record->editing_unlocked)
+                        ->requiresConfirmation()
+                        ->modalDescription(
+                            app(FilingSeasonService::class)->isEnabled()
+                            ? 'Allow the employee to edit this SALN. Filing season is OPEN.'
+                            : '⚠️ Filing season is CLOSED. The employee will not be able to edit until it is enabled.'
+                        )
+                        ->action(function (Saln $record) {
+                            $record->update(['editing_unlocked' => true]);
+                            Notification::make()->title('Editing Unlocked')->success()->send();
+                        }),
+
+                    Tables\Actions\Action::make('quickLock')
+                        ->label('Lock Editing')
+                        ->icon('heroicon-o-lock-closed')
+                        ->color('danger')
+                        ->visible(fn(Saln $record) => $record->status === 'approved' && $record->editing_unlocked)
+                        ->requiresConfirmation()
+                        ->action(function (Saln $record) {
+                            $record->update(['editing_unlocked' => false]);
+                            Notification::make()->title('Record Locked')->warning()->send();
+                        }),
 
                     Tables\Actions\DeleteAction::make()
                         ->icon('heroicon-o-trash'),
@@ -752,7 +804,6 @@ class SalnResource extends Resource
             ];
         }
 
-        // ── Regular employee: View + Edit (when disapproved) + Print (when approved) ──
         return [
             Tables\Actions\ActionGroup::make([
 
@@ -768,7 +819,7 @@ class SalnResource extends Resource
                     ->visible(
                         fn(Saln $record) =>
                         $record->user_id === Auth::id() &&
-                        in_array($record->status, ['submitted', 'disapproved'])
+                        static::canEmployeeEdit($record)
                     ),
 
                 Tables\Actions\Action::make('print')
@@ -807,7 +858,6 @@ class SalnResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()->with([
-            // Annex A
             'user',
             'children',
             'realProperties',
@@ -815,12 +865,10 @@ class SalnResource extends Resource
             'liabilities',
             'businessInterests',
             'relativesInGovernment',
-            // Annex B
             'annexBRealProperties',
             'annexBPersonalProperties',
             'annexBLiabilities',
             'annexBBusinessInterests',
-            // Annex C
             'annexCRealProperties',
             'annexCPersonalProperties',
             'annexCLiabilities',

@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'filing_season_enabled' => env('FILING_SEASON_ENABLED', false),
+
 ];

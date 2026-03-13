@@ -12,22 +12,16 @@ class Profile extends Page
     protected static string $view = 'filament.pages.profile';
     protected static ?string $navigationLabel = 'My Profile';
     protected static ?string $title = 'My Profile';
-    protected static ?string $navigationGroup = 'Settings';
-    protected static ?int $navigationSort = 99;
+    protected static ?string $navigationGroup = 'System';
+    protected static ?int $navigationSort = 1;
 
-    // FIX: declare the property so the blade can access $mustChangePassword
     public bool $mustChangePassword = false;
 
     public function mount(): void
     {
-        // FIX: populate from the authenticated user on every page load
         $this->mustChangePassword = (bool) Auth::user()->must_change_password;
     }
 
-    /**
-     * Called by ChangePassword component via $this->dispatch('password-changed').
-     * Clears the flag reactively without a full page reload.
-     */
     public function onPasswordChanged(): void
     {
         $this->mustChangePassword = false;
@@ -50,10 +44,6 @@ class Profile extends Page
         return Auth::user();
     }
 
-    /**
-     * Returns a fully-qualified, absolute URL for the user's profile photo.
-     * Priority: profile_photo_path → Jetstream URL → UI Avatars fallback
-     */
     public function getProfilePhotoUrl(): string
     {
         $user = Auth::user();
@@ -80,14 +70,8 @@ class Profile extends Page
     {
         $user = $this->getUser();
         $fields = [
-            'employee_id',
-            'first_name',
-            'last_name',
-            'email',
-            'position',
-            'employment_status',
-            'department',
-            'profile_photo_path',
+            'employee_id', 'first_name', 'last_name', 'email',
+            'position', 'employment_status', 'department', 'profile_photo_path',
         ];
 
         $completed = collect($fields)

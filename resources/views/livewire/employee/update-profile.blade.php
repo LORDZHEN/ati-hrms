@@ -273,6 +273,7 @@
     .dark .up-label { color: #d1fae5; }
     .up-ico-green { color: #059669; }
     .up-ico-amber { color: #d97706; }
+    .up-ico-blue  { color: #3b82f6; }
 
     .up-input {
         width: 100%; padding: 0.5875rem 0.875rem;
@@ -295,6 +296,77 @@
         background: #0f1f18;
         box-shadow: 0 0 0 3px rgba(16,185,129,0.14);
     }
+
+    /* Read-only / disabled input styling */
+    .up-input-readonly {
+        width: 100%; padding: 0.5875rem 0.875rem;
+        border-radius: 10px; border: 1.5px solid #e5e7eb;
+        background: #f3f4f6; color: #6b7280;
+        font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500;
+        cursor: not-allowed;
+        user-select: none;
+    }
+
+    .dark .up-input-readonly {
+        background: #071a10;
+        border-color: #1f3429;
+        color: #4b7563;
+    }
+
+    /* Employment status badge pill (read-only display) */
+    .up-status-badge {
+        display: inline-flex; align-items: center; gap: 0.45rem;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.875rem; font-weight: 700;
+        border: 1.5px solid;
+        width: 100%;
+    }
+
+    .up-status-badge.admin {
+        background: rgba(217,119,6,0.1);
+        border-color: rgba(217,119,6,0.35);
+        color: #d97706;
+    }
+    .dark .up-status-badge.admin {
+        background: rgba(217,119,6,0.12);
+        border-color: rgba(217,119,6,0.3);
+        color: #fbbf24;
+    }
+
+    .up-status-badge.regular {
+        background: rgba(5,150,105,0.1);
+        border-color: rgba(5,150,105,0.35);
+        color: #059669;
+    }
+    .dark .up-status-badge.regular {
+        background: rgba(16,185,129,0.1);
+        border-color: rgba(16,185,129,0.3);
+        color: #6ee7b7;
+    }
+
+    .up-status-badge.job_order {
+        background: rgba(59,130,246,0.1);
+        border-color: rgba(59,130,246,0.35);
+        color: #3b82f6;
+    }
+    .dark .up-status-badge.job_order {
+        background: rgba(59,130,246,0.1);
+        border-color: rgba(59,130,246,0.3);
+        color: #93c5fd;
+    }
+
+    .up-status-badge-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+    }
+
+    .up-readonly-hint {
+        font-size: 0.625rem; font-weight: 600; color: #9ca3af;
+        display: flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem;
+    }
+
+    .dark .up-readonly-hint { color: #4b5563; }
 
     .up-select-wrap {
         position: relative;
@@ -560,15 +632,22 @@
                             <span class="up-section-title">Personal Information</span>
                         </div>
 
+                        {{-- Employee ID --}}
                         <div class="up-field" style="margin-bottom:0.75rem;">
                             <label class="up-label">
                                 <x-heroicon-o-identification style="width:11px;height:11px;" class="up-ico-amber" />
                                 Employee ID <span style="color:#dc2626;">*</span>
                             </label>
-                            <input type="text" wire:model.defer="employee_id" placeholder="e.g. EMP-00123" class="up-input" />
+                            <input
+                                type="text"
+                                wire:model.defer="employee_id"
+                                placeholder="e.g. EMP-00123"
+                                class="up-input"
+                            />
                             @error('employee_id')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                         </div>
 
+                        {{-- First / Middle / Last Name --}}
                         <div class="up-grid-3" style="margin-bottom:0.75rem;">
                             <div class="up-field">
                                 <label class="up-label">
@@ -596,8 +675,8 @@
                             </div>
                         </div>
 
-                        {{-- SUFFIX --}}
-                        <div class="up-field">
+                        {{-- Suffix --}}
+                        <div class="up-field" style="margin-bottom:0.75rem;">
                             <label class="up-label">
                                 <x-heroicon-o-tag style="width:11px;height:11px;" class="up-ico-amber" />
                                 Suffix
@@ -615,6 +694,21 @@
                             </div>
                             @error('suffix')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                         </div>
+
+                        {{-- Email --}}
+                        <div class="up-field">
+                            <label class="up-label">
+                                <x-heroicon-o-envelope style="width:11px;height:11px;" class="up-ico-green" />
+                                Email Address <span style="color:#dc2626;">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                wire:model.defer="email"
+                                placeholder="you@example.com"
+                                class="up-input"
+                            />
+                            @error('email')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                        </div>
                     </div>
 
                     {{-- EMPLOYMENT DETAILS --}}
@@ -626,7 +720,8 @@
                             <span class="up-section-title">Employment Details</span>
                         </div>
 
-                        <div class="up-grid-2" style="margin-bottom:0.75rem;">
+                        <div class="up-grid-2">
+                            {{-- Position --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-briefcase style="width:11px;height:11px;" class="up-ico-green" />
@@ -636,48 +731,36 @@
                                 @error('position')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                             </div>
 
-                            {{-- EMPLOYMENT STATUS — Regular / Job Order only --}}
+                            {{-- Employment Status — read-only, derived from role --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-check-badge style="width:11px;height:11px;" class="up-ico-amber" />
                                     Employment Status
                                 </label>
-                                <div class="up-select-wrap">
-                                    <select wire:model.defer="employment_status" class="up-select">
-                                        <option value="">Select Status</option>
-                                        <option value="Regular">Regular</option>
-                                        <option value="Job Order">Job Order</option>
-                                    </select>
+                                @php
+                                    $role = Auth::user()->role;
+                                    $badgeClass = match($role) {
+                                        'admin'     => 'admin',
+                                        'regular'   => 'regular',
+                                        'job_order' => 'job_order',
+                                        default     => 'regular',
+                                    };
+                                    $statusLabel = match($role) {
+                                        'admin'     => 'Admin',
+                                        'regular'   => 'Regular',
+                                        'job_order' => 'Job Order',
+                                        default     => ucfirst($role),
+                                    };
+                                @endphp
+                                <div class="up-status-badge {{ $badgeClass }}">
+                                    <span class="up-status-badge-dot"></span>
+                                    {{ $statusLabel }}
                                 </div>
-                                @error('employment_status')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                                <p class="up-readonly-hint">
+                                    <x-heroicon-o-lock-closed style="width:10px;height:10px;" />
+                                    Determined by your account role &mdash; not editable
+                                </p>
                             </div>
-                        </div>
-
-                        {{-- DEPARTMENT --}}
-                        <div class="up-field">
-                            <label class="up-label">
-                                <x-heroicon-o-building-office-2 style="width:11px;height:11px;" class="up-ico-green" />
-                                Department
-                            </label>
-                            <div class="up-select-wrap">
-                                <select wire:model.defer="department" class="up-select">
-                                    <option value="">Select Department</option>
-                                    <option value="Administration">Administration</option>
-                                    <option value="Human Resources (HR)">Human Resources (HR)</option>
-                                    <option value="Finance / Accounting">Finance / Accounting</option>
-                                    <option value="Records / Document Control">Records / Document Control</option>
-                                    <option value="Training & Extension">Training &amp; Extension</option>
-                                    <option value="Planning & Development">Planning &amp; Development</option>
-                                    <option value="ICT / Information Technology">ICT / Information Technology</option>
-                                    <option value="Monitoring & Evaluation">Monitoring &amp; Evaluation</option>
-                                    <option value="Logistics / Operations">Logistics / Operations</option>
-                                    <option value="Communications / IEC">Communications / IEC</option>
-                                    <option value="Procurement / Property Custody">Procurement / Property Custody</option>
-                                    <option value="Support Services">Support Services</option>
-                                    <option value="Regional Office">Regional Office</option>
-                                </select>
-                            </div>
-                            @error('department')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
                         </div>
                     </div>
 

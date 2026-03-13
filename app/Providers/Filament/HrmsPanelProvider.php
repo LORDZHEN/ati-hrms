@@ -39,11 +39,21 @@ class HrmsPanelProvider extends PanelProvider
                 'secondary' => Color::hex('#f5a800'),
                 'gray' => Color::hex('#4a5568'),
             ])
+
+            // ── FIX: Register ALL navigation groups used across pages/resources ──
+            // The order here controls the order they appear in the sidebar.
             ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('System')
+                    ->collapsible(),
+                NavigationGroup::make()
+                    ->label('Documents')
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('My Account')
                     ->collapsible(),
             ])
+
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
 
@@ -126,7 +136,7 @@ class HrmsPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                AuthenticateSession::class,        // FIX: Filament's own AuthenticateSession
+                AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
@@ -135,7 +145,7 @@ class HrmsPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                RequirePasswordChange::class,      // FIX: redirect to profile on first login
+                RequirePasswordChange::class,
             ]);
     }
 }

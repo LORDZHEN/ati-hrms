@@ -19,7 +19,6 @@ class ListTransactionHistories extends ListRecords
         $user = Auth::user();
         $isAdmin = $user?->isAdmin();
 
-        // Base query — scope to own records for non-admins
         $query = TransactionHistory::with('user')->latest();
 
         if (!$isAdmin) {
@@ -28,19 +27,16 @@ class ListTransactionHistories extends ListRecords
 
         $transactions = $query->paginate(50);
 
-        // Group by calendar date for the timeline dividers
         $grouped = $transactions->getCollection()->groupBy(function ($item) {
             return $item->created_at->setTimezone('Asia/Manila')->format('Y-m-d');
         });
 
-        // Module statistics — scoped to the same user filter
         $statsQuery = TransactionHistory::selectRaw('module, COUNT(*) as total');
         if (!$isAdmin) {
             $statsQuery->where('user_id', $user->id);
         }
         $stats = $statsQuery->groupBy('module')->pluck('total', 'module');
 
-        // Today's count — scoped too
         $todayQuery = TransactionHistory::whereDate('created_at', today());
         if (!$isAdmin) {
             $todayQuery->where('user_id', $user->id);

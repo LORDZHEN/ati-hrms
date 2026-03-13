@@ -65,10 +65,6 @@ class HrmsDashboard extends Page
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Recent Activities — employee name fallback chain
-    // ─────────────────────────────────────────────────────────────────────────
-
     protected function buildRecentActivities(): void
     {
         $this->recentActivities = TransactionHistory::with('user')
@@ -90,9 +86,6 @@ class HrmsDashboard extends Page
             ->toArray();
     }
 
-    /**
-     * Resolve a human-readable employee name from a TransactionHistory record.
-     */
     protected function resolveEmployeeName(TransactionHistory $tx): string
     {
         if (filled($tx->employee_name)) {
@@ -115,10 +108,6 @@ class HrmsDashboard extends Page
 
         return 'Unknown Employee';
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Pending Actions (admin only)
-    // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildPendingActions(): void
     {
@@ -160,10 +149,6 @@ class HrmsDashboard extends Page
             ],
         ], 0, 5);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Announcements / Events / Birthdays
-    // ─────────────────────────────────────────────────────────────────────────
 
     protected function buildAnnouncements(): void
     {
@@ -226,18 +211,10 @@ class HrmsDashboard extends Page
             ->toArray();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Modules
-    //
-    // Job Order users only see DTR — all other modules (Leave, Locator Slip,
-    // Travel Order, PDS, SALN) are restricted to Regular employees and admins.
-    // ─────────────────────────────────────────────────────────────────────────
-
     protected function buildModules(): void
     {
         $isJobOrder = $this->user->role === User::ROLE_JOB_ORDER;
 
-        // DTR is available to everyone (admin, regular, job_order).
         $dtrModule = [
             'title' => 'Daily Time Record',
             'route' => 'filament.hrms.resources.daily-time-records.index',
@@ -249,7 +226,6 @@ class HrmsDashboard extends Page
             'stat_key' => 'dtr_count',
         ];
 
-        // Modules only for Regular employees (and admin).
         $regularModules = [
             [
                 'title' => 'Leave Application',
@@ -304,7 +280,6 @@ class HrmsDashboard extends Page
         ];
 
         if ($this->user->isAdmin()) {
-            // Admin sees Employees tile + DTR + all regular modules.
             $this->modules = array_merge(
                 [
                     [
@@ -322,18 +297,14 @@ class HrmsDashboard extends Page
                 $regularModules
             );
         } elseif ($isJobOrder) {
-            // Job Order users only see DTR.
             $this->modules = [$dtrModule];
         } else {
-            // Regular employees see DTR + all regular modules.
             $this->modules = array_merge([$dtrModule], $regularModules);
         }
     }
 
     protected function attachModuleStats(): void
     {
-        $isJobOrder = $this->user->role === User::ROLE_JOB_ORDER;
-
         $statCounts = [
             'employee_count' => $this->stats['active_employees'] ?? 0,
             'dtr_count' => 0,
@@ -358,10 +329,6 @@ class HrmsDashboard extends Page
             $module['stat'] = $statCounts[$module['stat_key']] ?? 0;
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────────
 
     public function getGreeting(): string
     {

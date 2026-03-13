@@ -22,7 +22,9 @@ class UpdateProfile extends Component
     public $photo = null;
     public ?string $position = null;
     public ?string $employment_status = null;
-    public ?string $department = null;
+    public ?string $email = null;
+
+    // Removed: department
 
     protected $listeners = [
         'openProfileModal' => 'openModal',
@@ -43,8 +45,23 @@ class UpdateProfile extends Component
         $this->last_name = $user->last_name;
         $this->suffix = $user->suffix;
         $this->position = $user->position;
-        $this->employment_status = $user->employment_status;
-        $this->department = $user->department;
+        $this->email = $user->email;
+
+        // Employment status is derived from the user's role — not editable
+        $this->employment_status = $this->resolveEmploymentStatus($user->role);
+    }
+
+    /**
+     * Map role → employment status label shown in the UI.
+     */
+    protected function resolveEmploymentStatus(string $role): string
+    {
+        return match ($role) {
+            'admin' => 'Admin',
+            'regular' => 'Regular',
+            'job_order' => 'Job Order',
+            default => ucfirst($role),
+        };
     }
 
     public function openModal(): void
@@ -69,19 +86,18 @@ class UpdateProfile extends Component
                 'max:255',
                 Rule::unique('users', 'employee_id')->ignore(Auth::id()),
             ],
-            'first_name'        => 'required|string|max:255',
-            'middle_name'       => 'nullable|string|max:255',
-            'last_name'         => 'required|string|max:255',
-            'suffix'            => 'nullable|string|max:10',
-            'position'          => 'nullable|string|max:255',
-            'employment_status' => [
-                'nullable',
-                'string',
-                // Only two valid statuses now.
-                Rule::in(['Regular', 'Job Order']),
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'suffix' => 'nullable|string|max:10',
+            'position' => 'nullable|string|max:255',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore(Auth::id()),
             ],
-            'department' => 'nullable|string|max:255',
-            'photo'      => 'nullable|image|max:5120|mimes:jpeg,jpg,png,gif,webp',
+            'photo' => 'nullable|image|max:5120|mimes:jpeg,jpg,png,gif,webp',
         ];
     }
 
@@ -89,12 +105,15 @@ class UpdateProfile extends Component
     {
         return [
             'employee_id.required' => 'Employee ID is required.',
-            'employee_id.unique'   => 'This Employee ID is already taken.',
-            'first_name.required'  => 'First name is required.',
-            'last_name.required'   => 'Last name is required.',
-            'photo.image'          => 'The file must be an image.',
-            'photo.max'            => 'Image size must not exceed 5MB.',
-            'photo.mimes'          => 'Only JPEG, JPG, PNG, GIF, and WEBP images are allowed.',
+            'employee_id.unique' => 'This Employee ID is already taken.',
+            'first_name.required' => 'First name is required.',
+            'last_name.required' => 'Last name is required.',
+            'email.required' => 'Email address is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email is already in use.',
+            'photo.image' => 'The file must be an image.',
+            'photo.max' => 'Image size must not exceed 5MB.',
+            'photo.mimes' => 'Only JPEG, JPG, PNG, GIF, and WEBP images are allowed.',
         ];
     }
 
@@ -109,15 +128,15 @@ class UpdateProfile extends Component
         }
 
         $user->update([
-            'employee_id'       => $this->employee_id,
-            'first_name'        => $this->first_name,
-            'middle_name'       => $this->middle_name,
-            'last_name'         => $this->last_name,
-            'suffix'            => $this->suffix,
-            'position'          => $this->position,
-            'employment_status' => $this->employment_status,
-            'department'        => $this->department,
-            'name'              => $this->buildFullName(),
+            'employee_id' => $this->employee_id,
+            'first_name' => $this->first_name,
+            'middle_name' => $this->middle_name,
+            'last_name' => $this->last_name,
+            'suffix' => $this->suffix,
+            'position' => $this->position,
+            'email' => $this->email,
+            'name' => $this->buildFullName(),
+            // employment_status and department are NOT updated here — role is the source of truth
         ]);
 
         $this->closeModal();
@@ -166,6 +185,19 @@ class UpdateProfile extends Component
 
         return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User')
             . '&size=256&background=10b981&color=fff&bold=true';
+    }
+
+    /**
+     * Expose a formatted badge color for the employment status pill in the blade.
+     */
+    public function getEmploymentStatusColorProperty(): string
+    {
+        return match (Auth::user()->role) {
+            'admin' => 'amber',
+            'regular' => 'green',
+            'job_order' => 'blue',
+            default => 'gray',
+        };
     }
 
     public function render()
