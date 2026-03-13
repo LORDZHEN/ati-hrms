@@ -477,25 +477,21 @@
             </div>
             @endif
 
-            @if(Auth::user()->employment_status)
+            @php
+                $roleLabel = match(Auth::user()->role) {
+                    'admin'     => 'Admin',
+                    'regular'   => 'Regular Employee',
+                    'job_order' => 'Job Order',
+                    default     => ucfirst(Auth::user()->role ?? 'Unknown'),
+                };
+            @endphp
             <div class="pf-info-item">
                 <div class="pf-info-ico amber"><x-heroicon-o-check-badge class="w-5 h-5" /></div>
                 <div class="min-w-0">
                     <div class="pf-info-label">Employment Status</div>
-                    <div class="pf-info-value">{{ Auth::user()->employment_status }}</div>
+                    <div class="pf-info-value">{{ $roleLabel }}</div>
                 </div>
             </div>
-            @endif
-
-            @if(Auth::user()->department)
-            <div class="pf-info-item">
-                <div class="pf-info-ico blue"><x-heroicon-o-building-office class="w-5 h-5" /></div>
-                <div class="min-w-0">
-                    <div class="pf-info-label">Department</div>
-                    <div class="pf-info-value">{{ Auth::user()->department }}</div>
-                </div>
-            </div>
-            @endif
 
             <div class="pf-info-item">
                 <div class="pf-info-ico green"><x-heroicon-o-calendar class="w-5 h-5" /></div>

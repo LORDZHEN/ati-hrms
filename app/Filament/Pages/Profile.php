@@ -19,7 +19,12 @@ class Profile extends Page
 
     public function mount(): void
     {
-        $this->mustChangePassword = (bool) Auth::user()->must_change_password;
+        // Force a fresh DB read on every page load so we never serve stale data
+        // after UpdateProfile redirects back here.
+        $user = Auth::user()->fresh();
+        Auth::setUser($user);
+
+        $this->mustChangePassword = (bool) $user->must_change_password;
     }
 
     public function onPasswordChanged(): void
@@ -39,30 +44,41 @@ class Profile extends Page
         return [];
     }
 
+    /**
+     * Always returns a fresh user instance so callers never read stale data.
+     */
     public function getUser()
     {
-        return Auth::user();
+        return Auth::user()->fresh();
     }
 
+    /**
+     * Returns the full URL for the user's profile photo.
+     *
+     * Uses Auth::user() directly (not ->fresh()) because mount() already
+     * replaced the auth singleton with a fresh instance. Appends a filemtime
+     * version string so browsers always fetch the latest file.
+     */
     public function getProfilePhotoUrl(): string
     {
-        $user = Auth::user();
+        // Always fresh — mount() already called ->fresh() and Auth::setUser()
+        $user = Auth::user()->fresh();
 
         if (!empty($user->profile_photo_path)) {
-            if (Storage::disk('public')->exists($user->profile_photo_path)) {
-                return Storage::disk('public')->url($user->profile_photo_path);
+            $diskPath = $user->profile_photo_path;
+            $absPath = storage_path('app/public/' . $diskPath);
+
+            if (file_exists($absPath)) {
+                // Use time() not filemtime() — guarantees browser re-fetches after redirect
+                return asset('storage/' . $diskPath) . '?v=' . time();
             }
-            return url('storage/' . ltrim($user->profile_photo_path, '/'));
+
+            if (Storage::disk('public')->exists($diskPath)) {
+                return Storage::disk('public')->url($diskPath) . '?v=' . time();
+            }
         }
 
-        if (method_exists($user, 'getProfilePhotoUrlAttribute')) {
-            $url = $user->profile_photo_url;
-            if (str_starts_with($url, 'http')) {
-                return $url;
-            }
-        }
-
-        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name)
+        return 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'User')
             . '&color=ffffff&background=16a34a&size=256&bold=true';
     }
 
@@ -70,8 +86,14 @@ class Profile extends Page
     {
         $user = $this->getUser();
         $fields = [
-            'employee_id', 'first_name', 'last_name', 'email',
-            'position', 'employment_status', 'department', 'profile_photo_path',
+            'employee_id',
+            'first_name',
+            'last_name',
+            'email',
+            'position',
+            'employment_status',
+            'department',
+            'profile_photo_path',
         ];
 
         $completed = collect($fields)
@@ -79,5 +101,22 @@ class Profile extends Page
             ->count();
 
         return (int) (($completed / count($fields)) * 100);
+    }
+
+    // -------------------------------------------------------------------------
+    // Stub methods — prevent Livewire MethodNotFoundException when calls from
+    // child components (UpdateProfile, ChangePassword) bubble up to this page.
+    // -------------------------------------------------------------------------
+
+    public function update(): void
+    {
+    }
+
+    public function openModal(): void
+    {
+    }
+
+    public function closeModal(): void
+    {
     }
 }
