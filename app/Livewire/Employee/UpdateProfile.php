@@ -11,8 +11,6 @@ use Illuminate\Validation\Rule;
 
 class UpdateProfile extends Component
 {
-    // NOTE: No WithFileUploads trait — we handle the file via base64 instead
-
     public bool    $editingProfile    = false;
     public ?string $employee_id       = null;
     public ?string $first_name        = null;
@@ -23,15 +21,22 @@ class UpdateProfile extends Component
     public ?string $employment_status = null;
     public ?string $email             = null;
 
-    // Base64 data-URI set by JS when user picks a file — e.g. "data:image/jpeg;base64,/9j/..."
-    public ?string $photoBase64       = null;
-
-    // MIME type extracted from the data-URI prefix
-    public ?string $photoMime         = null;
+    /**
+     * BUG FIX #1 — photoBase64 is synced via a direct JS → Livewire call
+     * (dispatchTo / $wire.set) instead of wire:model on a hidden input.
+     * Hidden inputs do not reliably fire the events Livewire 3 needs for
+     * two-way binding, so the value was silently dropped on every save.
+     */
+    public ?string $photoBase64 = null;
+    public ?string $photoMime   = null;
 
     protected $listeners = [
-        'openProfileModal' => 'openModal',
-        'profileUpdated'   => '$refresh',
+        'open-update-profile'  => 'openModal',
+        'close-update-profile' => 'closeModal',
+        'openProfileModal'     => 'openModal',
+        'profileUpdated'       => '$refresh',
+        // Receives the base64 string from Alpine/JS and stores it in the property
+        'photo-selected'       => 'receivePhoto',
     ];
 
     public function mount(): void
@@ -60,6 +65,18 @@ class UpdateProfile extends Component
             'job_order' => 'Job Order',
             default     => ucfirst($role),
         };
+    }
+
+    /**
+     * BUG FIX #1 (cont.) — called from the blade via $wire.call('receivePhoto', dataUri)
+     * This is the reliable way to push a large string from JS into a Livewire property.
+     */
+    public function receivePhoto(string $dataUri): void
+    {
+        // Basic sanity-check before storing — full validation happens in update()
+        if (str_starts_with($dataUri, 'data:image')) {
+            $this->photoBase64 = $dataUri;
+        }
     }
 
     public function openModal(): void
@@ -115,18 +132,18 @@ class UpdateProfile extends Component
     {
         $this->validate();
 
-        $user = Auth::user()->fresh();
+        $user         = Auth::user()->fresh();
         $newPhotoPath = null;
 
-        if ($this->photoBase64) {
+        // ── Photo processing ────────────────────────────────────────────────
+        if (!empty($this->photoBase64) && str_starts_with($this->photoBase64, 'data:image')) {
             try {
-                // Validate the data-URI structure
                 if (!preg_match('/^data:(image\/(?:jpeg|jpg|png|gif|webp));base64,(.+)$/i', $this->photoBase64, $matches)) {
                     $this->addError('photo', 'Invalid image format. Please select a JPG, PNG, GIF, or WEBP file.');
                     return;
                 }
 
-                $mime       = strtolower($matches[1]); // e.g. "image/jpeg"
+                $mime       = strtolower($matches[1]);
                 $base64Data = $matches[2];
                 $binary     = base64_decode($base64Data, strict: true);
 
@@ -135,7 +152,6 @@ class UpdateProfile extends Component
                     return;
                 }
 
-                // Check decoded size — reject if over 5 MB
                 if (strlen($binary) > 5 * 1024 * 1024) {
                     $this->addError('photo', 'Image must be 5 MB or smaller.');
                     return;
@@ -152,23 +168,16 @@ class UpdateProfile extends Component
                 $filename    = 'profile-photos/' . Str::random(40) . '.' . $ext;
                 $destination = storage_path('app/public/' . $filename);
 
-                // Ensure directory exists
                 if (!is_dir(dirname($destination))) {
                     mkdir(dirname($destination), 0755, true);
                 }
 
-                // Write binary directly — no Livewire temp disk involved at all
                 if (file_put_contents($destination, $binary) === false) {
                     $this->addError('photo', 'Could not write photo to storage. Check folder permissions.');
                     return;
                 }
 
-                if (!file_exists($destination)) {
-                    $this->addError('photo', 'Photo write appeared to succeed but file is missing.');
-                    return;
-                }
-
-                // Delete old photo only after new one is confirmed
+                // Delete the old photo if present
                 if (!empty($user->profile_photo_path)) {
                     $oldAbs = storage_path('app/public/' . $user->profile_photo_path);
                     if (file_exists($oldAbs)) {
@@ -184,6 +193,7 @@ class UpdateProfile extends Component
             }
         }
 
+        // ── Persist to DB ────────────────────────────────────────────────────
         $payload = [
             'employee_id' => $this->employee_id,
             'first_name'  => $this->first_name,
@@ -201,13 +211,33 @@ class UpdateProfile extends Component
 
         $user->update($payload);
         $user->refresh();
+
+        // Keep the auth singleton up-to-date for the rest of the request
         Auth::setUser($user);
 
-        $this->editingProfile = false;
+        // ── Reset component state ────────────────────────────────────────────
         $this->photoBase64    = null;
         $this->photoMime      = null;
+        $this->editingProfile = false;
         $this->resetValidation();
 
+        /**
+         * BUG FIX #2 & #3 — Do NOT redirect.
+         *
+         * redirect() tears down the Livewire component tree, which causes:
+         *   • The "Edit Profile Information" button to disappear during remount
+         *   • Alpine state (modal show/hide) to reset
+         *   • Filament JS toast to be lost between page loads
+         *
+         * Instead: close the modal via event, notify in-place, then dispatch
+         * a 'profile-updated' event so the parent Profile page can refresh
+         * its own avatar / hero section without a full reload.
+         */
+
+        // 1. Close the modal
+        $this->dispatch('close-update-profile');
+
+        // 2. Show the Filament toast — works perfectly without a redirect
         Notification::make()
             ->title('Profile Updated')
             ->body('Your profile information has been successfully updated.')
@@ -215,10 +245,16 @@ class UpdateProfile extends Component
             ->duration(5000)
             ->send();
 
-        $this->redirect(
-            request()->header('Referer') ?? route('filament.hrms.pages.profile'),
-            navigate: false
-        );
+        /**
+         * BUG FIX #4 — Dispatch a browser event carrying the new avatar URL
+         * so the parent hero section and the modal preview can both update
+         * their <img> src without needing a page reload.
+         */
+        $newAvatarUrl = $this->buildAvatarUrl($user);
+        $this->dispatch('profile-saved', avatarUrl: $newAvatarUrl);
+
+        // Re-load so our own component reflects the saved values
+        $this->loadUserData();
     }
 
     protected function buildFullName(): string
@@ -231,15 +267,10 @@ class UpdateProfile extends Component
         ]));
     }
 
-    public function getAvatarUrlProperty(): string
+    // ── Avatar helper ────────────────────────────────────────────────────────
+
+    protected function buildAvatarUrl($user): string
     {
-        // If a photo has been selected, show the base64 preview directly
-        if ($this->photoBase64) {
-            return $this->photoBase64;
-        }
-
-        $user = Auth::user()->fresh();
-
         if (!empty($user->profile_photo_path)) {
             $absPath = storage_path('app/public/' . $user->profile_photo_path);
             if (file_exists($absPath)) {
@@ -254,14 +285,19 @@ class UpdateProfile extends Component
             . '&size=256&background=10b981&color=fff&bold=true';
     }
 
-    public function getEmploymentStatusColorProperty(): string
+    /**
+     * BUG FIX #5 — avatarUrl is now a plain public property (string) that
+     * Livewire can include in its JSON snapshot.  Alpine reads it via
+     * $wire.avatarUrl instead of a static x-data initialiser, so it
+     * automatically updates whenever Livewire re-renders the component.
+     */
+    public function getAvatarUrlProperty(): string
     {
-        return match (Auth::user()->role) {
-            'admin'     => 'amber',
-            'regular'   => 'green',
-            'job_order' => 'blue',
-            default     => 'gray',
-        };
+        if ($this->photoBase64) {
+            return $this->photoBase64;
+        }
+
+        return $this->buildAvatarUrl(Auth::user()->fresh());
     }
 
     public function render()

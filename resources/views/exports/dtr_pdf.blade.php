@@ -44,35 +44,29 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
 
 /* ── Meta header ── */
 .meta-tbl { table-layout: fixed; }
-/* Left label cells: "Department" row 1, "Date" row 2 */
 .meta-tbl .lbl-left {
     font-size: 8pt; font-weight: normal; background: #eeeeff;
     text-align: center; vertical-align: middle; white-space: normal;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
 }
-/* "Name" / "No" middle label cells */
 .meta-tbl .lbl-mid {
     font-size: 8pt; font-weight: normal; background: #eeeeff;
     text-align: center; vertical-align: middle; white-space: nowrap;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
 }
-/* REGULAR / JOB ORDER */
 .meta-tbl .role-cell {
     font-size: 16pt; font-weight: bold; text-align: center;
     letter-spacing: 2px; padding: 4px 3px;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
 }
-/* Employee name */
 .meta-tbl .name-val {
     font-size: 14pt; font-weight: bold; text-align: center; padding: 4px 3px;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
 }
-/* Date value */
 .meta-tbl .date-val {
     font-size: 11pt; font-weight: bold; text-align: center; padding: 3px;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
 }
-/* Employee ID */
 .meta-tbl .id-val {
     font-size: 14pt; font-weight: bold; text-align: center; padding: 3px;
     font-family: 'SimSun', '宋体', 'Songti SC', 'Noto Serif CJK SC', serif;
@@ -134,6 +128,16 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
 .att-tbl tr.wknd td    { background: #f0f0f0; color: #aaaaaa; }
 .att-tbl tr.wknd td.dc { background: #e8e8ee; color: #999999; }
 .att-tbl tr.absent td  { background: #fff5f5; }
+
+/*
+ * ── LATE TIME-IN — PDF class ──────────────────────────────────────────────
+ * Applied to the MorningIn cell when the employee arrived after 08:00.
+ * DomPDF supports color and font-weight on td elements via class rules.
+ */
+.att-tbl td.late-in {
+    color: #cc0000;
+    font-weight: bold;
+}
 
 /* ── Signature ── */
 .sig-tbl { margin-top: 7px; border: none; }
@@ -206,11 +210,7 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
 <div class="page-title">DAILY TIME RECORD</div>
 <div class="page-subtitle">Civil Service Form No. 48</div>
 
-{{-- ══ HEADER
-     Row 1: [Department] [    REGULAR    ] [Name] [Employee Name]
-     Row 2: [Date      ] [2026/02/01~02/28] [No  ] [Employee ID  ]
-     NO rowspan — each row has its own left label cell.
-══ --}}
+{{-- ══ HEADER ══ --}}
 <table class="meta-tbl">
     <colgroup>
         <col style="width:11%">
@@ -331,8 +331,23 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
                 $ao = trim($row['AfternoonOut'] ?? '');
                 $hasPunch  = ($mi !== '' || $mo !== '' || $ai !== '' || $ao !== '');
                 $isAbsent  = !$isWeekend && !$hasPunch;
-                $trClass   = $isWeekend ? 'wknd' : ($isAbsent ? 'absent' : '');
+                $trClass      = $isWeekend ? 'wknd' : ($isAbsent ? 'absent' : '');
+
+                // Red MorningIn  : employee arrived AFTER 08:00
+                $miIsLate     = ($mi !== '' && $mi > '08:00');
+
+                // Red AfternoonOut: employee left BEFORE 17:00 (and a punch was recorded)
+                $aoIsUndertime = ($ao !== '' && $ao < '17:00');
             @endphp
+            {{--
+                ── HIGHLIGHT RULES ──────────────────────────────────────────────────────
+                MorningIn    red  when > '08:00'  (late arrival)
+                AfternoonOut red  when < '17:00'  (early departure / undertime)
+                HH:MM zero-padded string comparison is safe for 24-hour times.
+                NOTE: this comment is intentionally OUTSIDE the @php block above.
+                      Blade {{-- --}} comments inside @php cause a PHP parse error.
+                ─────────────────────────────────────────────────────────────────────────
+            --}}
             <tr class="{{ $trClass }}">
                 <td class="dc">{{ $ddww }}</td>
                 @if ($isWeekend)
@@ -340,9 +355,12 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
                 @elseif ($isAbsent)
                     <td colspan="6" style="text-align:center; font-style:italic; font-size:7.5pt; color:#555588;">Absence</td>
                 @else
-                    <td>{{ $mi }}</td><td>{{ $mo }}</td>
-                    <td>{{ $ai }}</td><td>{{ $ao }}</td>
-                    <td></td><td></td>
+                    <td class="{{ $miIsLate ? 'late-in' : '' }}">{{ $mi }}</td>
+                    <td>{{ $mo }}</td>
+                    <td>{{ $ai }}</td>
+                    <td class="{{ $aoIsUndertime ? 'late-in' : '' }}">{{ $ao }}</td>
+                    <td></td>
+                    <td></td>
                 @endif
             </tr>
         @endfor

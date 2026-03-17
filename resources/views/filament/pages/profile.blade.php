@@ -379,7 +379,16 @@
     </div>
 
     {{-- Hero --}}
-    <div class="pf-hero pf-anim">
+    {{--
+        BUG FIX #6 — The hero avatar now uses wire:model on the public
+        $profilePhotoUrl property of the Profile page component.
+        When onProfileSaved() updates $profilePhotoUrl, Livewire pushes
+        the new value to the browser and the Alpine :src binding updates
+        automatically — no redirect, no page reload.
+    --}}
+    <div class="pf-hero pf-anim"
+         x-data="{ heroAvatarUrl: @entangle('profilePhotoUrl').live }"
+         @profile-saved.window="heroAvatarUrl = $event.detail.avatarUrl">
         <div class="pf-hero-canvas"></div>
         <div class="pf-hero-noise"></div>
         <div class="pf-hero-mesh"></div>
@@ -389,8 +398,11 @@
 
         <div class="pf-hero-content">
             <div class="pf-avatar-ring">
-                <img src="{{ $this->getProfilePhotoUrl() }}" alt="{{ Auth::user()->name }}" class="pf-avatar"
-                     onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&color=ffffff&background=059669&size=256&bold=true'">
+                {{-- :src binds to the Alpine property which is entangled with the Livewire property --}}
+                <img :src="heroAvatarUrl"
+                     alt="{{ Auth::user()->name }}"
+                     class="pf-avatar"
+                     x-on:error="heroAvatarUrl = 'https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&color=ffffff&background=059669&size=256&bold=true'">
                 <div class="pf-avatar-online"></div>
             </div>
 

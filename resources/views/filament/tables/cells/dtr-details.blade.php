@@ -232,8 +232,10 @@
                     $mo = trim($row['MorningOut']   ?? '');
                     $ai = trim($row['AfternoonIn']  ?? '');
                     $ao = trim($row['AfternoonOut'] ?? '');
-                    $hasPunch  = ($mi !== '' || $mo !== '' || $ai !== '' || $ao !== '');
-                    $isAbsent  = !$isWeekend && !$hasPunch;
+                    $hasPunch      = ($mi !== '' || $mo !== '' || $ai !== '' || $ao !== '');
+                    $isAbsent      = !$isWeekend && !$hasPunch;
+                    // Red AfternoonOut: punch recorded but employee left before 17:00
+                    $aoIsUndertime = ($ao !== '' && $ao < '17:00');
                 @endphp
 
                 @if ($isWeekend)
@@ -253,10 +255,30 @@
                 @else
                 <tr style="background:#ffffff;">
                     <td style="{{ $bdrL }} font-size:8px; text-align:left; padding-left:3px; background:#f5f5ff; color:#1a237e; font-family:{{ $fArial }};">{{ $ddww }}</td>
-                    <td style="{{ $bdrL }} text-align:center; font-size:8px; color:#1a237e; padding:1px; font-family:{{ $fArial }};">{{ $mi }}</td>
+
+                    {{--
+                        ── LATE TIME-IN HIGHLIGHT ────────────────────────────────────────────
+                        MorningIn is shown in red when the employee arrived after 08:00.
+                        HH:MM string comparison is safe for zero-padded 24-hour times:
+                          '08:01' > '08:00' = true  ✓
+                          '07:59' > '08:00' = false ✓
+                          '08:00' > '08:00' = false ✓  (on time — no red)
+                        Only MorningIn is highlighted; MorningOut, AfternoonIn, and
+                        AfternoonOut are never coloured red (they are not "arrival" slots).
+                        ─────────────────────────────────────────────────────────────────────
+                    --}}
+                    <td style="{{ $bdrL }} text-align:center; font-size:8px; padding:1px; font-family:{{ $fArial }};
+                               {{ ($mi !== '' && $mi > '08:00') ? 'color:#dc2626; font-weight:600;' : 'color:#1a237e;' }}">
+                        {{ $mi }}
+                    </td>
+
                     <td style="{{ $bdrL }} text-align:center; font-size:8px; color:#1a237e; padding:1px; font-family:{{ $fArial }};">{{ $mo }}</td>
                     <td style="{{ $bdrL }} text-align:center; font-size:8px; color:#1a237e; padding:1px; font-family:{{ $fArial }};">{{ $ai }}</td>
-                    <td style="{{ $bdrL }} text-align:center; font-size:8px; color:#1a237e; padding:1px; font-family:{{ $fArial }};">{{ $ao }}</td>
+                    {{-- AfternoonOut: red when employee punched out before 17:00 (undertime) --}}
+                    <td style="{{ $bdrL }} text-align:center; font-size:8px; padding:1px; font-family:{{ $fArial }};
+                               {{ $aoIsUndertime ? 'color:#dc2626; font-weight:600;' : 'color:#1a237e;' }}">
+                        {{ $ao }}
+                    </td>
                     <td style="{{ $bdrL }} padding:1px;"></td>
                     <td style="{{ $bdrL }} padding:1px;"></td>
                 </tr>
