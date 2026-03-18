@@ -614,8 +614,13 @@ class SalnResource extends Resource
                 ->falseIcon('heroicon-o-lock-closed')
                 ->trueColor('success')
                 ->falseColor('danger')
-                ->tooltip(fn($record) => $record->editing_unlocked ? 'Editing Unlocked' : 'Editing Locked')
-                ->visible(fn($record) => $isAdmin && $record?->status === 'approved'),
+                ->formatStateUsing(fn($state, $record) => $record?->status === 'approved' ? $state : null)
+                ->tooltip(fn($record) => match (true) {
+                    $record?->status !== 'approved' => null,
+                    $record->editing_unlocked => 'Editing Unlocked',
+                    default => 'Editing Locked',
+                })
+                ->visible($isAdmin),
 
             Tables\Columns\TextColumn::make('compliance_type_label')
                 ->label('Filing Type')

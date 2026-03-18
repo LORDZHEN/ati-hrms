@@ -238,11 +238,12 @@
     </div>
 
     {{-- OATH --}}
+    @php $isAdminUser = auth()->user()?->role === 'admin'; @endphp
     <div style="margin-top:12px; text-align:justify; font-size:8pt; font-weight:bold; text-decoration:underline; line-height:1.7;">
         SUBSCRIBED AND SWORN to before me this
         <input type="text" wire:model="data.subscribed_sworn_date" class="saln-input"
             style="width:180px; border-bottom:1px solid #000; display:inline-block; text-align:center; text-decoration:none;"
-            {{ $dis }} placeholder="__ day of _____, ____" />
+            {{ ($ro || !$isAdminUser) ? 'disabled' : '' }} placeholder="__ day of _____, ____" />
         affiant exhibiting to me the above-stated government-issued identification card.
     </div>
 
@@ -250,7 +251,8 @@
         <div style="border-top:1.5px solid #000; width:260px; margin:0 auto 4px;"></div>
         <div style="font-size:7.5pt; font-weight:bold;">
             <input type="text" wire:model="data.person_administering_oath" class="saln-input"
-                style="text-align:center; width:260px; display:inline-block;" {{ $dis }}
+                style="text-align:center; width:260px; display:inline-block;"
+                {{ ($ro || !$isAdminUser) ? 'disabled' : '' }}
                 placeholder="(Person Administering Oath)" />
         </div>
     </div>

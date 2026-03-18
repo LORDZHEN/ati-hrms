@@ -38,7 +38,6 @@ class ViewSaln extends ViewRecord
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->visible(function () use ($isAdmin) {
-                    $this->record->refresh();
                     return $isAdmin && in_array($this->record->status, ['pending', 'submitted', 'disapproved']);
                 })
                 ->requiresConfirmation()

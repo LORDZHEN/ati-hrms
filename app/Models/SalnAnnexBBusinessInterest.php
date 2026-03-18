@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalnAnnexBBusinessInterest extends Model
 {
-    // Table: saln_annex_b_business_interests
     protected $fillable = [
         'saln_id',
         'name_of_entity',
