@@ -49,13 +49,15 @@ class EditLeaveApplication extends EditRecord
         return $data;
     }
 
+    // AFTER
     protected function afterSave(): void
     {
         if (Auth::user()->role === 'admin')
             return;
 
-        // Stamp new submission time
-        $this->record->updateQuietly(['created_at' => now()]);
+        // NOTE: created_at is intentionally NOT updated here.
+        // Mutating it would misrepresent the original filing date in reports
+        // and on the print form (Section 3 DATE OF FILING).
 
         // Notify all admins
         $admins = User::where('role', User::ROLE_ADMIN)->get();

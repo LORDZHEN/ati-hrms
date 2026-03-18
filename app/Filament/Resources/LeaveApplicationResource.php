@@ -73,21 +73,21 @@ class LeaveApplicationResource extends Resource
     public static function leaveTypeOptions(): array
     {
         return [
-            'vacation_leave'                   => 'Vacation Leave',
-            'mandatory_forced_leave'           => 'Mandatory/Forced Leave',
-            'sick_leave'                       => 'Sick Leave',
-            'maternity_leave'                  => 'Maternity Leave',
-            'paternity_leave'                  => 'Paternity Leave',
-            'special_privilege_leave'          => 'Special Privilege Leave',
-            'solo_parent_leave'                => 'Solo Parent Leave',
-            'study_leave'                      => 'Study Leave',
-            '10_day_vawc_leave'                => '10-Day VAWC Leave',
-            'rehabilitation_privilege'         => 'Rehabilitation Privilege',
+            'vacation_leave' => 'Vacation Leave',
+            'mandatory_forced_leave' => 'Mandatory/Forced Leave',
+            'sick_leave' => 'Sick Leave',
+            'maternity_leave' => 'Maternity Leave',
+            'paternity_leave' => 'Paternity Leave',
+            'special_privilege_leave' => 'Special Privilege Leave',
+            'solo_parent_leave' => 'Solo Parent Leave',
+            'study_leave' => 'Study Leave',
+            '10_day_vawc_leave' => '10-Day VAWC Leave',
+            'rehabilitation_privilege' => 'Rehabilitation Privilege',
             'special_leave_benefits_for_women' => 'Special Leave Benefits for Women',
-            'special_emergency_leave'          => 'Special Emergency Leave',
-            'adoption_leave'                   => 'Adoption Leave',
-            'wellness_leave'                   => 'Wellness Leave',   // NEW — 2026 CSC format
-            'others'                           => 'Others',
+            'special_emergency_leave' => 'Special Emergency Leave',
+            'adoption_leave' => 'Adoption Leave',
+            'wellness_leave' => 'Wellness Leave',   // NEW — 2026 CSC format
+            'others' => 'Others',
         ];
     }
 
@@ -233,7 +233,7 @@ class LeaveApplicationResource extends Resource
                         ->label('Vacation Location')
                         ->options([
                             'within_philippines' => 'Within the Philippines',
-                            'abroad'             => 'Abroad',
+                            'abroad' => 'Abroad',
                         ])
                         ->inline()
                         ->live(),
@@ -272,7 +272,7 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Radio::make('study_leave_purpose')
                         ->label('Study Leave Purpose')
                         ->options([
-                            'masters_degree'  => "Completion of Master's Degree",
+                            'masters_degree' => "Completion of Master's Degree",
                             'bar_board_review' => 'BAR/Board Examination Review',
                         ])
                         ->inline(),
@@ -280,7 +280,7 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Radio::make('other_purpose')
                         ->label('Other Purpose')
                         ->options([
-                            'monetization'  => 'Monetization of Leave Credits',
+                            'monetization' => 'Monetization of Leave Credits',
                             'terminal_leave' => 'Terminal Leave',
                         ])
                         ->inline(),
@@ -289,7 +289,7 @@ class LeaveApplicationResource extends Resource
                         ->label('Commutation')
                         ->options([
                             'not_requested' => 'Not Requested',
-                            'requested'     => 'Requested',
+                            'requested' => 'Requested',
                         ])
                         ->default('not_requested')
                         ->inline()
@@ -332,13 +332,62 @@ class LeaveApplicationResource extends Resource
                         ->modalDescription('Are you sure you want to approve all selected leave applications?')
                         ->action(function (Collection $records) {
                             $count = 0;
+                            $service = app(\App\Services\LeaveCreditService::class);
+
                             foreach ($records as $record) {
                                 if ($record->status !== 'approved') {
-                                    $record->update(['status' => 'approved']);
+
+                                    \Illuminate\Support\Facades\DB::transaction(function () use ($record, $service) {
+                                        // ── Duplicate-deduction guard — inside transaction ─
+                                        $alreadyDeducted = \App\Models\LeaveCreditLog::where('leave_application_id', $record->id)
+                                            ->where('transaction_type', 'deduction')
+                                            ->exists();
+
+                                        // ── Status update first ───────────────────────────
+                                        $record->update(['status' => 'approved']);
+
+                                        if (!$alreadyDeducted) {
+                                            // ── Snapshot columns for print blade (Bug #4) ─
+                                            $credit = \App\Models\LeaveCredit::where('user_id', $record->employee_id)
+                                                ->lockForUpdate()
+                                                ->first();
+
+                                            if ($credit) {
+                                                $days = (float) $record->number_of_working_days;
+                                                $vlBefore = (float) $credit->vacation_leave_balance;
+                                                $slBefore = (float) $credit->sick_leave_balance;
+                                                $balanceCol = \App\Models\LeaveCredit::balanceColumn($record->type_of_leave);
+                                                $vlLess = ($balanceCol === 'vacation_leave_balance') ? $days : 0;
+                                                $slLess = ($balanceCol === 'sick_leave_balance') ? $days : 0;
+
+                                                // AFTER (bulk snapshot block)
+                                                $record->update([
+                                                    'as_of_date' => now()->toDateString(),
+                                                    'date_approved_disapproved' => now()->toDateString(),
+                                                    'authorized_officer' => Auth::user()->name,
+                                                    'vacation_leave_total_earned' => $vlBefore,
+                                                    'vacation_leave_less_application' => $vlLess,
+                                                    'vacation_leave_balance' => max(0, $vlBefore - $vlLess),
+                                                    'sick_leave_total_earned' => $slBefore,
+                                                    'sick_leave_less_application' => $slLess,
+                                                    'sick_leave_balance' => max(0, $slBefore - $slLess),
+                                                    'approved_days_with_pay' => $record->number_of_working_days,
+                                                    'approved_days_without_pay' => null,
+                                                    'approved_others' => null,
+                                                ]);
+                                            }
+
+                                            // ── Credit deduction ──────────────────────────
+                                            $service->deductForApplication($record);
+                                        }
+                                    });
+
+                                    // ── Outside transaction: notification only ────────────
                                     $record->employee?->notify(new LeaveApplicationStatusUpdated($record));
                                     $count++;
                                 }
                             }
+
                             Notification::make()
                                 ->success()
                                 ->title('Bulk Approval Complete')
@@ -403,21 +452,21 @@ class LeaveApplicationResource extends Resource
                 ->searchable()
                 ->formatStateUsing(fn($state) => str_replace('_', ' ', ucwords($state, '_')))
                 ->color(fn(string $state) => match ($state) {
-                    'vacation_leave'                   => 'success',
-                    'sick_leave'                       => 'danger',
-                    'mandatory_forced_leave'           => 'warning',
+                    'vacation_leave' => 'success',
+                    'sick_leave' => 'danger',
+                    'mandatory_forced_leave' => 'warning',
                     'maternity_leave', 'paternity_leave' => 'info',
                     'special_privilege_leave', 'study_leave' => 'primary',
-                    'wellness_leave'                   => 'success',  // NEW
-                    default                            => 'gray',
+                    'wellness_leave' => 'success',  // NEW
+                    default => 'gray',
                 })
                 ->icon(fn(string $state) => match ($state) {
-                    'vacation_leave'                   => 'heroicon-o-sun',
-                    'sick_leave'                       => 'heroicon-o-heart',
+                    'vacation_leave' => 'heroicon-o-sun',
+                    'sick_leave' => 'heroicon-o-heart',
                     'maternity_leave', 'paternity_leave' => 'heroicon-o-user-group',
-                    'study_leave'                      => 'heroicon-o-academic-cap',
-                    'wellness_leave'                   => 'heroicon-o-sparkles',  // NEW
-                    default                            => 'heroicon-o-document-text',
+                    'study_leave' => 'heroicon-o-academic-cap',
+                    'wellness_leave' => 'heroicon-o-sparkles',  // NEW
+                    default => 'heroicon-o-document-text',
                 }),
 
             Tables\Columns\TextColumn::make('leave_date_from')
@@ -446,16 +495,16 @@ class LeaveApplicationResource extends Resource
                 ->badge()
                 ->sortable()
                 ->color(fn(string $state) => match ($state) {
-                    'pending'      => 'warning',
-                    'approved'     => 'success',
-                    'disapproved'  => 'danger',
-                    default        => 'gray',
+                    'pending' => 'warning',
+                    'approved' => 'success',
+                    'disapproved' => 'danger',
+                    default => 'gray',
                 })
                 ->icon(fn(string $state) => match ($state) {
-                    'pending'     => 'heroicon-o-clock',
-                    'approved'    => 'heroicon-o-check-circle',
+                    'pending' => 'heroicon-o-clock',
+                    'approved' => 'heroicon-o-check-circle',
                     'disapproved' => 'heroicon-o-x-circle',
-                    default       => null,
+                    default => null,
                 })
                 ->formatStateUsing(fn(string $state): string => ucfirst($state)),
 
@@ -472,10 +521,11 @@ class LeaveApplicationResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
+            // AFTER
             Tables\Columns\TextColumn::make('authorized_officer')
                 ->label('Processed By')
                 ->color('gray')
-                ->placeholder('Awaiting Review')
+                ->placeholder(fn($record) => $record->status === 'pending' ? 'Awaiting Review' : '—')
                 ->icon('heroicon-o-shield-check')
                 ->iconColor('gray')
                 ->limit(22)
@@ -558,8 +608,8 @@ class LeaveApplicationResource extends Resource
                     ->native(false)
                     ->placeholder('All statuses')
                     ->options([
-                        'pending'     => '🕐  Pending',
-                        'approved'    => '✅  Approved',
+                        'pending' => '🕐  Pending',
+                        'approved' => '✅  Approved',
                         'disapproved' => '❌  Disapproved',
                     ]),
 
@@ -569,16 +619,16 @@ class LeaveApplicationResource extends Resource
                     ->native(false)
                     ->placeholder('All types')
                     ->options([
-                        'vacation_leave'                   => 'Vacation Leave',
-                        'sick_leave'                       => 'Sick Leave',
-                        'maternity_leave'                  => 'Maternity Leave',
-                        'paternity_leave'                  => 'Paternity Leave',
-                        'special_privilege_leave'          => 'Special Privilege Leave',
-                        'mandatory_forced_leave'           => 'Mandatory/Forced Leave',
-                        'study_leave'                      => 'Study Leave',
-                        'solo_parent_leave'                => 'Solo Parent Leave',
-                        'wellness_leave'                   => 'Wellness Leave',   // NEW
-                        'others'                           => 'Others',
+                        'vacation_leave' => 'Vacation Leave',
+                        'sick_leave' => 'Sick Leave',
+                        'maternity_leave' => 'Maternity Leave',
+                        'paternity_leave' => 'Paternity Leave',
+                        'special_privilege_leave' => 'Special Privilege Leave',
+                        'mandatory_forced_leave' => 'Mandatory/Forced Leave',
+                        'study_leave' => 'Study Leave',
+                        'solo_parent_leave' => 'Solo Parent Leave',
+                        'wellness_leave' => 'Wellness Leave',   // NEW
+                        'others' => 'Others',
                     ]),
             ])
             ->query(
@@ -609,17 +659,17 @@ class LeaveApplicationResource extends Resource
                     ->options([
                         'this_month' => '📅  This Month',
                         'last_month' => '📅  Last Month',
-                        'this_week'  => '📅  This Week',
-                        'this_year'  => '📅  This Year',
+                        'this_week' => '📅  This Week',
+                        'this_year' => '📅  This Year',
                     ])
                     ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
                         [$from, $to] = match ($state) {
                             'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
                             'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
-                            'this_week'  => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
-                            'this_year'  => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                            default      => [null, null],
+                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                            default => [null, null],
                         };
                         $set('from', $from);
                         $set('to', $to);
@@ -648,8 +698,8 @@ class LeaveApplicationResource extends Resource
                 $presetLabels = [
                     'this_month' => 'This Month',
                     'last_month' => 'Last Month',
-                    'this_week'  => 'This Week',
-                    'this_year'  => 'This Year',
+                    'this_week' => 'This Week',
+                    'this_year' => 'This Year',
                 ];
                 $indicators = [];
                 $preset = $data['preset'] ?? null;
@@ -753,7 +803,7 @@ class LeaveApplicationResource extends Resource
             return;
         try {
             $fromDate = Carbon::parse($from);
-            $toDate   = Carbon::parse($to);
+            $toDate = Carbon::parse($to);
             if ($toDate->lessThan($fromDate)) {
                 $set('number_of_working_days', 0);
                 return;
@@ -796,10 +846,10 @@ class LeaveApplicationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListLeaveApplications::route('/'),
+            'index' => Pages\ListLeaveApplications::route('/'),
             'create' => Pages\CreateLeaveApplication::route('/create'),
-            'edit'   => Pages\EditLeaveApplication::route('/{record}/edit'),
-            'view'   => Pages\ViewLeaveApplication::route('/{record}'),
+            'edit' => Pages\EditLeaveApplication::route('/{record}/edit'),
+            'view' => Pages\ViewLeaveApplication::route('/{record}'),
         ];
     }
 }

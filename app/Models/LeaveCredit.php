@@ -20,13 +20,13 @@ class LeaveCredit extends Model
     ];
 
     protected $casts = [
-        'vacation_leave_balance'  => 'decimal:3',
-        'sick_leave_balance'      => 'decimal:3',
-        'special_leave_balance'   => 'decimal:3',
+        'vacation_leave_balance' => 'decimal:3',
+        'sick_leave_balance' => 'decimal:3',
+        'special_leave_balance' => 'decimal:3',
         'mandatory_leave_balance' => 'decimal:3',
-        'vacation_leave_max'      => 'decimal:3',
-        'sick_leave_max'          => 'decimal:3',
-        'last_accrual_date'       => 'date',
+        'vacation_leave_max' => 'decimal:3',
+        'sick_leave_max' => 'decimal:3',
+        'last_accrual_date' => 'date',
     ];
 
     // ── Relationships ────────────────────────────────────────────────
@@ -46,14 +46,20 @@ class LeaveCredit extends Model
     /**
      * Return the balance column name for a given leave_application type_of_leave value.
      */
+    // AFTER
     public static function balanceColumn(string $leaveType): ?string
     {
         return match ($leaveType) {
-            'vacation_leave'           => 'vacation_leave_balance',
-            'mandatory_forced_leave'   => 'mandatory_leave_balance',
-            'sick_leave'               => 'sick_leave_balance',
-            'special_privilege_leave'  => 'special_leave_balance',
-            default                    => null,   // leave types not tracked here
+            'vacation_leave' => 'vacation_leave_balance',
+            'mandatory_forced_leave' => 'mandatory_leave_balance',
+            'sick_leave' => 'sick_leave_balance',
+            'special_privilege_leave' => 'special_leave_balance',
+            // 'wellness_leave' is intentionally NOT mapped to a balance column.
+            // Per 2026 CSC format, Wellness Leave is granted as a non-deductible
+            // entitlement — no credit balance is consumed when it is availed.
+            // If a dedicated wellness_leave_balance column is added to leave_credits
+            // in the future, add: 'wellness_leave' => 'wellness_leave_balance' here.
+            default => null,   // leave types not tracked here
         };
     }
 
@@ -64,8 +70,8 @@ class LeaveCredit extends Model
     {
         return match ($leaveType) {
             'vacation_leave' => 'vacation_leave_max',
-            'sick_leave'     => 'sick_leave_max',
-            default          => null,
+            'sick_leave' => 'sick_leave_max',
+            default => null,
         };
     }
 }

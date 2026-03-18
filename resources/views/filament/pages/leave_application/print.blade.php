@@ -567,6 +567,15 @@
                     </span>
                 </div>
 
+                @php
+                    // Format a numeric credit value for display.
+                    // Shows 3 decimal places if the value is set; blank if null/zero-but-unset.
+                    $fmtCredit = function ($val): string {
+                        if ($val === null || $val === '') return '';
+                        return number_format((float) $val, 3);
+                    };
+                @endphp
+
                 <table class="credits-table">
                     <tr>
                         <td class="header-cell" style="width: 45%;"></td>
@@ -575,18 +584,18 @@
                     </tr>
                     <tr>
                         <td class="label-cell">Total Earned</td>
-                        <td>{{ $leaveApplication->vl_total_earned ?? $leaveApplication->vacation_leave_total_earned ?? '' }}</td>
-                        <td>{{ $leaveApplication->sl_total_earned ?? $leaveApplication->sick_leave_total_earned ?? '' }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->vacation_leave_total_earned) }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->sick_leave_total_earned) }}</td>
                     </tr>
                     <tr>
                         <td class="label-cell">Less this application</td>
-                        <td>{{ $leaveApplication->vl_less_application ?? $leaveApplication->vacation_leave_less_application ?? '' }}</td>
-                        <td>{{ $leaveApplication->sl_less_application ?? $leaveApplication->sick_leave_less_application ?? '' }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->vacation_leave_less_application) }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->sick_leave_less_application) }}</td>
                     </tr>
                     <tr>
                         <td class="label-cell">Balance</td>
-                        <td>{{ $leaveApplication->employee?->vl_balance ?? $leaveApplication->vacation_leave_balance ?? '' }}</td>
-                        <td>{{ $leaveApplication->employee?->sl_balance ?? $leaveApplication->sick_leave_balance ?? '' }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->vacation_leave_balance) }}</td>
+                        <td>{{ $fmtCredit($leaveApplication->sick_leave_balance) }}</td>
                     </tr>
                 </table>
 
@@ -602,11 +611,21 @@
                     <span class="checkbox {{ $leaveApplication->status === 'approved' ? 'checked' : '' }}"></span>
                     For approval
                 </div>
+                @php
+                    // Resolve disapproval reason from whichever field was populated.
+                    // The model's disapprove() method writes 'disapproved_reason' (note the d).
+                    // The fillable list also includes 'disapproval_reason' (without d).
+                    // We check both and fall back to remarks so nothing is lost.
+                    $disapprovalText = $leaveApplication->disapproval_reason
+                        ?? $leaveApplication->disapproved_reason
+                        ?? ($leaveApplication->status === 'disapproved' ? ($leaveApplication->remarks ?? '') : '');
+                @endphp
+
                 <div style="margin-top: 4px;">
                     <span class="checkbox {{ $leaveApplication->status === 'disapproved' ? 'checked' : '' }}"></span>
                     For disapproval due to
                 </div>
-                <span class="underline-full">{{ $leaveApplication->disapproval_reason ?? '' }}</span>
+                <span class="underline-full">{{ $disapprovalText }}</span>
                 <span class="underline-full"></span>
                 <span class="underline-full"></span>
 
@@ -635,7 +654,16 @@
             </td>
             <td width="50%">
                 <div class="label">7.D DISAPPROVED DUE TO:</div>
-                <span class="underline-full">{{ $leaveApplication->disapproval_detail ?? '' }}</span>
+                {{--
+                    Only show the reason when status is disapproved.
+                    Uses the same $disapprovalText resolved in 7.B above.
+                    For approved records all three lines render as blank underlines.
+                --}}
+                @if($leaveApplication->status === 'disapproved')
+                    <span class="underline-full">{{ $disapprovalText }}</span>
+                @else
+                    <span class="underline-full"></span>
+                @endif
                 <span class="underline-full"></span>
                 <span class="underline-full"></span>
             </td>

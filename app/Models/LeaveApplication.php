@@ -147,8 +147,9 @@ class LeaveApplication extends Model
         'sick_leave_less_application' => 'decimal:2',
         'vacation_leave_balance' => 'decimal:2',
         'sick_leave_balance' => 'decimal:2',
-        'study_leave_purpose' => 'array',
-        'other_purpose' => 'array',
+        // AFTER
+        'study_leave_purpose' => 'string',
+        'other_purpose' => 'string',
         'approved_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

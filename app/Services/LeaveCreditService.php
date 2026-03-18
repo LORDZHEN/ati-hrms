@@ -84,10 +84,19 @@ class LeaveCreditService
         });
     }
 
+    // AFTER
     public function accrueForAll(): void
     {
+        $chunkIndex = 0;
+
         User::where('role', User::ROLE_REGULAR)
-            ->chunk(100, function ($employees) {
+            ->chunk(100, function ($employees) use (&$chunkIndex) {
+                $chunkIndex++;
+                $firstId = $employees->first()?->id ?? 'n/a';
+                $lastId = $employees->last()?->id ?? 'n/a';
+
+                Log::info("Leave accrual: processing chunk {$chunkIndex} (user IDs {$firstId}–{$lastId}, count: {$employees->count()})");
+
                 foreach ($employees as $employee) {
                     try {
                         $this->accrueForEmployee($employee);
@@ -95,6 +104,8 @@ class LeaveCreditService
                         Log::error("Leave accrual failed for user {$employee->id}: " . $e->getMessage());
                     }
                 }
+
+                Log::info("Leave accrual: chunk {$chunkIndex} complete.");
             });
     }
 
@@ -102,6 +113,7 @@ class LeaveCreditService
     // DEDUCTION
     // ────────────────────────────────────────────────────────────────
 
+    // AFTER
     public function deductForApplication(LeaveApplication $application): void
     {
         $balanceCol = LeaveCredit::balanceColumn($application->type_of_leave);
@@ -111,8 +123,17 @@ class LeaveCreditService
         }
 
         DB::transaction(function () use ($application, $balanceCol) {
-            // FIXED: was firstOrCreate(['user_id' => ...]) with no defaults
-            $credit = $this->getOrCreateCredit($application->employee_id);
+            // Row-level lock: prevents concurrent deductions from reading
+            // the same balance before either write completes.
+            $credit = LeaveCredit::where('user_id', $application->employee_id)
+                ->lockForUpdate()
+                ->first();
+
+            // If no credit row exists yet, fall back to getOrCreateCredit()
+            // (outside the lock, but safe since firstOrCreate is atomic).
+            if (!$credit) {
+                $credit = $this->getOrCreateCredit($application->employee_id);
+            }
 
             $days = (float) $application->number_of_working_days;
             $current = (float) $credit->{$balanceCol};
