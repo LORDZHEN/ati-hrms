@@ -4,7 +4,7 @@
 
     <table style="width:100%; margin-bottom: 10px; border: none;">
         <tr>
-            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2017</em></td>
+            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2025</em></td>
             <td style="width:60%; text-align:center; border: none;"><div style="font-size:12pt; font-weight:bold;">PERSONAL DATA SHEET</div></td>
             <td style="width:20%; text-align:right; font-size:8pt; border: none;"><em>Page 4 of 4</em></td>
         </tr>
@@ -117,6 +117,19 @@
         @endif
 
         <tr>
+            <td style="font-size:7pt; padding:8px;"><strong>39.</strong> Have you resigned from the government service during the three (3)-year period from June 10, 1987 to November 2, 1990?</td>
+            <td style="padding:5px;">
+                <div style="display: flex; gap: 15px;">
+                    <label class="radio-label"><input type="radio" wire:model.live="data.resigned_gov_service" value="1" class="radio-input" {{ $disCb }} /><span>Yes</span></label>
+                    <label class="radio-label"><input type="radio" wire:model.live="data.resigned_gov_service" value="0" class="radio-input" {{ $disCb }} /><span>No</span></label>
+                </div>
+            </td>
+        </tr>
+        @if(($this->data['resigned_gov_service'] ?? null) == '1')
+        <tr><td colspan="2" style="padding:5px;"><textarea wire:model="data.resigned_gov_service_details" class="pds-input" rows="2" placeholder="Please provide details" {{ $dis }}></textarea></td></tr>
+        @endif
+
+        <tr>
             <td colspan="2" style="font-size:7pt; padding:8px; background-color:#d9d9d9;">
                 <strong>40.</strong> Pursuant to: (a) Indigenous People's Act (RA 8371); (b) Magna Carta for Disabled Persons (RA 7277); and (c) Solo Parents Welfare Act of 2000 (RA 8972), please answer the following items:
             </td>
@@ -172,8 +185,8 @@
         <tr><td class="label-cell" style="width:33.33%;">Government Issued ID</td><td class="input-cell"><input type="text" wire:model="data.gov_id_type" class="pds-input" placeholder="e.g., Driver's License, Passport" {{ $dis }} /></td></tr>
         <tr><td class="label-cell">ID/License/Passport No.</td><td class="input-cell"><input type="text" wire:model="data.gov_id_no" class="pds-input" {{ $dis }} /></td></tr>
         <tr><td class="label-cell">Date/Place of Issuance</td><td class="input-cell"><input type="text" wire:model="data.gov_id_issued" class="pds-input" {{ $dis }} /></td></tr>
-        <tr><td class="label-cell">Date Accomplished</td><td class="input-cell"><input type="date" wire:model="data.date_accomplished" class="pds-input" {{ $dis }} /></td></tr>
+        <tr><td class="label-cell">Date Accomplished (dd/mm/yyyy)</td><td class="input-cell"><input type="date" wire:model="data.date_accomplished" class="pds-input" {{ $dis }} /></td></tr>
     </table>
 
-    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2017), Page 4 of 4</div>
+    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2025), Page 4 of 4</div>
 </div>

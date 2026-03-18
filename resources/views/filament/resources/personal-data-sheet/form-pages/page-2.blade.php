@@ -1,10 +1,10 @@
-{{-- PAGE 2: CIVIL SERVICE ELIGIBILITY & WORK EXPERIENCE --}}
+{{-- PAGE 2: CIVIL SERVICE ELIGIBILITY & WORK EXPERIENCE (CS Form 212 Revised 2025) --}}
 @php $ro = $isReadOnly ?? false; $dis = $ro ? 'disabled readonly' : ''; $disCb = $ro ? 'disabled' : ''; @endphp
 <div class="pds-form-page">
 
     <table style="width:100%; margin-bottom: 10px; border: none;">
         <tr>
-            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2017</em></td>
+            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2025</em></td>
             <td style="width:60%; text-align:center; border: none;"><div style="font-size:12pt; font-weight:bold;">PERSONAL DATA SHEET</div></td>
             <td style="width:20%; text-align:right; font-size:8pt; border: none;"><em>Page 2 of 4</em></td>
         </tr>
@@ -55,7 +55,7 @@
 
     <table class="pds-table">
         <tr>
-            <th class="header-row" colspan="2" rowspan="2" style="width:18%; font-size:6pt;">28. INCLUSIVE DATES<br>(mm/dd/yyyy)</th>
+            <th class="header-row" colspan="2" rowspan="2" style="width:18%; font-size:6pt;">28. INCLUSIVE DATES<br>(dd/mm/yyyy)</th>
             <th class="header-row" rowspan="2" style="width:22%; font-size:6pt;">POSITION TITLE<br>(Write in full/Do not abbreviate)</th>
             <th class="header-row" rowspan="2" style="width:25%; font-size:6pt;">DEPARTMENT / AGENCY / OFFICE / COMPANY<br>(Write in full/Do not abbreviate)</th>
             <th class="header-row" rowspan="2" style="width:10%; font-size:6pt;">MONTHLY<br>SALARY</th>
@@ -101,5 +101,5 @@
     </div>
 
     <div style="font-size:7pt; font-style:italic; text-align:center; margin:5px 0;">(Continue on separate sheet if necessary)</div>
-    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2017), Page 2 of 4</div>
+    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2025), Page 2 of 4</div>
 </div>

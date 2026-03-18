@@ -4,7 +4,7 @@
 
     <table style="width:100%; margin-bottom: 10px; border: none;">
         <tr>
-            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2017</em></td>
+            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2025</em></td>
             <td style="width:60%; text-align:center; border: none;"><div style="font-size:12pt; font-weight:bold;">PERSONAL DATA SHEET</div></td>
             <td style="width:20%; text-align:right; font-size:8pt; border: none;"><em>Page 3 of 4</em></td>
         </tr>
@@ -15,7 +15,7 @@
     <table class="pds-table" style="margin-top:10px;">
         <tr>
             <th class="header-row" rowspan="2" style="width:38%; font-size:6pt;">29. NAME & ADDRESS OF ORGANIZATION<br>(Write in full)</th>
-            <th class="header-row" colspan="2" style="width:24%; font-size:6pt;">INCLUSIVE DATES<br>(mm/dd/yyyy)</th>
+            <th class="header-row" colspan="2" style="width:24%; font-size:6pt;">INCLUSIVE DATES<br>(dd/mm/yyyy)</th>
             <th class="header-row" rowspan="2" style="width:12%; font-size:6pt;">NUMBER OF<br>HOURS</th>
             <th class="header-row" rowspan="2" style="width:26%; font-size:6pt;">POSITION / NATURE OF WORK</th>
         </tr>
@@ -30,8 +30,8 @@
         <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #f9fafb;">
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr; gap: 10px;">
                 <div><label style="font-size: 7pt; display: block;">Organization Name & Address</label><input type="text" wire:model="data.voluntary_work.{{ $index }}.organization_name" class="pds-input" {{ $dis }} /></div>
-                <div><label style="font-size: 7pt; display: block;">From Date</label><input type="date" wire:model="data.voluntary_work.{{ $index }}.from_date" class="pds-input" {{ $dis }} /></div>
-                <div><label style="font-size: 7pt; display: block;">To Date</label><input type="date" wire:model="data.voluntary_work.{{ $index }}.to_date" class="pds-input" {{ $dis }} /></div>
+                <div><label style="font-size: 7pt; display: block;">From Date (dd/mm/yyyy)</label><input type="date" wire:model="data.voluntary_work.{{ $index }}.from_date" class="pds-input" {{ $dis }} /></div>
+                <div><label style="font-size: 7pt; display: block;">To Date (dd/mm/yyyy)</label><input type="date" wire:model="data.voluntary_work.{{ $index }}.to_date" class="pds-input" {{ $dis }} /></div>
                 <div><label style="font-size: 7pt; display: block;">Hours</label><input type="number" wire:model="data.voluntary_work.{{ $index }}.hours" class="pds-input" {{ $dis }} /></div>
                 <div><label style="font-size: 7pt; display: block;">Position/Nature of Work</label><input type="text" wire:model="data.voluntary_work.{{ $index }}.position" class="pds-input" {{ $dis }} /></div>
             </div>
@@ -54,7 +54,7 @@
     <table class="pds-table">
         <tr>
             <th class="header-row" rowspan="2" style="width:35%; font-size:6pt;">30. TITLE OF LEARNING AND DEVELOPMENT<br>INTERVENTIONS/TRAINING PROGRAMS<br>(Write in full)</th>
-            <th class="header-row" colspan="2" style="width:22%; font-size:6pt;">INCLUSIVE DATES<br>(mm/dd/yyyy)</th>
+            <th class="header-row" colspan="2" style="width:22%; font-size:6pt;">INCLUSIVE DATES<br>(dd/mm/yyyy)</th>
             <th class="header-row" rowspan="2" style="width:10%; font-size:6pt;">NUMBER OF<br>HOURS</th>
             <th class="header-row" rowspan="2" style="width:12%; font-size:6pt;">Type of LD<br>(Managerial/<br>Supervisory/<br>Technical/etc)</th>
             <th class="header-row" rowspan="2" style="width:21%; font-size:6pt;">CONDUCTED/ SPONSORED BY<br>(Write in full)</th>
@@ -70,8 +70,8 @@
         <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #f9fafb;">
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr; gap: 10px;">
                 <div><label style="font-size: 7pt; display: block;">Training Title</label><input type="text" wire:model="data.learning_development.{{ $index }}.training_title" class="pds-input" {{ $dis }} /></div>
-                <div><label style="font-size: 7pt; display: block;">From Date</label><input type="date" wire:model="data.learning_development.{{ $index }}.from_date" class="pds-input" {{ $dis }} /></div>
-                <div><label style="font-size: 7pt; display: block;">To Date</label><input type="date" wire:model="data.learning_development.{{ $index }}.to_date" class="pds-input" {{ $dis }} /></div>
+                <div><label style="font-size: 7pt; display: block;">From Date (dd/mm/yyyy)</label><input type="date" wire:model="data.learning_development.{{ $index }}.from_date" class="pds-input" {{ $dis }} /></div>
+                <div><label style="font-size: 7pt; display: block;">To Date (dd/mm/yyyy)</label><input type="date" wire:model="data.learning_development.{{ $index }}.to_date" class="pds-input" {{ $dis }} /></div>
                 <div><label style="font-size: 7pt; display: block;">Hours</label><input type="number" wire:model="data.learning_development.{{ $index }}.hours" class="pds-input" {{ $dis }} /></div>
                 <div><label style="font-size: 7pt; display: block;">Type</label><input type="text" wire:model="data.learning_development.{{ $index }}.type" class="pds-input" {{ $dis }} /></div>
                 <div><label style="font-size: 7pt; display: block;">Conducted By</label><input type="text" wire:model="data.learning_development.{{ $index }}.conducted_by" class="pds-input" {{ $dis }} /></div>
@@ -128,5 +128,5 @@
     </table>
 
     <div style="font-size:7pt; font-style:italic; text-align:center; margin:5px 0;">(Continue on separate sheet if necessary)</div>
-    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2017), Page 3 of 4</div>
+    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2025), Page 3 of 4</div>
 </div>

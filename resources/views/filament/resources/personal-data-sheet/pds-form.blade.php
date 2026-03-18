@@ -1,8 +1,4 @@
-{{-- Main wrapper for the PDS form view --}}
-{{--
-    $isReadOnly is shared by ViewPersonalDataSheet::mount() via view()->share('isReadOnly', true).
-    Each @included page receives it and disables all inputs / hides add-remove buttons.
---}}
+{{-- Main wrapper for the PDS form view (Revised 2025) --}}
 @php $isReadOnly = $isReadOnly ?? false; @endphp
 
 <div class="pds-form-container" @if($isReadOnly) data-readonly="true" @endif>

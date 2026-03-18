@@ -1,11 +1,11 @@
-{{-- PAGE 1: PERSONAL INFORMATION, FAMILY BACKGROUND, EDUCATION --}}
+{{-- PAGE 1: PERSONAL INFORMATION, FAMILY BACKGROUND, EDUCATION (CS Form 212 Revised 2025) --}}
 @php $ro = $isReadOnly ?? false; $dis = $ro ? 'disabled readonly' : ''; $disCb = $ro ? 'disabled' : ''; @endphp
 <div class="pds-form-page">
 
     {{-- HEADER --}}
     <table style="width:100%; margin-bottom: 10px; border: none;">
         <tr>
-            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2017</em></td>
+            <td style="width:20%; font-size:8pt; border: none;"><em>CS Form No. 212</em><br><em>Revised 2025</em></td>
             <td style="width:60%; text-align:center; border: none;"><div style="font-size:12pt; font-weight:bold;">PERSONAL DATA SHEET</div></td>
             <td style="width:20%; text-align:right; font-size:8pt; border: none;"><em>Page 1 of 4</em></td>
         </tr>
@@ -35,13 +35,13 @@
             <td class="input-cell" colspan="3"><input type="text" wire:model="data.middle_name" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">3. DATE OF BIRTH<br><span style="font-size:6pt;">(mm/dd/yyyy)</span></td>
-            <td class="input-cell"><input type="date" wire:model="data.date_of_birth" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">3. DATE OF BIRTH<br><span style="font-size:6pt;">(dd/mm/yyyy)</span></td>
+            <td class="input-cell"><input type="date" wire:model="data.date_of_birth" class="pds-input" {{ $dis }} placeholder="dd/mm/yyyy" /></td>
             <td class="label-cell">16. PLACE OF BIRTH</td>
             <td class="input-cell"><input type="text" wire:model="data.place_of_birth" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">4. SEX</td>
+            <td class="label-cell">4. SEX AT BIRTH</td>
             <td class="input-cell">
                 <select wire:model="data.sex" class="pds-input" {{ $dis }}>
                     <option value="">Select</option>
@@ -84,14 +84,14 @@
             <td class="input-cell"></td>
         </tr>
         <tr>
-            <td class="label-cell">8. GSIS ID NO.</td>
-            <td class="input-cell"><input type="text" wire:model="data.gsis_id_no" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">8. UMID ID NO.</td>
+            <td class="input-cell"><input type="text" wire:model="data.umid_id_no" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell" style="font-size:7pt;">House/Block/Lot No.</td>
             <td class="input-cell"><input type="text" wire:model="data.res_house_block_lot_no" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">9. PAG-IBIG ID NO.</td>
-            <td class="input-cell"><input type="text" wire:model="data.pag_ibig_id_no" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">9. ID NO.</td>
+            <td class="input-cell"><input type="text" wire:model="data.id_no" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell">Street</td>
             <td class="input-cell"><input type="text" wire:model="data.res_street" class="pds-input" {{ $dis }} /></td>
         </tr>
@@ -114,31 +114,32 @@
             <td class="input-cell"><input type="text" wire:model="data.res_city_municipality" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">13. AGENCY EMPLOYEE NO.</td>
-            <td class="input-cell"><input type="text" wire:model="data.agency_employee_no" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">13. PhilSys Number (PSN)</td>
+            <td class="input-cell"><input type="text" wire:model="data.philsys_number" class="pds-input" placeholder="N/A if not registered" {{ $dis }} /></td>
             <td class="label-cell">Province</td>
             <td class="input-cell"><input type="text" wire:model="data.res_province" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">14. TELEPHONE NO.</td>
-            <td class="input-cell"><input type="text" wire:model="data.telephone_no" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">14. AGENCY EMPLOYEE NO.</td>
+            <td class="input-cell"><input type="text" wire:model="data.agency_employee_no" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell">ZIP CODE</td>
             <td class="input-cell"><input type="text" wire:model="data.res_zip_code" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell">15. MOBILE NO.</td>
-            <td class="input-cell"><input type="text" wire:model="data.mobile" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">15. TELEPHONE NO.</td>
+            <td class="input-cell"><input type="text" wire:model="data.telephone_no" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell">20. PERMANENT ADDRESS</td>
             <td class="input-cell"><label><input type="checkbox" wire:model.live="data.same_as_residential" {{ $disCb }} /> Same as Residential</label></td>
         </tr>
         <tr>
-            <td class="label-cell">16. E-MAIL ADDRESS (if any)</td>
-            <td class="input-cell"><input type="email" wire:model="data.email" class="pds-input" {{ $dis }} /></td>
+            <td class="label-cell">16. MOBILE NO.</td>
+            <td class="input-cell"><input type="text" wire:model="data.mobile" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell" style="font-size:7pt;">House/Block/Lot No.</td>
             <td class="input-cell"><input type="text" wire:model="data.perm_house_block_lot_no" class="pds-input" {{ $dis }} /></td>
         </tr>
         <tr>
-            <td class="label-cell"></td><td class="input-cell"></td>
+            <td class="label-cell">17. E-MAIL ADDRESS (if any)</td>
+            <td class="input-cell"><input type="email" wire:model="data.email" class="pds-input" {{ $dis }} /></td>
             <td class="label-cell">Street</td>
             <td class="input-cell"><input type="text" wire:model="data.perm_street" class="pds-input" {{ $dis }} /></td>
         </tr>
@@ -241,7 +242,7 @@
         @foreach($this->data['children'] ?? [] as $index => $child)
         <div style="display: flex; gap: 10px; margin-bottom: 5px; align-items: center;">
             <input type="text" wire:model="data.children.{{ $index }}.name" placeholder="Full Name" class="pds-input" style="flex: 2;" {{ $dis }} />
-            <input type="date" wire:model="data.children.{{ $index }}.birthdate" placeholder="Birthdate" class="pds-input" style="flex: 1;" {{ $dis }} />
+            <input type="date" wire:model="data.children.{{ $index }}.birthdate" placeholder="dd/mm/yyyy" class="pds-input" style="flex: 1;" {{ $dis }} />
             @if(!$ro)
             <button type="button" wire:click="removeChild({{ $index }})" class="pds-btn-remove">Remove</button>
             @endif
@@ -285,5 +286,5 @@
         @endif
     </div>
 
-    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2017), Page 1 of 4</div>
+    <div style="text-align:center; font-size:7pt; margin-top:15px; font-style:italic;">CS FORM 212 (Revised 2025), Page 1 of 4</div>
 </div>
