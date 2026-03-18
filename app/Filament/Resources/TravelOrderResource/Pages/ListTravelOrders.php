@@ -37,6 +37,8 @@ class ListTravelOrders extends ListRecords
                 ->badge(TravelOrder::where('created_by', $user->id)->count())
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('created_by', $user->id)),
 
+            // Tagged tab: batch orders where this user is in the employee_ids JSON array
+            // but did not create the order themselves.
             'tagged' => \Filament\Resources\Pages\ListRecords\Tab::make('Tagged Travel Orders')
                 ->icon('heroicon-o-tag')
                 ->badge(
@@ -58,7 +60,6 @@ class ListTravelOrders extends ListRecords
     {
         $actions = [];
 
-        // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
         if (Auth::user()->role === User::ROLE_REGULAR) {
             $actions[] = Actions\CreateAction::make()
                 ->label('New travel order')

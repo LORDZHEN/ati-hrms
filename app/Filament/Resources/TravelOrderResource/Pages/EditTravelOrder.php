@@ -17,7 +17,6 @@ class EditTravelOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
             Actions\DeleteAction::make()
                 ->visible(
                     fn() =>
@@ -30,8 +29,44 @@ class EditTravelOrder extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Reset workflow state when a rejected record is resubmitted
         $data['status'] = 'pending';
         $data['rejection_remark'] = null;
+
+        // ── Re-sync employee details in case the selection changed ──────────
+        if (($data['travel_type'] ?? 'solo') === 'batch') {
+            $ids = $data['employee_ids'] ?? [];
+
+            // Always ensure the original creator stays in the list
+            $creatorId = $this->record->created_by ?? Auth::id();
+            if (!in_array($creatorId, $ids)) {
+                array_unshift($ids, $creatorId);
+            }
+            $data['employee_ids'] = $ids;
+
+            $employees = \App\Models\User::whereIn('id', $ids)
+                ->get(['id', 'name', 'first_name', 'middle_name', 'last_name', 'suffix', 'position', 'role'])
+                ->sortBy(fn($u) => array_search($u->id, $ids))
+                ->map(fn($u) => [
+                    'id' => $u->id,
+                    'name' => filled($u->full_name) ? $u->full_name : $u->name,
+                    'position' => $u->position ?? '',
+                    'role' => $u->role ?? '',
+                    'role_label' => \App\Models\User::getRoles()[$u->role] ?? ucwords(str_replace('_', ' ', $u->role ?? '')),
+                ])
+                ->values()
+                ->toArray();
+
+            $data['employee_details'] = $employees;
+            $data['name'] = collect($employees)->pluck('name')->implode(', ');
+            $data['position'] = null;
+        } else {
+            $user = Auth::user();
+            $data['name'] = filled($user->full_name) ? $user->full_name : $user->name;
+            $data['position'] = $user->position ?? null;
+            $data['employee_ids'] = null;
+            $data['employee_details'] = null;
+        }
 
         return $data;
     }

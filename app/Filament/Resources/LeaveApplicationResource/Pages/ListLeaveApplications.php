@@ -27,7 +27,6 @@ class ListLeaveApplications extends ListRecords
     {
         $actions = [];
 
-        // Fixed: was 'employee', now uses User::ROLE_REGULAR = 'regular'
         if (auth()->user()->role === User::ROLE_REGULAR) {
             $actions[] = Actions\CreateAction::make()
                 ->label('New leave application')
@@ -49,10 +48,10 @@ class ListLeaveApplications extends ListRecords
                         Select::make('status')
                             ->label('Leave Status')
                             ->options([
-                                'all' => 'All Applications',
-                                'approved' => 'Approved',
+                                'all'         => 'All Applications',
+                                'approved'    => 'Approved',
                                 'disapproved' => 'Disapproved',
-                                'pending' => 'Pending',
+                                'pending'     => 'Pending',
                             ])
                             ->default('all')
                             ->required()
@@ -61,11 +60,11 @@ class ListLeaveApplications extends ListRecords
                         Select::make('period')
                             ->label('Report Period')
                             ->options([
-                                'weekly' => 'This Week',
-                                'monthly' => 'This Month',
+                                'weekly'    => 'This Week',
+                                'monthly'   => 'This Month',
                                 'quarterly' => 'This Quarter',
-                                'yearly' => 'This Year',
-                                'custom' => 'Custom Date Range',
+                                'yearly'    => 'This Year',
+                                'custom'    => 'Custom Date Range',
                             ])
                             ->default('monthly')
                             ->required()
@@ -74,11 +73,11 @@ class ListLeaveApplications extends ListRecords
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $now = Carbon::now();
                                 match ($state) {
-                                    'weekly' => [$set('from', $now->copy()->startOfWeek()->toDateString()), $set('to', $now->copy()->endOfWeek()->toDateString())],
-                                    'monthly' => [$set('from', $now->copy()->startOfMonth()->toDateString()), $set('to', $now->copy()->endOfMonth()->toDateString())],
+                                    'weekly'    => [$set('from', $now->copy()->startOfWeek()->toDateString()),    $set('to', $now->copy()->endOfWeek()->toDateString())],
+                                    'monthly'   => [$set('from', $now->copy()->startOfMonth()->toDateString()),  $set('to', $now->copy()->endOfMonth()->toDateString())],
                                     'quarterly' => [$set('from', $now->copy()->startOfQuarter()->toDateString()), $set('to', $now->copy()->endOfQuarter()->toDateString())],
-                                    'yearly' => [$set('from', $now->copy()->startOfYear()->toDateString()), $set('to', $now->copy()->endOfYear()->toDateString())],
-                                    default => null,
+                                    'yearly'    => [$set('from', $now->copy()->startOfYear()->toDateString()),   $set('to', $now->copy()->endOfYear()->toDateString())],
+                                    default     => null,
                                 };
                             }),
                     ]),
@@ -99,13 +98,21 @@ class ListLeaveApplications extends ListRecords
                             ->after('from')
                             ->default(Carbon::now()->endOfMonth()->toDateString()),
                     ]),
+
+                    // [CHANGE] Leave Type filter in report now includes Wellness Leave
+                    Select::make('leave_type')
+                        ->label('Leave Type (optional)')
+                        ->placeholder('All leave types')
+                        ->native(false)
+                        ->options(LeaveApplicationResource::leaveTypeOptions()),
                 ])
                 ->action(function (array $data) {
                     $url = route('leave-applications.report', [
-                        'status' => $data['status'] ?? 'all',
-                        'period' => $data['period'] ?? 'monthly',
-                        'from' => $data['from'],
-                        'to' => $data['to'],
+                        'status'     => $data['status'] ?? 'all',
+                        'period'     => $data['period'] ?? 'monthly',
+                        'from'       => $data['from'],
+                        'to'         => $data['to'],
+                        'leave_type' => $data['leave_type'] ?? null,
                     ]);
                     $this->redirect($url, navigate: false);
                 });

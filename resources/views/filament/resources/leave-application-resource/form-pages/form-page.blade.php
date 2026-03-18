@@ -1,4 +1,4 @@
-{{-- CSC Form 6 - Application for Leave --}}
+{{-- CSC Form 6 - Application for Leave (2026 format — Wellness Leave added) --}}
 {{--
     BLADE vs ALPINE $ RULE:
     Never use $wire, $event, $refs, $nextTick directly inside Blade
@@ -55,11 +55,6 @@
     class="leave-form-page"
     x-data="leaveForm()"
     x-init="init()"
-    {{--
-        data-* attributes pass PHP-resolved values to Alpine synchronously.
-        Alpine reads these in init() before any $wire.get() calls.
-        This is what makes dates display correctly on the View page.
-    --}}
     data-date-of-filing="{{ $fmt_date_of_filing }}"
     data-leave-date-from="{{ $fmt_leave_date_from }}"
     data-leave-date-to="{{ $fmt_leave_date_to }}"
@@ -122,11 +117,6 @@
         <tr style="min-height: 12mm;">
             <td width="25%">
                 <span class="leave-label">3. DATE OF FILING</span><br>
-                {{--
-                    FIX: value="{{ $fmt_date_of_filing }}" renders the date from PHP.
-                    This shows immediately even on View page where wire:model has no data.
-                    wire:model keeps it reactive on Create/Edit.
-                --}}
                 <input
                     type="date"
                     wire:model="data.date_of_filing"
@@ -163,6 +153,11 @@
                 <div class="leave-label" style="margin-bottom: 4px;">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
 
                 @php
+                /*
+                 * [CHANGE] Wellness Leave added as the 14th entry (before "Others").
+                 * Key: 'wellness_leave' — matches the value stored in the database
+                 * and used across the resource / print view / Alpine component.
+                 */
                 $leaveTypes = [
                     'vacation_leave'                   => 'Vacation Leave (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
                     'mandatory_forced_leave'           => 'Mandatory/Forced Leave (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
@@ -177,6 +172,7 @@
                     'special_leave_benefits_for_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
                     'special_emergency_leave'          => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
                     'adoption_leave'                   => 'Adoption Leave (R.A. No. 8552)',
+                    'wellness_leave'                   => 'Wellness Leave (2026 CSC Format)', // NEW
                     'others'                           => 'Others:',
                 ];
                 @endphp
@@ -288,6 +284,15 @@
                     </div>
                 </div>
 
+                {{-- [NEW] Wellness Leave note — shown when wellness_leave is selected --}}
+                <div class="leave-detail-section" x-show="leaveType === 'wellness_leave'" style="background:#f0fdf4; border:1px solid #86efac; border-radius:4px; padding:5px; margin-bottom:6px;">
+                    <em>In case of Wellness Leave:</em><br>
+                    <span style="font-size:7pt; color:#166534;">
+                        Wellness Leave is granted to promote employee health and well-being (2026 CSC Format).
+                        No additional documentation required.
+                    </span>
+                </div>
+
                 {{-- Other Purpose --}}
                 <div class="leave-detail-section" style="margin-bottom: 0;">
                     <em>Other purpose:</em><br>
@@ -320,10 +325,6 @@
             <td width="50%">
                 <div class="leave-label">6.C NUMBER OF WORKING DAYS APPLIED FOR</div>
 
-                {{--
-                    FIX: value="{{ $raw_number_of_working_days }}" shows the PHP value
-                    immediately. Alpine :value overrides it reactively on Create/Edit.
-                --}}
                 <div style="margin-top: 3px;">
                     <input
                         type="number"
@@ -351,10 +352,6 @@
                                 (past dates only)
                             </span>
                         </label>
-                        {{--
-                            FIX: value="{{ $fmt_leave_date_from }}" shows the PHP value immediately.
-                            :value="dateFrom || '...'" keeps Alpine reactive on Create/Edit.
-                        --}}
                         <input
                             type="date"
                             class="leave-input"
@@ -539,14 +536,9 @@
 
 {{-- ================================================================
      ALPINE COMPONENT — leaveForm()
-     All $wire calls live here in a <script> tag — Blade never
-     parses $ inside <script>, so no escaping is needed.
-
-     VIEW PAGE FIX:
-     init() reads data-* attributes on the root element FIRST (synchronous,
-     always present, set by PHP). $wire.get() is used SECOND as a live
-     override for Create/Edit reactivity. This two-step approach means
-     all dates and working days display correctly on every page type.
+     [CHANGE] 'wellness_leave' is now a recognised leaveType value.
+     No special date restrictions apply — it behaves like
+     special_privilege_leave (future dates, no upper cap).
 ================================================================ --}}
 <script>
 function leaveForm() {
@@ -613,15 +605,15 @@ function leaveForm() {
             return count > 0 ? count : null;
         },
 
-        // Read a data-* attribute. Alpine converts kebab-case data attrs
-        // to camelCase in $el.dataset automatically.
-        // e.g. data-leave-date-from → this.$el.dataset.leaveDateFrom
         attr(name) {
             const val = this.$el.dataset[name];
             return (val !== undefined && val !== '') ? val : null;
         },
 
         // ── Date limit logic ─────────────────────────────────────────
+        // [CHANGE] 'wellness_leave' falls into the default branch —
+        //          future dates allowed, no upper cap (same as
+        //          special_privilege_leave, adoption_leave, etc.)
 
         updateDateLimits() {
             const type = this.leaveType;
@@ -638,6 +630,8 @@ function leaveForm() {
                 this.toMin   = from || '';
                 this.toMax   = this.today;
             } else {
+                // covers wellness_leave, special_privilege_leave,
+                // maternity_leave, paternity_leave, etc.
                 this.fromMin = this.today;
                 this.fromMax = '';
                 this.toMin   = from || this.today;
@@ -707,9 +701,7 @@ function leaveForm() {
             this.vacationMin    = this.fmt(vacMin);
             this.vacationMinDisplay = this.fmtDisplay(this.vacationMin);
 
-            // ── Step 1: PHP data-* attributes (synchronous, always present)
-            // This is the fix — these values come from $this->record on
-            // View page, so they are always populated regardless of page type.
+            // Step 1: PHP data-* attributes (synchronous)
             this.leaveType         = this.attr('typeOfLeave');
             this.vacationLocation  = this.attr('vacationLocation');
             this.sickLeaveLocation = this.attr('sickLeaveLocation');
@@ -721,8 +713,7 @@ function leaveForm() {
             const rawDays          = this.attr('workingDays');
             this.workingDays       = rawDays ? parseFloat(rawDays) : null;
 
-            // ── Step 2: $wire.get() overrides for live Create/Edit state
-            // Silently ignored on View page where data.* paths are not exposed.
+            // Step 2: $wire.get() overrides for live Create/Edit state
             try {
                 const lt = await this.$wire.get('data.type_of_leave');
                 if (lt) this.leaveType = lt;

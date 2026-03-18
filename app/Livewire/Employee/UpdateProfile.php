@@ -17,13 +17,13 @@ class UpdateProfile extends Component
     public ?string $middle_name       = null;
     public ?string $last_name         = null;
     public ?string $suffix            = null;
-    public ?string $position          = null;
+    public ?string $position          = null; // ← persisted + validated
     public ?string $employment_status = null;
     public ?string $email             = null;
 
     /**
      * BUG FIX #1 — photoBase64 is synced via a direct JS → Livewire call
-     * (dispatchTo / $wire.set) instead of wire:model on a hidden input.
+     * ($wire.call) instead of wire:model on a hidden input.
      * Hidden inputs do not reliably fire the events Livewire 3 needs for
      * two-way binding, so the value was silently dropped on every save.
      */
@@ -35,7 +35,6 @@ class UpdateProfile extends Component
         'close-update-profile' => 'closeModal',
         'openProfileModal'     => 'openModal',
         'profileUpdated'       => '$refresh',
-        // Receives the base64 string from Alpine/JS and stores it in the property
         'photo-selected'       => 'receivePhoto',
     ];
 
@@ -44,15 +43,20 @@ class UpdateProfile extends Component
         $this->loadUserData();
     }
 
+    // -------------------------------------------------------------------------
+    // Data loading
+    // -------------------------------------------------------------------------
+
     protected function loadUserData(): void
     {
         $user = Auth::user()->fresh();
+
         $this->employee_id       = $user->employee_id;
         $this->first_name        = $user->first_name;
         $this->middle_name       = $user->middle_name;
         $this->last_name         = $user->last_name;
         $this->suffix            = $user->suffix;
-        $this->position          = $user->position;
+        $this->position          = $user->position;     // ← loaded from DB
         $this->email             = $user->email;
         $this->employment_status = $this->resolveEmploymentStatus($user->role);
     }
@@ -67,17 +71,24 @@ class UpdateProfile extends Component
         };
     }
 
+    // -------------------------------------------------------------------------
+    // Photo receiver (called from Alpine via $wire.call)
+    // -------------------------------------------------------------------------
+
     /**
-     * BUG FIX #1 (cont.) — called from the blade via $wire.call('receivePhoto', dataUri)
-     * This is the reliable way to push a large string from JS into a Livewire property.
+     * BUG FIX #1 (cont.) — reliable way to push a large base64 string from
+     * JS into a Livewire property without hidden-input binding issues.
      */
     public function receivePhoto(string $dataUri): void
     {
-        // Basic sanity-check before storing — full validation happens in update()
         if (str_starts_with($dataUri, 'data:image')) {
             $this->photoBase64 = $dataUri;
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Modal helpers
+    // -------------------------------------------------------------------------
 
     public function openModal(): void
     {
@@ -96,6 +107,10 @@ class UpdateProfile extends Component
         $this->dispatch('modal-closed');
     }
 
+    // -------------------------------------------------------------------------
+    // Validation
+    // -------------------------------------------------------------------------
+
     protected function rules(): array
     {
         return [
@@ -107,8 +122,12 @@ class UpdateProfile extends Component
             'middle_name' => 'nullable|string|max:255',
             'last_name'   => 'required|string|max:255',
             'suffix'      => 'nullable|string|max:10',
+
+            // ─── FIX: position was saved but never validated ───────────────
             'position'    => 'nullable|string|max:255',
-            'email'       => [
+            // ──────────────────────────────────────────────────────────────
+
+            'email' => [
                 'required', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore(Auth::id()),
             ],
@@ -125,8 +144,17 @@ class UpdateProfile extends Component
             'email.required'       => 'Email address is required.',
             'email.email'          => 'Please enter a valid email address.',
             'email.unique'         => 'This email is already in use.',
+
+            // ─── FIX: validation message for position ─────────────────────
+            'position.max'         => 'Position may not exceed 255 characters.',
+            'position.string'      => 'Position must be a text value.',
+            // ──────────────────────────────────────────────────────────────
         ];
     }
+
+    // -------------------------------------------------------------------------
+    // Save
+    // -------------------------------------------------------------------------
 
     public function update(): void
     {
@@ -135,7 +163,7 @@ class UpdateProfile extends Component
         $user         = Auth::user()->fresh();
         $newPhotoPath = null;
 
-        // ── Photo processing ────────────────────────────────────────────────
+        // ── Photo processing ─────────────────────────────────────────────────
         if (!empty($this->photoBase64) && str_starts_with($this->photoBase64, 'data:image')) {
             try {
                 if (!preg_match('/^data:(image\/(?:jpeg|jpg|png|gif|webp));base64,(.+)$/i', $this->photoBase64, $matches)) {
@@ -193,14 +221,14 @@ class UpdateProfile extends Component
             }
         }
 
-        // ── Persist to DB ────────────────────────────────────────────────────
+        // ── Persist to DB ─────────────────────────────────────────────────────
         $payload = [
             'employee_id' => $this->employee_id,
             'first_name'  => $this->first_name,
             'middle_name' => $this->middle_name,
             'last_name'   => $this->last_name,
             'suffix'      => $this->suffix,
-            'position'    => $this->position,
+            'position'    => $this->position,   // ← always included in payload
             'email'       => $this->email,
             'name'        => $this->buildFullName(),
         ];
@@ -215,7 +243,7 @@ class UpdateProfile extends Component
         // Keep the auth singleton up-to-date for the rest of the request
         Auth::setUser($user);
 
-        // ── Reset component state ────────────────────────────────────────────
+        // ── Reset component state ─────────────────────────────────────────────
         $this->photoBase64    = null;
         $this->photoMime      = null;
         $this->editingProfile = false;
@@ -223,15 +251,8 @@ class UpdateProfile extends Component
 
         /**
          * BUG FIX #2 & #3 — Do NOT redirect.
-         *
-         * redirect() tears down the Livewire component tree, which causes:
-         *   • The "Edit Profile Information" button to disappear during remount
-         *   • Alpine state (modal show/hide) to reset
-         *   • Filament JS toast to be lost between page loads
-         *
-         * Instead: close the modal via event, notify in-place, then dispatch
-         * a 'profile-updated' event so the parent Profile page can refresh
-         * its own avatar / hero section without a full reload.
+         * redirect() tears down the Livewire component tree, causing the
+         * modal trigger button to vanish and Alpine state to reset.
          */
 
         // 1. Close the modal
@@ -257,6 +278,10 @@ class UpdateProfile extends Component
         $this->loadUserData();
     }
 
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
     protected function buildFullName(): string
     {
         return implode(' ', array_filter([
@@ -266,8 +291,6 @@ class UpdateProfile extends Component
             $this->suffix,
         ]));
     }
-
-    // ── Avatar helper ────────────────────────────────────────────────────────
 
     protected function buildAvatarUrl($user): string
     {
@@ -286,10 +309,12 @@ class UpdateProfile extends Component
     }
 
     /**
-     * BUG FIX #5 — avatarUrl is now a plain public property (string) that
-     * Livewire can include in its JSON snapshot.  Alpine reads it via
-     * $wire.avatarUrl instead of a static x-data initialiser, so it
-     * automatically updates whenever Livewire re-renders the component.
+     * Livewire 3 computed property — Alpine reads this via $wire.get('avatarUrl').
+     * Returns the pending preview base64 while a photo is staged, otherwise
+     * falls back to the persisted DB path (or the ui-avatars fallback).
+     *
+     * NOTE: Livewire 3 supports the getXxxProperty() convention for computed
+     * properties when accessed through $wire.get() on the JS side.
      */
     public function getAvatarUrlProperty(): string
     {

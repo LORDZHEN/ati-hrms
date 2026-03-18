@@ -66,6 +66,32 @@ class LeaveApplicationResource extends Resource
     }
 
     // =========================================================================
+    //  LEAVE TYPE OPTIONS — centralised so every dropdown stays in sync
+    //  [WELLNESS LEAVE ADDED — 2026 CSC format update]
+    // =========================================================================
+
+    public static function leaveTypeOptions(): array
+    {
+        return [
+            'vacation_leave'                   => 'Vacation Leave',
+            'mandatory_forced_leave'           => 'Mandatory/Forced Leave',
+            'sick_leave'                       => 'Sick Leave',
+            'maternity_leave'                  => 'Maternity Leave',
+            'paternity_leave'                  => 'Paternity Leave',
+            'special_privilege_leave'          => 'Special Privilege Leave',
+            'solo_parent_leave'                => 'Solo Parent Leave',
+            'study_leave'                      => 'Study Leave',
+            '10_day_vawc_leave'                => '10-Day VAWC Leave',
+            'rehabilitation_privilege'         => 'Rehabilitation Privilege',
+            'special_leave_benefits_for_women' => 'Special Leave Benefits for Women',
+            'special_emergency_leave'          => 'Special Emergency Leave',
+            'adoption_leave'                   => 'Adoption Leave',
+            'wellness_leave'                   => 'Wellness Leave',   // NEW — 2026 CSC format
+            'others'                           => 'Others',
+        ];
+    }
+
+    // =========================================================================
     //  FORM — restores original custom blade view + hidden binding fields
     // =========================================================================
 
@@ -107,24 +133,10 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Hidden::make('status')
                         ->default('pending'),
 
+                    // [CHANGE] Uses centralised leaveTypeOptions() — Wellness Leave included
                     Forms\Components\Select::make('type_of_leave')
                         ->label('Type of Leave')
-                        ->options([
-                            'vacation_leave' => 'Vacation Leave',
-                            'mandatory_forced_leave' => 'Mandatory/Forced Leave',
-                            'sick_leave' => 'Sick Leave',
-                            'maternity_leave' => 'Maternity Leave',
-                            'paternity_leave' => 'Paternity Leave',
-                            'special_privilege_leave' => 'Special Privilege Leave',
-                            'solo_parent_leave' => 'Solo Parent Leave',
-                            'study_leave' => 'Study Leave',
-                            '10_day_vawc_leave' => '10-Day VAWC Leave',
-                            'rehabilitation_privilege' => 'Rehabilitation Privilege',
-                            'special_leave_benefits_for_women' => 'Special Leave Benefits for Women',
-                            'special_emergency_leave' => 'Special Emergency Leave',
-                            'adoption_leave' => 'Adoption Leave',
-                            'others' => 'Others',
-                        ])
+                        ->options(self::leaveTypeOptions())
                         ->required()
                         ->live()
                         ->native(false),
@@ -221,7 +233,7 @@ class LeaveApplicationResource extends Resource
                         ->label('Vacation Location')
                         ->options([
                             'within_philippines' => 'Within the Philippines',
-                            'abroad' => 'Abroad',
+                            'abroad'             => 'Abroad',
                         ])
                         ->inline()
                         ->live(),
@@ -260,7 +272,7 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Radio::make('study_leave_purpose')
                         ->label('Study Leave Purpose')
                         ->options([
-                            'masters_degree' => "Completion of Master's Degree",
+                            'masters_degree'  => "Completion of Master's Degree",
                             'bar_board_review' => 'BAR/Board Examination Review',
                         ])
                         ->inline(),
@@ -268,7 +280,7 @@ class LeaveApplicationResource extends Resource
                     Forms\Components\Radio::make('other_purpose')
                         ->label('Other Purpose')
                         ->options([
-                            'monetization' => 'Monetization of Leave Credits',
+                            'monetization'  => 'Monetization of Leave Credits',
                             'terminal_leave' => 'Terminal Leave',
                         ])
                         ->inline(),
@@ -277,7 +289,7 @@ class LeaveApplicationResource extends Resource
                         ->label('Commutation')
                         ->options([
                             'not_requested' => 'Not Requested',
-                            'requested' => 'Requested',
+                            'requested'     => 'Requested',
                         ])
                         ->default('not_requested')
                         ->inline()
@@ -384,28 +396,28 @@ class LeaveApplicationResource extends Resource
                 )
                 ->toggleable(isToggledHiddenByDefault: true),
 
+            // [CHANGE] Added 'wellness_leave' badge colour + icon
             Tables\Columns\TextColumn::make('type_of_leave')
                 ->label('Leave Type')
                 ->badge()
                 ->searchable()
                 ->formatStateUsing(fn($state) => str_replace('_', ' ', ucwords($state, '_')))
                 ->color(fn(string $state) => match ($state) {
-                    'vacation_leave' => 'success',
-                    'sick_leave' => 'danger',
-                    'mandatory_forced_leave' => 'warning',
-                    'maternity_leave',
-                    'paternity_leave' => 'info',
-                    'special_privilege_leave',
-                    'study_leave' => 'primary',
-                    default => 'gray',
+                    'vacation_leave'                   => 'success',
+                    'sick_leave'                       => 'danger',
+                    'mandatory_forced_leave'           => 'warning',
+                    'maternity_leave', 'paternity_leave' => 'info',
+                    'special_privilege_leave', 'study_leave' => 'primary',
+                    'wellness_leave'                   => 'success',  // NEW
+                    default                            => 'gray',
                 })
                 ->icon(fn(string $state) => match ($state) {
-                    'vacation_leave' => 'heroicon-o-sun',
-                    'sick_leave' => 'heroicon-o-heart',
-                    'maternity_leave',
-                    'paternity_leave' => 'heroicon-o-user-group',
-                    'study_leave' => 'heroicon-o-academic-cap',
-                    default => 'heroicon-o-document-text',
+                    'vacation_leave'                   => 'heroicon-o-sun',
+                    'sick_leave'                       => 'heroicon-o-heart',
+                    'maternity_leave', 'paternity_leave' => 'heroicon-o-user-group',
+                    'study_leave'                      => 'heroicon-o-academic-cap',
+                    'wellness_leave'                   => 'heroicon-o-sparkles',  // NEW
+                    default                            => 'heroicon-o-document-text',
                 }),
 
             Tables\Columns\TextColumn::make('leave_date_from')
@@ -434,16 +446,16 @@ class LeaveApplicationResource extends Resource
                 ->badge()
                 ->sortable()
                 ->color(fn(string $state) => match ($state) {
-                    'pending' => 'warning',
-                    'approved' => 'success',
-                    'disapproved' => 'danger',
-                    default => 'gray',
+                    'pending'      => 'warning',
+                    'approved'     => 'success',
+                    'disapproved'  => 'danger',
+                    default        => 'gray',
                 })
                 ->icon(fn(string $state) => match ($state) {
-                    'pending' => 'heroicon-o-clock',
-                    'approved' => 'heroicon-o-check-circle',
+                    'pending'     => 'heroicon-o-clock',
+                    'approved'    => 'heroicon-o-check-circle',
                     'disapproved' => 'heroicon-o-x-circle',
-                    default => null,
+                    default       => null,
                 })
                 ->formatStateUsing(fn(string $state): string => ucfirst($state)),
 
@@ -503,6 +515,7 @@ class LeaveApplicationResource extends Resource
 
     // =========================================================================
     //  FILTERS
+    //  [CHANGE] Added 'wellness_leave' to the Leave Type filter options
     // =========================================================================
 
     protected static function getEnhancedFilters(bool $isAdmin): array
@@ -545,25 +558,27 @@ class LeaveApplicationResource extends Resource
                     ->native(false)
                     ->placeholder('All statuses')
                     ->options([
-                        'pending' => '🕐  Pending',
-                        'approved' => '✅  Approved',
+                        'pending'     => '🕐  Pending',
+                        'approved'    => '✅  Approved',
                         'disapproved' => '❌  Disapproved',
                     ]),
 
+                // [CHANGE] Wellness Leave added to filter dropdown
                 Forms\Components\Select::make('type_of_leave')
                     ->label('Leave Type')
                     ->native(false)
                     ->placeholder('All types')
                     ->options([
-                        'vacation_leave' => 'Vacation Leave',
-                        'sick_leave' => 'Sick Leave',
-                        'maternity_leave' => 'Maternity Leave',
-                        'paternity_leave' => 'Paternity Leave',
-                        'special_privilege_leave' => 'Special Privilege Leave',
-                        'mandatory_forced_leave' => 'Mandatory/Forced Leave',
-                        'study_leave' => 'Study Leave',
-                        'solo_parent_leave' => 'Solo Parent Leave',
-                        'others' => 'Others',
+                        'vacation_leave'                   => 'Vacation Leave',
+                        'sick_leave'                       => 'Sick Leave',
+                        'maternity_leave'                  => 'Maternity Leave',
+                        'paternity_leave'                  => 'Paternity Leave',
+                        'special_privilege_leave'          => 'Special Privilege Leave',
+                        'mandatory_forced_leave'           => 'Mandatory/Forced Leave',
+                        'study_leave'                      => 'Study Leave',
+                        'solo_parent_leave'                => 'Solo Parent Leave',
+                        'wellness_leave'                   => 'Wellness Leave',   // NEW
+                        'others'                           => 'Others',
                     ]),
             ])
             ->query(
@@ -594,17 +609,17 @@ class LeaveApplicationResource extends Resource
                     ->options([
                         'this_month' => '📅  This Month',
                         'last_month' => '📅  Last Month',
-                        'this_week' => '📅  This Week',
-                        'this_year' => '📅  This Year',
+                        'this_week'  => '📅  This Week',
+                        'this_year'  => '📅  This Year',
                     ])
                     ->live()
                     ->afterStateUpdated(function ($state, callable $set) {
                         [$from, $to] = match ($state) {
                             'this_month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
                             'last_month' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
-                            'this_week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
-                            'this_year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                            default => [null, null],
+                            'this_week'  => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+                            'this_year'  => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                            default      => [null, null],
                         };
                         $set('from', $from);
                         $set('to', $to);
@@ -633,8 +648,8 @@ class LeaveApplicationResource extends Resource
                 $presetLabels = [
                     'this_month' => 'This Month',
                     'last_month' => 'Last Month',
-                    'this_week' => 'This Week',
-                    'this_year' => 'This Year',
+                    'this_week'  => 'This Week',
+                    'this_year'  => 'This Year',
                 ];
                 $indicators = [];
                 $preset = $data['preset'] ?? null;
@@ -658,10 +673,6 @@ class LeaveApplicationResource extends Resource
 
     // =========================================================================
     //  CONTEXTUAL ACTIONS
-    //
-    //  ADMIN    : View | Delete
-    //             (Approve / Add-Edit Remarks / Print live on the View page)
-    //  EMPLOYEE : View | Edit (pending only) | Print (approved only)
     // =========================================================================
 
     protected static function getContextualActions(bool $isAdmin): array
@@ -669,19 +680,16 @@ class LeaveApplicationResource extends Resource
         return [
             Tables\Actions\ActionGroup::make([
 
-                // ── ADMIN: View ───────────────────────────────────────────────
                 Tables\Actions\ViewAction::make()
                     ->label('View Application')
                     ->icon('heroicon-m-eye')
                     ->color('info')
                     ->visible(fn() => $isAdmin),
 
-                // ── ADMIN: Delete ─────────────────────────────────────────────
                 Tables\Actions\DeleteAction::make()
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => $isAdmin),
 
-                // ── EMPLOYEE: View ────────────────────────────────────────────
                 Tables\Actions\ViewAction::make('employeeView')
                     ->label('View Application')
                     ->icon('heroicon-m-eye')
@@ -690,7 +698,6 @@ class LeaveApplicationResource extends Resource
                         fn($record) => !$isAdmin && $record->employee_id === Auth::id()
                     ),
 
-                // ── EMPLOYEE: Edit (pending only) ─────────────────────────────
                 Tables\Actions\EditAction::make()
                     ->label('Edit Application')
                     ->icon('heroicon-m-pencil-square')
@@ -702,7 +709,6 @@ class LeaveApplicationResource extends Resource
                         $record->status === 'pending'
                     ),
 
-                // ── EMPLOYEE: Print (approved only) ───────────────────────────
                 Tables\Actions\Action::make('employeePrint')
                     ->label('Print Leave Form')
                     ->icon('heroicon-o-printer')
@@ -747,7 +753,7 @@ class LeaveApplicationResource extends Resource
             return;
         try {
             $fromDate = Carbon::parse($from);
-            $toDate = Carbon::parse($to);
+            $toDate   = Carbon::parse($to);
             if ($toDate->lessThan($fromDate)) {
                 $set('number_of_working_days', 0);
                 return;
@@ -790,10 +796,10 @@ class LeaveApplicationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLeaveApplications::route('/'),
+            'index'  => Pages\ListLeaveApplications::route('/'),
             'create' => Pages\CreateLeaveApplication::route('/create'),
-            'edit' => Pages\EditLeaveApplication::route('/{record}/edit'),
-            'view' => Pages\ViewLeaveApplication::route('/{record}'),
+            'edit'   => Pages\EditLeaveApplication::route('/{record}/edit'),
+            'view'   => Pages\ViewLeaveApplication::route('/{record}'),
         ];
     }
 }

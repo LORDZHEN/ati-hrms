@@ -299,6 +299,17 @@
     box-shadow: 0 0 0 3px rgba(16,185,129,0.14);
 }
 
+/* Invalid state — shown when Livewire renders a validation error for the field */
+.up-input.up-input--invalid {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.10);
+}
+
+.dark .up-input.up-input--invalid {
+    border-color: #f87171;
+    box-shadow: 0 0 0 3px rgba(248,113,113,0.12);
+}
+
 .up-input-readonly {
     width: 100%; padding: 0.5875rem 0.875rem;
     border-radius: 10px; border: 1.5px solid #e5e7eb;
@@ -435,6 +446,8 @@
     display: flex; align-items: center; gap: 0.25rem;
 }
 
+.dark .up-error { color: #f87171; }
+
 .up-footer {
     display: flex; align-items: center; justify-content: flex-end; gap: 0.625rem;
     padding: 1rem 1.375rem 1.25rem;
@@ -515,7 +528,9 @@
 </style>
 @endonce
 
-    {{-- Trigger Button --}}
+    {{-- ──────────────────────────────────────────────────────────────────────
+         Trigger Button
+    ────────────────────────────────────────────────────────────────────────── --}}
     <div wire:ignore>
         <button
             type="button"
@@ -531,7 +546,9 @@
         </button>
     </div>
 
-    {{-- Modal --}}
+    {{-- ──────────────────────────────────────────────────────────────────────
+         Modal
+    ────────────────────────────────────────────────────────────────────────── --}}
     <div
         x-data="{ show: @entangle('editingProfile').live }"
         x-show="show"
@@ -569,6 +586,10 @@
                 </div>
                 <div class="up-hero-content">
                     <div class="up-hero-left">
+                        {{--
+                            Avatar in the modal hero — listens to profile-preview-updated
+                            (staged, not yet saved) and profile-saved (persisted to DB).
+                        --}}
                         <div class="up-hero-avatar"
                              x-data="{ src: '' }"
                              x-init="src = await $wire.get('avatarUrl')"
@@ -601,7 +622,7 @@
                 <div class="up-modal-scroll" style="flex:1;min-height:0;">
                 <div class="up-body">
 
-                    {{-- PROFILE PHOTO --}}
+                    {{-- ── PROFILE PHOTO ──────────────────────────────────── --}}
                     <div class="up-section">
                         <div class="up-section-header">
                             <div class="up-section-icon">
@@ -660,7 +681,7 @@
                         </div>
                     </div>
 
-                    {{-- PERSONAL INFORMATION --}}
+                    {{-- ── PERSONAL INFORMATION ───────────────────────────── --}}
                     <div class="up-section">
                         <div class="up-section-header">
                             <div class="up-section-icon">
@@ -669,42 +690,81 @@
                             <span class="up-section-title">Personal Information</span>
                         </div>
 
+                        {{-- Employee ID --}}
                         <div class="up-field" style="margin-bottom:0.75rem;">
                             <label class="up-label">
                                 <x-heroicon-o-identification style="width:11px;height:11px;" class="up-ico-amber" />
                                 Employee ID <span style="color:#dc2626;">*</span>
                             </label>
-                            <input type="text" wire:model="employee_id" placeholder="e.g. EMP-00123" class="up-input" />
-                            @error('employee_id')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                            <input
+                                type="text"
+                                wire:model="employee_id"
+                                placeholder="e.g. EMP-00123"
+                                class="up-input @error('employee_id') up-input--invalid @enderror"
+                            />
+                            @error('employee_id')
+                                <p class="up-error">
+                                    <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                </p>
+                            @enderror
                         </div>
 
+                        {{-- First / Middle / Last name --}}
                         <div class="up-grid-3" style="margin-bottom:0.75rem;">
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-user style="width:11px;height:11px;" class="up-ico-green" />
                                     First Name <span style="color:#dc2626;">*</span>
                                 </label>
-                                <input type="text" wire:model="first_name" placeholder="First" class="up-input" />
-                                @error('first_name')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                                <input
+                                    type="text"
+                                    wire:model="first_name"
+                                    placeholder="First"
+                                    class="up-input @error('first_name') up-input--invalid @enderror"
+                                />
+                                @error('first_name')
+                                    <p class="up-error">
+                                        <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-user style="width:11px;height:11px;" class="up-ico-green" />
                                     Middle Name
                                 </label>
-                                <input type="text" wire:model="middle_name" placeholder="Middle" class="up-input" />
-                                @error('middle_name')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                                <input
+                                    type="text"
+                                    wire:model="middle_name"
+                                    placeholder="Middle"
+                                    class="up-input @error('middle_name') up-input--invalid @enderror"
+                                />
+                                @error('middle_name')
+                                    <p class="up-error">
+                                        <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-user style="width:11px;height:11px;" class="up-ico-green" />
                                     Last Name <span style="color:#dc2626;">*</span>
                                 </label>
-                                <input type="text" wire:model="last_name" placeholder="Last" class="up-input" />
-                                @error('last_name')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                                <input
+                                    type="text"
+                                    wire:model="last_name"
+                                    placeholder="Last"
+                                    class="up-input @error('last_name') up-input--invalid @enderror"
+                                />
+                                @error('last_name')
+                                    <p class="up-error">
+                                        <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
                         </div>
 
+                        {{-- Suffix --}}
                         <div class="up-field" style="margin-bottom:0.75rem;">
                             <label class="up-label">
                                 <x-heroicon-o-tag style="width:11px;height:11px;" class="up-ico-amber" />
@@ -721,20 +781,34 @@
                                     <option value="IV">IV</option>
                                 </select>
                             </div>
-                            @error('suffix')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                            @error('suffix')
+                                <p class="up-error">
+                                    <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                </p>
+                            @enderror
                         </div>
 
+                        {{-- Email --}}
                         <div class="up-field">
                             <label class="up-label">
                                 <x-heroicon-o-envelope style="width:11px;height:11px;" class="up-ico-green" />
                                 Email Address <span style="color:#dc2626;">*</span>
                             </label>
-                            <input type="email" wire:model="email" placeholder="you@example.com" class="up-input" />
-                            @error('email')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                            <input
+                                type="email"
+                                wire:model="email"
+                                placeholder="you@example.com"
+                                class="up-input @error('email') up-input--invalid @enderror"
+                            />
+                            @error('email')
+                                <p class="up-error">
+                                    <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                </p>
+                            @enderror
                         </div>
                     </div>
 
-                    {{-- EMPLOYMENT DETAILS --}}
+                    {{-- ── EMPLOYMENT DETAILS ─────────────────────────────── --}}
                     <div class="up-section">
                         <div class="up-section-header">
                             <div class="up-section-icon">
@@ -744,15 +818,33 @@
                         </div>
 
                         <div class="up-grid-2">
+
+                            {{-- ── FIX: position field is now fully wired up with
+                                 validation error display. The rule 'position' =>
+                                 'nullable|string|max:255' in rules() ensures the
+                                 @error directive below can actually fire. ── --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-briefcase style="width:11px;height:11px;" class="up-ico-green" />
                                     Position
                                 </label>
-                                <input type="text" wire:model="position" placeholder="e.g. Intern" class="up-input" />
-                                @error('position')<p class="up-error"><x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}</p>@enderror
+                                <input
+                                    type="text"
+                                    wire:model="position"
+                                    placeholder="e.g. Intern, Developer, Clerk"
+                                    class="up-input @error('position') up-input--invalid @enderror"
+                                    maxlength="255"
+                                />
+                                {{-- This @error block was harmless before (no rule → no error)
+                                     but is now live after adding 'position' to rules(). --}}
+                                @error('position')
+                                    <p class="up-error">
+                                        <x-heroicon-o-exclamation-circle style="width:11px;height:11px;" /> {{ $message }}
+                                    </p>
+                                @enderror
                             </div>
 
+                            {{-- Employment Status — read-only, derived from role --}}
                             <div class="up-field">
                                 <label class="up-label">
                                     <x-heroicon-o-check-badge style="width:11px;height:11px;" class="up-ico-amber" />
@@ -782,6 +874,7 @@
                                     Determined by your account role &mdash; not editable
                                 </p>
                             </div>
+
                         </div>
                     </div>
 
@@ -801,7 +894,12 @@
                         onclick="window.dispatchEvent(new CustomEvent('close-update-profile'))"
                         class="up-btn-cancel"
                     >Cancel</button>
-                    <button type="submit" class="up-btn-save" wire:loading.attr="disabled" wire:target="update">
+                    <button
+                        type="submit"
+                        class="up-btn-save"
+                        wire:loading.attr="disabled"
+                        wire:target="update"
+                    >
                         <span wire:loading.remove wire:target="update" style="display:inline-flex;align-items:center;gap:0.5rem;">
                             <x-heroicon-o-check-circle style="width:15px;height:15px;" />
                             Save Changes

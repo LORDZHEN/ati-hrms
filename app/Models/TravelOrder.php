@@ -23,11 +23,15 @@ class TravelOrder extends Model
         'report_to',
         'destination',
         'purpose_of_trip',
+
+        // ── Administrative fields shown in print blade ──────────────────────
         'assistant_laborer_allowed',
         'per_diems_expenses_allowed',
         'appropriation_funds',
-        // 'remarks_special_instructions',
-        'rejection_remark',                  // ← dedicated rejection remark column
+        'remarks_special_instructions',  // restored — was commented out
+
+        // ── Workflow / approval ──────────────────────────────────────────────
+        'rejection_remark',
         'recommended_by_assistant_director',
         'recommended_at',
         'recommended_by',
@@ -35,24 +39,27 @@ class TravelOrder extends Model
         'approved_at',
         'approved_by',
         'status',
+
+        // ── Travel type & batch support ──────────────────────────────────────
+        'travel_type',       // 'solo' | 'batch'
+        'employee_ids',      // JSON: [1, 2, 3]  — used for tab query & tagging
+        'employee_details',  // JSON: [['name'=>..,'position'=>..], ...]  — used for print
+        'batch_id',          // groups related batch records together
+
         'created_by',
-        'employee_ids',
-        'employee_details',
-        'travel_type',
-        'batch_id',
     ];
 
     protected $casts = [
-        'date'                              => 'date',
-        'departure_date'                    => 'date',
-        'return_date'                       => 'date',
-        'salary_per_annum'                  => 'decimal:2',
+        'date' => 'date',
+        'departure_date' => 'date',
+        'return_date' => 'date',
+        'salary_per_annum' => 'decimal:2',
         'recommended_by_assistant_director' => 'boolean',
-        'approved_by_center_director'       => 'boolean',
-        'recommended_at'                    => 'datetime',
-        'approved_at'                       => 'datetime',
-        'employee_ids'                      => 'array',
-        'employee_details'                  => 'array',
+        'approved_by_center_director' => 'boolean',
+        'recommended_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'employee_ids' => 'array',
+        'employee_details' => 'array',
     ];
 
     /* ============================================================
@@ -72,11 +79,6 @@ class TravelOrder extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
-    }
-
-    public function employee(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'employee_id');
     }
 
     /* ============================================================
@@ -110,22 +112,22 @@ class TravelOrder extends Model
     public function getStatusBadgeAttribute(): string
     {
         return match ($this->status) {
-            'pending'     => 'warning',
+            'pending' => 'warning',
             'recommended' => 'info',
-            'approved'    => 'success',
-            'rejected'    => 'danger',
-            default       => 'secondary',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            default => 'secondary',
         };
     }
 
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'pending'     => 'Pending Review',
+            'pending' => 'Pending Review',
             'recommended' => 'Recommended',
-            'approved'    => 'Approved',
-            'rejected'    => 'Rejected',
-            default       => 'Unknown',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => 'Unknown',
         };
     }
 
@@ -152,20 +154,24 @@ class TravelOrder extends Model
     {
         $this->update([
             'recommended_by_assistant_director' => true,
-            'recommended_at'                    => now(),
-            'recommended_by'                    => $user->id,
-            'status'                            => 'recommended',
+            'recommended_at' => now(),
+            'recommended_by' => $user->id,
+            'status' => 'recommended',
         ]);
     }
 
+    /**
+     * Approve this travel order.
+     * For batch travel, also approves all sibling records sharing the same batch_id.
+     */
     public function approve(User $user): void
     {
         $updateData = [
             'approved_by_center_director' => true,
-            'approved_at'                 => now(),
-            'approved_by'                 => $user->id,
-            'status'                      => 'approved',
-            'rejection_remark'            => null,
+            'approved_at' => now(),
+            'approved_by' => $user->id,
+            'status' => 'approved',
+            'rejection_remark' => null,
         ];
 
         $this->update($updateData);
@@ -177,10 +183,14 @@ class TravelOrder extends Model
         }
     }
 
+    /**
+     * Reject this travel order.
+     * For batch travel, also rejects all sibling records sharing the same batch_id.
+     */
     public function reject(string $remark): void
     {
         $updateData = [
-            'status'           => 'rejected',
+            'status' => 'rejected',
             'rejection_remark' => $remark,
         ];
 
@@ -201,28 +211,57 @@ class TravelOrder extends Model
     {
         static::creating(function ($travelOrder) {
             $travelOrder->created_by = $travelOrder->created_by ?? Auth::id();
-            self::populateTravelerNames($travelOrder);
+            self::syncEmployeeDetails($travelOrder);
         });
 
         static::updating(function ($travelOrder) {
-            if ($travelOrder->isDirty(['travel_type', 'employee_ids'])) {
-                self::populateTravelerNames($travelOrder);
+            if ($travelOrder->isDirty(['travel_type', 'employee_ids', 'position', 'name'])) {
+                self::syncEmployeeDetails($travelOrder);
             }
         });
     }
 
-    private static function populateTravelerNames($travelOrder): void
+    /**
+     * Keeps the `name` display field and `employee_details` JSON in sync
+     * with whichever travel type is active.
+     *
+     * Solo  → name = auth user's name, employee_details = null
+     * Batch → name = comma-joined employee names, employee_details = [{name, position}, ...]
+     */
+    private static function syncEmployeeDetails($travelOrder): void
     {
         if ($travelOrder->travel_type === 'solo') {
-            $user              = Auth::user();
-            $travelOrder->name = $user->full_name ?? $user->name;
+            $user = Auth::user();
+            $travelOrder->name = filled($user->full_name) ? $user->full_name : $user->name;
+            $travelOrder->position = $user->position ?? $travelOrder->position;
+            $travelOrder->employee_details = null;
+
         } elseif ($travelOrder->travel_type === 'batch') {
-            if (!empty($travelOrder->employee_ids) && is_array($travelOrder->employee_ids)) {
-                $names             = User::whereIn('id', $travelOrder->employee_ids)
-                    ->get()
-                    ->map(fn($u) => $u->full_name ?? $u->name)
+            $ids = $travelOrder->employee_ids ?? [];
+            $creatorId = $travelOrder->created_by ?? Auth::id();
+
+            // Always ensure the creator appears first in the list
+            if ($creatorId && !in_array($creatorId, $ids)) {
+                array_unshift($ids, $creatorId);
+                $travelOrder->employee_ids = $ids;
+            }
+
+            if (!empty($ids) && is_array($ids)) {
+                $employees = User::whereIn('id', $ids)
+                    ->get(['id', 'name', 'first_name', 'middle_name', 'last_name', 'suffix', 'position', 'role'])
+                    ->sortBy(fn($u) => array_search($u->id, $ids))
+                    ->map(fn($u) => [
+                        'id' => $u->id,
+                        'name' => filled($u->full_name) ? $u->full_name : $u->name,
+                        'position' => $u->position ?? '',
+                        'role' => $u->role ?? '',
+                        'role_label' => User::getRoles()[$u->role] ?? ucwords(str_replace('_', ' ', $u->role ?? '')),
+                    ])
+                    ->values()
                     ->toArray();
-                $travelOrder->name = implode(', ', $names);
+
+                $travelOrder->employee_details = $employees;
+                $travelOrder->name = collect($employees)->pluck('name')->implode(', ');
             }
         }
     }

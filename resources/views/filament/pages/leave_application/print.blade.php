@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {{-- <title>Application for Leave - Print</title> --}}
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -108,7 +107,7 @@
         }
 
         .checkbox.checked {
-            background-color: #000 !important; /* Solid black fill */
+            background-color: #000 !important;
             border: 1.5pt solid #000 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -143,7 +142,7 @@
             min-height: 12px;
         }
 
-        /* ─── ROW HEIGHTS - REDUCED TO FIT ONE PAGE ─── */
+        /* ─── ROW HEIGHTS ─── */
         .row-header td { min-height: 16mm; }
         .row-info td { min-height: 12mm; }
         .row-section6-main td { min-height: 88mm; vertical-align: top; }
@@ -222,6 +221,13 @@
             font-size: 6.5pt;
         }
 
+        /* ─── INCLUSIVE DATES ─── */
+        .inclusive-dates-value {
+            font-size: 8pt;
+            margin-top: 3px;
+            font-weight: normal;
+        }
+
         @page { size: A4; margin: 0; }
 
         @media print {
@@ -236,7 +242,6 @@
                 page-break-inside: avoid;
             }
 
-            /* Force checkbox colors to print */
             .checkbox.checked {
                 background-color: #000 !important;
                 background: #000 !important;
@@ -256,6 +261,63 @@
 </head>
 <body>
 <div class="page">
+
+@php
+    /*
+    |--------------------------------------------------------------------------
+    | DATE HELPERS — used throughout the print view
+    |--------------------------------------------------------------------------
+    |
+    | We use Carbon to safely parse dates stored as strings, Carbon instances,
+    | or null.  All formatting is done here so the blade markup stays clean.
+    |
+    | inclusive_dates logic:
+    |   • Both dates present, same day  → "March 18, 2026"
+    |   • Both dates present, same month/year → "March 18 – 20, 2026"
+    |   • Both dates present, same year  → "March 18 – April 2, 2026"
+    |   • Both dates present, different year → "Dec 30, 2025 – Jan 2, 2026"
+    |   • Only from date present         → "March 18, 2026 – ___"
+    |   • Neither date present           → blank underline shown
+    */
+
+    $dateFrom = $leaveApplication->leave_date_from
+        ? \Carbon\Carbon::parse($leaveApplication->leave_date_from)
+        : null;
+
+    $dateTo = $leaveApplication->leave_date_to
+        ? \Carbon\Carbon::parse($leaveApplication->leave_date_to)
+        : null;
+
+    /**
+     * Build the inclusive-dates string shown under 6.C.
+     * Returns an empty string when no dates are saved yet.
+     */
+    $inclusiveDatesDisplay = '';
+
+    if ($dateFrom && $dateTo) {
+        if ($dateFrom->isSameDay($dateTo)) {
+            // Single day: "March 18, 2026"
+            $inclusiveDatesDisplay = $dateFrom->format('F j, Y');
+
+        } elseif ($dateFrom->isSameMonth($dateTo) && $dateFrom->isSameYear($dateTo)) {
+            // Same month & year: "March 18 – 20, 2026"
+            $inclusiveDatesDisplay = $dateFrom->format('F j') . ' – ' . $dateTo->format('j, Y');
+
+        } elseif ($dateFrom->isSameYear($dateTo)) {
+            // Same year, different months: "March 18 – April 2, 2026"
+            $inclusiveDatesDisplay = $dateFrom->format('F j') . ' – ' . $dateTo->format('F j, Y');
+
+        } else {
+            // Different years: "December 30, 2025 – January 2, 2026"
+            $inclusiveDatesDisplay = $dateFrom->format('F j, Y') . ' – ' . $dateTo->format('F j, Y');
+        }
+
+    } elseif ($dateFrom) {
+        // Only a start date is recorded
+        $inclusiveDatesDisplay = $dateFrom->format('F j, Y') . ' – ';
+    }
+    // else: leave both blank — the underline CSS will show an empty line
+@endphp
 
     {{-- HEADER --}}
     <div class="header">
@@ -307,7 +369,15 @@
         <tr class="row-info">
             <td width="25%">
                 <span class="label">3. DATE OF FILING</span><br>
-                <span class="value">{{ $leaveApplication->date_of_filing?->format('m/d/Y') ?? '' }}</span>
+                {{--
+                    Safe parse: date_of_filing may arrive as a Carbon instance
+                    (due to the 'date' cast in the model) or as a raw string.
+                --}}
+                <span class="value">
+                    {{ $leaveApplication->date_of_filing
+                        ? \Carbon\Carbon::parse($leaveApplication->date_of_filing)->format('m/d/Y')
+                        : '' }}
+                </span>
             </td>
             <td width="37.5%">
                 <span class="label">4. POSITION</span><br>
@@ -315,7 +385,11 @@
             </td>
             <td width="37.5%">
                 <span class="label">5. SALARY</span><br>
-                <span class="value">{{ $leaveApplication->employee?->salary ? number_format($leaveApplication->employee->salary, 2) : '' }}</span>
+                <span class="value">
+                    {{ $leaveApplication->employee?->salary
+                        ? number_format($leaveApplication->employee->salary, 2)
+                        : '' }}
+                </span>
             </td>
         </tr>
     </table>
@@ -331,20 +405,21 @@
 
                 @php
                 $types = [
-                    'vacation_leave' => 'Vacation Leave (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    'mandatory_forced_leave' => 'Mandatory/Forced Leave(Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    'sick_leave' => 'Sick Leave (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    'maternity_leave' => 'Maternity Leave (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)',
-                    'paternity_leave' => 'Paternity Leave (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)',
-                    'special_privilege_leave' => 'Special Privilege Leave (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    'solo_parent_leave' => 'Solo Parent Leave (R.A. No. 8972 / CSC MC No. 8, s. 2004)',
-                    'study_leave' => 'Study Leave (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    '10_day_vawc_leave' => '10-Day VAWC Leave (R.A. No. 9262 / CSC MC No. 15, s. 2005)',
-                    'rehabilitation_privilege' => 'Rehabilitation Privilege (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
-                    'special_leave_benefits_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
-                    'special_emergency_leave' => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
-                    'adoption_leave' => 'Adoption Leave (R.A. No. 8552)',
-                    'others' => 'Others:',
+                    'vacation_leave'                   => 'Vacation Leave (Sec 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    'mandatory_forced_leave'           => 'Mandatory/Forced Leave(Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    'sick_leave'                       => 'Sick Leave (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    'maternity_leave'                  => 'Maternity Leave (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)',
+                    'paternity_leave'                  => 'Paternity Leave (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)',
+                    'special_privilege_leave'          => 'Special Privilege Leave (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    'solo_parent_leave'                => 'Solo Parent Leave (R.A. No. 8972 / CSC MC No. 8, s. 2004)',
+                    'study_leave'                      => 'Study Leave (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    '10_day_vawc_leave'                => '10-Day VAWC Leave (R.A. No. 9262 / CSC MC No. 15, s. 2005)',
+                    'rehabilitation_privilege'         => 'Rehabilitation Privilege (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)',
+                    'special_leave_benefits_for_women' => 'Special Leave Benefits for Women (R.A. No. 9710 / CSC MC No. 25, s. 2010)',
+                    'special_emergency_leave'          => 'Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)',
+                    'adoption_leave'                   => 'Adoption Leave (R.A. No. 8552)',
+                    'wellness_leave'                   => 'Wellness Leave (2026 CSC Format)',
+                    'others'                           => 'Others:',
                 ];
                 @endphp
 
@@ -397,6 +472,15 @@
                     BAR/Board Examination Review
                 </div>
 
+                @if($leaveApplication->type_of_leave === 'wellness_leave')
+                <div class="detail-section" style="border:0.8pt solid #000; padding:3px; background:#f9f9f9;">
+                    <em>In case of Wellness Leave:</em><br>
+                    <span style="font-size:7pt;">
+                        Wellness Leave granted per 2026 CSC Format. No additional documentation required.
+                    </span>
+                </div>
+                @endif
+
                 <div class="detail-section" style="margin-bottom: 0;">
                     <em>Other purpose:</em><br>
                     <span class="checkbox {{ $leaveApplication->other_purpose == 'monetization' ? 'checked' : '' }}"></span>
@@ -414,15 +498,41 @@
             <td width="50%">
                 <div class="label">6.C NUMBER OF WORKING DAYS APPLIED FOR</div>
                 <div style="margin-top: 3px;">
-                    <span class="underline" style="min-width: 65px;">{{ $leaveApplication->number_of_working_days ?? '' }}</span>
+                    <span class="underline" style="min-width: 65px;">
+                        {{ $leaveApplication->number_of_working_days ?? '' }}
+                    </span>
                 </div>
+
                 <div style="margin-top: 6px; font-weight: bold; font-size: 8pt;">
                     INCLUSIVE DATES
                 </div>
+
+                {{--
+                    FIX: Previously used `$leaveApplication->inclusive_dates` which is not
+                    a real database column and always returned null/blank.
+
+                    Now we display `$inclusiveDatesDisplay` computed at the top of this
+                    file from the actual `leave_date_from` and `leave_date_to` columns.
+
+                    Examples:
+                      Single day   → "March 18, 2026"
+                      Same month   → "March 18 – 20, 2026"
+                      Same year    → "March 18 – April 2, 2026"
+                      Cross-year   → "December 30, 2025 – January 2, 2026"
+                --}}
                 <div style="margin-top: 2px;">
-                    <span class="underline" style="min-width: 140px;">{{ $leaveApplication->inclusive_dates ?? '' }}</span>
+                    @if($inclusiveDatesDisplay)
+                        {{-- Dates are available: show them on a styled underline --}}
+                        <span class="underline inclusive-dates-value" style="min-width: 180px;">
+                            {{ $inclusiveDatesDisplay }}
+                        </span>
+                    @else
+                        {{-- No dates saved yet: show a blank underline --}}
+                        <span class="underline" style="min-width: 180px;">&nbsp;</span>
+                    @endif
                 </div>
             </td>
+
             <td width="50%">
                 <div class="label">6.D COMMUTATION</div>
                 <div style="margin-top: 5px;">
@@ -450,7 +560,11 @@
             <td width="50%">
                 <div class="label">7.A CERTIFICATION OF LEAVE CREDITS</div>
                 <div style="margin-top: 3px; font-size: 8pt;">
-                    As of <span class="underline" style="min-width: 75px;">{{ $leaveApplication->as_of_date ?? '' }}</span>
+                    As of <span class="underline" style="min-width: 75px;">
+                        {{ $leaveApplication->as_of_date
+                            ? \Carbon\Carbon::parse($leaveApplication->as_of_date)->format('F j, Y')
+                            : '' }}
+                    </span>
                 </div>
 
                 <table class="credits-table">
@@ -461,18 +575,18 @@
                     </tr>
                     <tr>
                         <td class="label-cell">Total Earned</td>
-                        <td>{{ $leaveApplication->vl_total_earned ?? '' }}</td>
-                        <td>{{ $leaveApplication->sl_total_earned ?? '' }}</td>
+                        <td>{{ $leaveApplication->vl_total_earned ?? $leaveApplication->vacation_leave_total_earned ?? '' }}</td>
+                        <td>{{ $leaveApplication->sl_total_earned ?? $leaveApplication->sick_leave_total_earned ?? '' }}</td>
                     </tr>
                     <tr>
                         <td class="label-cell">Less this application</td>
-                        <td>{{ $leaveApplication->vl_less_application ?? '' }}</td>
-                        <td>{{ $leaveApplication->sl_less_application ?? '' }}</td>
+                        <td>{{ $leaveApplication->vl_less_application ?? $leaveApplication->vacation_leave_less_application ?? '' }}</td>
+                        <td>{{ $leaveApplication->sl_less_application ?? $leaveApplication->sick_leave_less_application ?? '' }}</td>
                     </tr>
                     <tr>
                         <td class="label-cell">Balance</td>
-                        <td>{{ $leaveApplication->employee?->vl_balance ?? '' }}</td>
-                        <td>{{ $leaveApplication->employee?->sl_balance ?? '' }}</td>
+                        <td>{{ $leaveApplication->employee?->vl_balance ?? $leaveApplication->vacation_leave_balance ?? '' }}</td>
+                        <td>{{ $leaveApplication->employee?->sl_balance ?? $leaveApplication->sick_leave_balance ?? '' }}</td>
                     </tr>
                 </table>
 

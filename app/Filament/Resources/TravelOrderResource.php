@@ -28,7 +28,7 @@ class TravelOrderResource extends Resource
     protected static ?int $navigationSort = 4;
 
     // =========================================================================
-    //  ACCESS CONTROL — Hide entirely from Job Order users
+    //  ACCESS CONTROL
     // =========================================================================
 
     public static function shouldRegisterNavigation(): bool
@@ -41,10 +41,6 @@ class TravelOrderResource extends Resource
         return Auth::user()?->role !== User::ROLE_JOB_ORDER;
     }
 
-    // =========================================================================
-    //  AUTHORIZATION
-    // =========================================================================
-
     public static function canCreate(): bool
     {
         return Auth::user()->role === User::ROLE_REGULAR;
@@ -53,16 +49,20 @@ class TravelOrderResource extends Resource
     public static function canEdit($record): bool
     {
         $user = Auth::user();
-        if ($user->role === 'admin')
-            return $record->status === 'pending';
+        // Admins fill administrative details via the Approve modal on ViewRecord.
+        // Only regular employees may edit their own rejected orders.
+        if ($user->role === 'admin') {
+            return false;
+        }
         return $record->created_by === $user->id && $record->status === 'rejected';
     }
 
     public static function canDelete($record): bool
     {
         $user = Auth::user();
-        if ($user->role === 'admin')
+        if ($user->role === 'admin') {
             return true;
+        }
         return $record->created_by === $user->id && $record->status === 'pending';
     }
 
@@ -75,8 +75,9 @@ class TravelOrderResource extends Resource
         return $form->schema([
             self::buildInfoSection(),
             self::buildTravelerSection(),
-            self::buildItinerarySection(),
             self::buildBatchTravelersSection(),
+            self::buildItinerarySection(),
+            self::buildAdministrativeSection(),
             self::buildApprovalSection(),
         ]);
     }
@@ -105,24 +106,15 @@ class TravelOrderResource extends Resource
                     ->displayFormat('M j, Y')
                     ->columnSpan(1),
 
-                Forms\Components\Select::make('status')
-                    ->label('Current Status')
-                    ->options([
-                        'pending' => 'Pending Review',
-                        'approved' => 'Approved',
-                        'rejected' => 'Rejected',
-                    ])
-                    ->default('pending')
-                    ->disabled(fn() => Auth::user()->role === User::ROLE_REGULAR)
-                    ->native(false)
-                    ->prefixIcon('heroicon-o-information-circle')
-                    ->columnSpan(1),
+                // NOTE: status is intentionally OMITTED here for regular users.
+                // Admins see it in the dedicated Approval Section below.
+                // This eliminates the duplicate 'status' key that caused a form conflict.
 
                 Forms\Components\Radio::make('travel_type')
                     ->label('Travel Type')
                     ->options([
-                        'solo' => 'Solo Travel - Single Employee',
-                        'batch' => 'Batch Travel - Multiple Employees',
+                        'solo' => 'Solo Travel — Single Employee',
+                        'batch' => 'Batch Travel — Multiple Employees',
                     ])
                     ->descriptions([
                         'solo' => 'Travel order for one employee only',
@@ -133,15 +125,19 @@ class TravelOrderResource extends Resource
                     ->live()
                     ->columnSpanFull(),
             ])
-            ->columns(3)
+            ->columns(2)
             ->collapsible()
             ->collapsed(false);
     }
 
+    /**
+     * Traveler information for SOLO travel only.
+     * Hidden automatically when travel_type === 'batch'.
+     */
     protected static function buildTravelerSection(): Forms\Components\Section
     {
         return Forms\Components\Section::make('Traveler Information')
-            ->description('Your personal travel details')
+            ->description('Personal travel details for the sole traveler')
             ->icon('heroicon-o-user-circle')
             ->schema([
                 Forms\Components\Placeholder::make('employee_name_display')
@@ -154,6 +150,7 @@ class TravelOrderResource extends Resource
                     ->content(fn() => auth()->user()->position ?? '—')
                     ->columnSpan(1),
 
+                // Hidden fields carry the actual values to be saved
                 Forms\Components\Hidden::make('created_by')
                     ->default(fn() => auth()->id()),
 
@@ -164,7 +161,7 @@ class TravelOrderResource extends Resource
                     ->default(fn() => auth()->user()->position),
 
                 Forms\Components\TextInput::make('station')
-                    ->label('Work Station/Office')
+                    ->label('Work Station / Office')
                     ->placeholder('e.g., Main Office, Branch Office')
                     ->required()
                     ->prefixIcon('heroicon-o-building-office')
@@ -180,7 +177,61 @@ class TravelOrderResource extends Resource
             ])
             ->columns(2)
             ->collapsible()
-            ->collapsed(false);
+            ->collapsed(false)
+            // ── KEY FIX: hide this section for batch travel ──────────────────
+            ->visible(fn(callable $get) => $get('travel_type') === 'solo' || $get('travel_type') === null);
+    }
+
+    /**
+     * Employee multi-select for BATCH travel only.
+     * Hidden automatically when travel_type === 'solo'.
+     */
+    protected static function buildBatchTravelersSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Employees Included in Travel')
+            ->description('Select all employees covered by this travel order')
+            ->icon('heroicon-o-user-group')
+            ->schema([
+                // Station & salary still needed for batch records
+                Forms\Components\TextInput::make('station')
+                    ->label('Work Station / Office')
+                    ->placeholder('e.g., Main Office, Branch Office')
+                    ->required()
+                    ->prefixIcon('heroicon-o-building-office')
+                    ->columnSpan(1),
+
+                Forms\Components\TextInput::make('salary_per_annum')
+                    ->label('Total / Representative Annual Salary')
+                    ->numeric()
+                    ->prefix('₱')
+                    ->placeholder('0.00')
+                    ->helperText('Optional: enter a representative salary for the group')
+                    ->columnSpan(1),
+
+                Forms\Components\Select::make('employee_ids')
+                    ->label('Select Employees')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->options(
+                        fn() => User::where('role', User::ROLE_REGULAR)
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->toArray()
+                    )
+                    ->required()
+                    ->native(false)
+                    ->helperText('Selected employees will see this order in their Tagged Travel Orders tab.')
+                    ->columnSpanFull(),
+
+                Forms\Components\Hidden::make('created_by')
+                    ->default(fn() => auth()->id()),
+            ])
+            ->columns(2)
+            ->collapsible()
+            ->collapsed(false)
+            // ── KEY FIX: only visible for batch travel ───────────────────────
+            ->visible(fn(callable $get) => $get('travel_type') === 'batch');
     }
 
     protected static function buildItinerarySection(): Forms\Components\Section
@@ -220,7 +271,7 @@ class TravelOrderResource extends Resource
 
                 Forms\Components\Textarea::make('purpose_of_trip')
                     ->label('Purpose of Travel')
-                    ->placeholder('Provide detailed information about the purpose, activities, and expected outcomes of this travel...')
+                    ->placeholder('Provide detailed information about the purpose, activities, and expected outcomes...')
                     ->helperText('Be specific and comprehensive in describing the travel purpose')
                     ->required()
                     ->rows(4)
@@ -231,33 +282,62 @@ class TravelOrderResource extends Resource
             ->collapsed(false);
     }
 
-    protected static function buildBatchTravelersSection(): Forms\Components\Section
+    /**
+     * Administrative fields that appear on the print blade but are typically
+     * filled by the approving officer, not the regular employee.
+     *
+     * Visible to ALL roles so that the record displays correctly in view mode,
+     * but editable only by admins.
+     */
+    protected static function buildAdministrativeSection(): Forms\Components\Section
     {
-        return Forms\Components\Section::make('Batch Travelers')
-            ->description('Select employees included in this travel order')
-            ->icon('heroicon-o-user-group')
+        // Use a closure so the check runs at render time, not at schema-build time.
+        // Evaluating Auth::user() eagerly in a static method can resolve before
+        // the authenticated user is fully bound, making $isAdmin always false.
+        $isAdminFn = fn() => Auth::user()?->role === 'admin';
+
+        return Forms\Components\Section::make('Administrative Details')
+            ->description('Fields printed on the official travel order form')
+            ->icon('heroicon-o-clipboard-document-list')
             ->schema([
-                Forms\Components\Select::make('employee_ids')
-                    ->label('Select Employees')
-                    ->multiple()
-                    ->searchable()
-                    ->preload()
-                    ->options(
-                        fn() => \App\Models\User::where('role', User::ROLE_REGULAR)
-                            ->orderBy('name')
-                            ->pluck('name', 'id')
-                            ->toArray()
-                    )
-                    ->required()
-                    ->native(false)
-                    ->helperText('Employees selected here will see this order in their Tagged Travel Orders tab.')
-                    ->columnSpanFull(),
+                Forms\Components\TextInput::make('assistant_laborer_allowed')
+                    ->label('Assistant and/or Laborer Allowed')
+                    ->placeholder('e.g., None, 1 Laborer')
+                    ->disabled(fn() => !$isAdminFn())
+                    ->dehydrated()
+                    ->columnSpan(1),
+
+                Forms\Components\TextInput::make('per_diems_expenses_allowed')
+                    ->label('Per Diems / Expenses Allowed')
+                    ->placeholder('e.g., Actual, ₱750/day')
+                    ->disabled(fn() => !$isAdminFn())
+                    ->dehydrated()
+                    ->columnSpan(1),
+
+                Forms\Components\TextInput::make('appropriation_funds')
+                    ->label('Appropriation / Funds')
+                    ->placeholder('e.g., MOOE, GAA 2024')
+                    ->disabled(fn() => !$isAdminFn())
+                    ->dehydrated()
+                    ->columnSpan(1),
+
+                Forms\Components\Textarea::make('remarks_special_instructions')
+                    ->label('Remarks / Special Instructions')
+                    ->placeholder('Any special instructions or additional remarks...')
+                    ->rows(3)
+                    ->disabled(fn() => !$isAdminFn())
+                    ->dehydrated()
+                    ->columnSpan(1),
             ])
-            ->visible(fn(callable $get) => $get('travel_type') === 'batch')
+            ->columns(2)
             ->collapsible()
-            ->collapsed(false);
+            ->collapsed(fn() => !$isAdminFn());  // pre-collapsed for regular users
     }
 
+    /**
+     * Approval section — visible to admins only.
+     * Contains the single authoritative 'status' field (removed duplicate from info section).
+     */
     protected static function buildApprovalSection(): Forms\Components\Section
     {
         return Forms\Components\Section::make('Administrative Approval')
@@ -356,8 +436,38 @@ class TravelOrderResource extends Resource
             Tables\Columns\TextColumn::make('name')
                 ->label('Traveler(s)')
                 ->searchable()
-                ->limit(30)
-                ->tooltip(fn($record) => $record->name)
+                ->limit(35)
+                ->tooltip(function ($record) {
+                    // For batch orders, show the full employee list in the tooltip
+                    if ($record->travel_type === 'batch' && !empty($record->employee_details)) {
+                        return collect($record->employee_details)
+                            ->pluck('name')
+                            ->filter()
+                            ->implode(', ');
+                    }
+                    return $record->name;
+                })
+                ->formatStateUsing(function ($state, $record) {
+                    // For batch orders, rebuild the display name from employee_details
+                    // in case the name column was not populated correctly on older records
+                    if ($record->travel_type === 'batch' && !empty($record->employee_details)) {
+                        $names = collect($record->employee_details)
+                            ->pluck('name')
+                            ->filter()
+                            ->values();
+
+                        if ($names->isEmpty()) {
+                            return 'Batch (' . count($record->employee_details) . ' employees)';
+                        }
+
+                        $count = $names->count();
+                        if ($count <= 2) {
+                            return $names->implode(', ');
+                        }
+                        return $names->first() . ' + ' . ($count - 1) . ' more';
+                    }
+                    return $state ?: '—';
+                })
                 ->icon('heroicon-o-user-circle')
                 ->iconColor('primary')
                 ->visible($isAdmin),
@@ -560,7 +670,7 @@ class TravelOrderResource extends Resource
             ];
         }
 
-        // ── ADMIN: 3 separate cards ────────────────────────────────────────────
+        // ── ADMIN: 3 separate filter cards ────────────────────────────────────
 
         $employeeFilter = Tables\Filters\Filter::make('employee_filter')
             ->label('Employee')
@@ -569,7 +679,7 @@ class TravelOrderResource extends Resource
                 Forms\Components\Select::make('traveler_name')
                     ->label('Employee')
                     ->options(
-                        fn() => \App\Models\User::where('role', User::ROLE_REGULAR)
+                        fn() => User::where('role', User::ROLE_REGULAR)
                             ->orderBy('name')
                             ->pluck('name', 'name')
                             ->toArray()
@@ -583,8 +693,9 @@ class TravelOrderResource extends Resource
                     ->when($data['traveler_name'] ?? null, fn($q, $v) => $q->where('name', 'like', "%{$v}%"))
             )
             ->indicateUsing(function (array $data): array {
-                if (!($data['traveler_name'] ?? null))
+                if (!($data['traveler_name'] ?? null)) {
                     return [];
+                }
                 return [
                     Tables\Filters\Indicator::make('Employee: ' . $data['traveler_name'])
                         ->removeField('traveler_name'),
@@ -756,16 +867,18 @@ class TravelOrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()?->role !== 'admin')
+        if (auth()->user()?->role !== 'admin') {
             return null;
+        }
         $count = TravelOrder::where('status', 'pending')->count();
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        if (auth()->user()?->role !== 'admin')
+        if (auth()->user()?->role !== 'admin') {
             return null;
+        }
         return TravelOrder::where('status', 'pending')->count() > 0 ? 'warning' : 'success';
     }
 
