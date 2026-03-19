@@ -203,7 +203,17 @@ td, th { border: 1px solid #00008B; padding: 1px 3px; vertical-align: middle; ov
         if ($em > 0) { $earlyCount++; $earlyMins += $em; }
     }
 
-    $abVal = $daysInMonth - $ioVal;
+    // Count only Mon–Fri working days so weekends don't inflate the AB total
+        $workingDaysInMonth = 0;
+        $_abTemp = $monthStart->copy();
+        while ((int) $_abTemp->format('n') === (int) $monthStart->format('n')) {
+            if (!$_abTemp->isWeekend()) {
+                $workingDaysInMonth++;
+            }
+            $_abTemp->addDay();
+        }
+        unset($_abTemp);
+        $abVal = $workingDaysInMonth - $ioVal;
 @endphp
 
 {{-- ══ TITLE ══ --}}

@@ -315,6 +315,9 @@ HTML);
                                     ? "⚠️ {$pendingCount} remaining — select up to " . self::BATCH_LIMIT . " per batch (~{$batches} batches needed)"
                                     : 'Select employees below, then click Submit.';
 
+                                // Inform admin that re-scanning always resets prior checkbox selections
+                                $bodyParts[] = 'Note: Any previous selection has been cleared.';
+
                                 Notification::make()->success()
                                     ->title("{$pendingCount} employee(s) pending DTR import")
                                     ->body(implode(' | ', $bodyParts))
@@ -485,7 +488,14 @@ HTML);
                 }
 
                 // Always clean up
-                @unlink($fullPath);
+                if ($errorCount === 0) {
+                    @unlink($fullPath);
+                } else {
+                    Log::warning('[BiometricImport] File retained due to errors — admin may retry', [
+                        'path' => $fullPath,
+                        'error_count' => $errorCount,
+                    ]);
+                }
                 EmployeeCheckboxList::clearSessionSelection();
 
                 if ($successCount > 0 && $errorCount === 0) {

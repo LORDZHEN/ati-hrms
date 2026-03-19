@@ -134,14 +134,14 @@ class XlsLogParser
     public function detectEmployees(string $filePath): Collection
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees   = $this->parseLogsSheet($spreadsheet);
+        $employees = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
 
         Log::info('[XlsLogParser] detectEmployees — XLS employees found', [
             'count' => $employees->count(),
-            'ids'   => $employees->keys()->values()->toArray(),
+            'ids' => $employees->keys()->values()->toArray(),
         ]);
 
         if ($employees->isEmpty()) {
@@ -154,42 +154,42 @@ class XlsLogParser
             ->get();
 
         Log::info('[XlsLogParser] DB employees loaded', [
-            'total'           => $allDbUsers->count(),
+            'total' => $allDbUsers->count(),
             'db_employee_ids' => $allDbUsers->pluck('employee_id', 'id')->toArray(),
         ]);
 
         $dbLookup = $allDbUsers->keyBy(fn($u) => trim((string) $u->employee_id));
-        $matched  = collect();
+        $matched = collect();
 
         foreach ($employees as $xlsNo => $xlsData) {
             $trimmedNo = trim((string) $xlsNo);
-            $dbUser    = $dbLookup->get($trimmedNo);
+            $dbUser = $dbLookup->get($trimmedNo);
 
             if (!$dbUser) {
                 Log::debug('[XlsLogParser] No DB match — skipped', [
-                    'xls_no'   => $xlsNo,
+                    'xls_no' => $xlsNo,
                     'xls_name' => $xlsData['xls_name'],
                 ]);
                 continue;
             }
 
             $matched->put($dbUser->id, [
-                'user_id'     => $dbUser->id,
-                'db_name'     => $dbUser->name,
+                'user_id' => $dbUser->id,
+                'db_name' => $dbUser->name,
                 'employee_id' => trim((string) $dbUser->employee_id),
-                'xls_name'    => $xlsData['xls_name'],
-                'department'  => $xlsData['department'],
-                'days'        => $xlsData['days'],
-                'day_count'   => count($xlsData['days']),
+                'xls_name' => $xlsData['xls_name'],
+                'department' => $xlsData['department'],
+                'days' => $xlsData['days'],
+                'day_count' => count($xlsData['days']),
                 'punch_count' => $xlsData['punch_count'],
             ]);
 
             Log::info('[XlsLogParser] Matched', [
-                'user_id'     => $dbUser->id,
-                'db_name'     => $dbUser->name,
+                'user_id' => $dbUser->id,
+                'db_name' => $dbUser->name,
                 'employee_id' => $dbUser->employee_id,
-                'days'        => count($xlsData['days']),
-                'punches'     => $xlsData['punch_count'],
+                'days' => count($xlsData['days']),
+                'punches' => $xlsData['punch_count'],
             ]);
         }
 
@@ -211,7 +211,7 @@ class XlsLogParser
     public function parseAllEmployees(string $filePath, string $period = ''): array
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees   = $this->parseLogsSheet($spreadsheet);
+        $employees = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
@@ -231,14 +231,14 @@ class XlsLogParser
      */
     public function parseForEmployee(string $filePath, int|string $employeeId, string $period = ''): array
     {
-        $spreadsheet  = $this->loadSpreadsheet($filePath);
-        $employees    = $this->parseLogsSheet($spreadsheet);
+        $spreadsheet = $this->loadSpreadsheet($filePath);
+        $employees = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
 
         $normalizedId = trim((string) $employeeId);
-        $xlsData      = $employees->get($normalizedId);
+        $xlsData = $employees->get($normalizedId);
 
         if (!$xlsData) {
             throw new \Exception("No attendance records found in XLS for Employee ID: {$employeeId}");
@@ -257,7 +257,7 @@ class XlsLogParser
     public function extractPeriod(string $filePath): string
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $sheet       = $this->getLogsSheet($spreadsheet);
+        $sheet = $this->getLogsSheet($spreadsheet);
 
         $raw = trim((string) $sheet->getCell('C3')->getValue());
 
@@ -321,9 +321,9 @@ class XlsLogParser
      */
     private function parseLogsSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): Collection
     {
-        $sheet     = $this->getLogsSheet($spreadsheet);
-        $maxRow    = $sheet->getHighestRow();
-        $maxCol    = $sheet->getHighestColumn();
+        $sheet = $this->getLogsSheet($spreadsheet);
+        $maxRow = $sheet->getHighestRow();
+        $maxCol = $sheet->getHighestColumn();
         $maxColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($maxCol);
 
         // Read all cells into a plain PHP array (single pass for speed)
@@ -332,18 +332,18 @@ class XlsLogParser
             $row = [];
             for ($c = 1; $c <= $maxColIdx; $c++) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
-                $row[]     = (string) $sheet->getCell($colLetter . $r)->getValue();
+                $row[] = (string) $sheet->getCell($colLetter . $r)->getValue();
             }
             $data[] = $row;
         }
 
         // Extract year/month from period header (row 3, col C = index [2][2])
-        $periodStr       = $data[2][2] ?? '';
+        $periodStr = $data[2][2] ?? '';
         [$year, $month] = $this->parseYearMonth($periodStr);
 
         $employees = collect();
-        $i         = 0;
-        $total     = count($data);
+        $i = 0;
+        $total = count($data);
 
         while ($i < $total) {
             $row = $data[$i];
@@ -354,9 +354,9 @@ class XlsLogParser
             }
 
             // Employee header row
-            $xlsNo   = trim($row[2]  ?? '');
+            $xlsNo = trim($row[2] ?? '');
             $xlsName = trim($row[10] ?? '');
-            $dept    = trim($row[20] ?? '');
+            $dept = trim($row[20] ?? '');
 
             if ($xlsNo === '') {
                 $i++;
@@ -367,7 +367,7 @@ class XlsLogParser
             $punchRow = ($i + 1 < $total) ? $data[$i + 1] : [];
 
             $punchesByDay = [];
-            $punchCount   = 0;
+            $punchCount = 0;
 
             foreach ($punchRow as $colIdx => $cellValue) {
                 $cellValue = trim($cellValue);
@@ -399,18 +399,18 @@ class XlsLogParser
 
                 if (!empty($times)) {
                     $punchesByDay[$date] = $times;
-                    $punchCount         += count($times);
+                    $punchCount += count($times);
                 }
             }
 
             ksort($punchesByDay);
 
             $employees->put($xlsNo, [
-                'xls_no'         => $xlsNo,
-                'xls_name'       => $xlsName,
-                'department'     => $dept,
-                'punch_count'    => $punchCount,
-                'days'           => array_keys($punchesByDay),
+                'xls_no' => $xlsNo,
+                'xls_name' => $xlsName,
+                'department' => $dept,
+                'punch_count' => $punchCount,
+                'days' => array_keys($punchesByDay),
                 'punches_by_day' => $punchesByDay,
             ]);
 
@@ -434,17 +434,17 @@ class XlsLogParser
             $current = $startDate->copy();
 
             while ($current->lte($endDate)) {
-                $dateStr  = $current->format('Y-m-d');
-                $punches  = $xlsData['punches_by_day'][$dateStr] ?? [];
+                $dateStr = $current->format('Y-m-d');
+                $punches = $xlsData['punches_by_day'][$dateStr] ?? [];
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID'   => $xlsData['xls_no'],
-                    'Name'         => $xlsData['xls_name'],
-                    'Date'         => $dateStr,
-                    'MorningIn'    => $sessions['MorningIn'],
-                    'MorningOut'   => $sessions['MorningOut'],
-                    'AfternoonIn'  => $sessions['AfternoonIn'],
+                    'EmployeeID' => $xlsData['xls_no'],
+                    'Name' => $xlsData['xls_name'],
+                    'Date' => $dateStr,
+                    'MorningIn' => $sessions['MorningIn'],
+                    'MorningOut' => $sessions['MorningOut'],
+                    'AfternoonIn' => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
 
@@ -456,12 +456,12 @@ class XlsLogParser
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID'   => $xlsData['xls_no'],
-                    'Name'         => $xlsData['xls_name'],
-                    'Date'         => $dateStr,
-                    'MorningIn'    => $sessions['MorningIn'],
-                    'MorningOut'   => $sessions['MorningOut'],
-                    'AfternoonIn'  => $sessions['AfternoonIn'],
+                    'EmployeeID' => $xlsData['xls_no'],
+                    'Name' => $xlsData['xls_name'],
+                    'Date' => $dateStr,
+                    'MorningIn' => $sessions['MorningIn'],
+                    'MorningOut' => $sessions['MorningOut'],
+                    'AfternoonIn' => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
             }
@@ -506,7 +506,7 @@ class XlsLogParser
     private function assignSessions(array $times): array
     {
         $mi = $mo = $ai = $ao = '';
-        $n  = count($times);
+        $n = count($times);
 
         if ($n === 0) {
             // No punches — absence day
@@ -523,8 +523,8 @@ class XlsLogParser
                 $mi = $times[0];
                 $mo = $times[1];
             } elseif ($m0 > self::NOON_MINUTES && $m1 > self::NOON_MINUTES) {
-                // Both afternoon: MO + AO (employee only present in PM)
-                $mo = $times[0];
+                // Both afternoon: AI + AO (employee present in PM session only)
+                $ai = $times[0];
                 $ao = $times[1];
             } else {
                 // One AM + one PM: MI + AO (full day, no mid-day taps recorded)
@@ -570,9 +570,9 @@ class XlsLogParser
         }
 
         return [
-            'MorningIn'    => $mi,
-            'MorningOut'   => $mo,
-            'AfternoonIn'  => $ai,
+            'MorningIn' => $mi,
+            'MorningOut' => $mo,
+            'AfternoonIn' => $ai,
             'AfternoonOut' => $ao,
         ];
     }
@@ -599,9 +599,16 @@ class XlsLogParser
     private function parsePeriodRange(string $period): array
     {
         if (preg_match('/(\d{4})\/(\d{2})\/(\d{2})\s*~\s*(\d{2})\/(\d{2})/', $period, $m)) {
-            $year  = (int) $m[1];
+            $year = (int) $m[1];
             $start = Carbon::createFromDate($year, (int) $m[2], (int) $m[3]);
-            $end   = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
+            $end = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
+
+            // Cross-year period guard (e.g. "2025/12/16 ~ 01/15"):
+            // if end precedes start, the period wraps into the next year.
+            if ($end->lt($start)) {
+                $end->addYear();
+            }
+
             return [$start, $end];
         }
 

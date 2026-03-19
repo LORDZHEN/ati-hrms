@@ -634,7 +634,8 @@ class DailyTimeRecordResource extends Resource
                         ->label('Year')
                         ->placeholder('All years')
                         ->native(false)
-                        ->options($yearOptions),
+                        ->options($yearOptions)
+                        ->helperText('Filters by upload date, not DTR period.'),
                 ])
                 ->query(
                     fn(Builder $query, array $data) => $query
@@ -658,7 +659,8 @@ class DailyTimeRecordResource extends Resource
                         ->label('Month')
                         ->placeholder('All months')
                         ->native(false)
-                        ->options($monthOptions),
+                        ->options($monthOptions)
+                        ->helperText('Filters by upload date, not DTR period.'),
                 ])
                 ->query(
                     fn(Builder $query, array $data) => $query

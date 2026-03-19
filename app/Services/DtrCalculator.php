@@ -5,6 +5,7 @@ namespace App\Services;
 use Carbon\Carbon;
 use League\Csv\Reader;
 
+
 /**
  * DtrCalculator — Philippine Civil Service Commission (CSC) rules
  *
@@ -32,12 +33,12 @@ class DtrCalculator
     // Schedule constants (hours / minutes)
     private const AM_START_H = 8;
     private const AM_START_M = 0;
-    private const AM_END_H   = 12;
-    private const AM_END_M   = 0;
+    private const AM_END_H = 12;
+    private const AM_END_M = 0;
     private const PM_START_H = 13;
     private const PM_START_M = 0;
-    private const PM_END_H   = 17;
-    private const PM_END_M   = 0;
+    private const PM_END_H = 17;
+    private const PM_END_M = 0;
 
     // BioTime grace period deducted from every late/undertime event (minutes)
     private const UT_GRACE = 1;
@@ -84,16 +85,16 @@ class DtrCalculator
             }
 
             // Parse all four punches (null = no punch recorded)
-            $amIn  = $this->parseTime($record['MorningIn']    ?? '', $date);
-            $amOut = $this->parseTime($record['MorningOut']   ?? '', $date);
-            $pmIn  = $this->parseTime($record['AfternoonIn']  ?? '', $date);
+            $amIn = $this->parseTime($record['MorningIn'] ?? '', $date);
+            $amOut = $this->parseTime($record['MorningOut'] ?? '', $date);
+            $pmIn = $this->parseTime($record['AfternoonIn'] ?? '', $date);
             $pmOut = $this->parseTime($record['AfternoonOut'] ?? '', $date);
 
             // Schedule anchors — setTime(h, m, 0) guarantees zero seconds
             $amStart = $this->anchor($date, self::AM_START_H, self::AM_START_M);
-            $amEnd   = $this->anchor($date, self::AM_END_H,   self::AM_END_M);
+            $amEnd = $this->anchor($date, self::AM_END_H, self::AM_END_M);
             $pmStart = $this->anchor($date, self::PM_START_H, self::PM_START_M);
-            $pmEnd   = $this->anchor($date, self::PM_END_H,   self::PM_END_M);
+            $pmEnd = $this->anchor($date, self::PM_END_H, self::PM_END_M);
 
             // ── LATE ──────────────────────────────────────────────────────
             //
@@ -146,27 +147,27 @@ class DtrCalculator
             $hasPm = ($pmIn !== null || $pmOut !== null);
 
             $calculated[] = [
-                'EmployeeID'       => $record['EmployeeID'],
-                'Name'             => $record['Name'],
-                'Date'             => $date->format('Y-m-d'),
-                'DayOfWeek'        => $date->format('D'),
-                'MorningIn'        => $amIn  ? $amIn->format('H:i')  : '',
-                'MorningOut'       => $amOut ? $amOut->format('H:i') : '',
-                'AfternoonIn'      => $pmIn  ? $pmIn->format('H:i')  : '',
-                'AfternoonOut'     => $pmOut ? $pmOut->format('H:i') : '',
-                'LateMinutes'      => $totalLate,
+                'EmployeeID' => $record['EmployeeID'],
+                'Name' => $record['Name'],
+                'Date' => $date->format('Y-m-d'),
+                'DayOfWeek' => $date->format('D'),
+                'MorningIn' => $amIn ? $amIn->format('H:i') : '',
+                'MorningOut' => $amOut ? $amOut->format('H:i') : '',
+                'AfternoonIn' => $pmIn ? $pmIn->format('H:i') : '',
+                'AfternoonOut' => $pmOut ? $pmOut->format('H:i') : '',
+                'LateMinutes' => $totalLate,
                 'UndertimeMinutes' => $totalUt,
-                'OvertimeMinutes'  => $totalOt,
-                'WorkedMinutes'    => $totalWorked,
-                'Late'             => $this->fmt($totalLate),
-                'Undertime'        => $this->fmt($totalUt),
-                'Overtime'         => $this->fmt($totalOt),
-                'WorkedHours'      => $this->fmt($totalWorked),
-                'IsWeekend'        => false,
-                'IsFullAbsent'     => (!$hasAm && !$hasPm),
-                'IsHalfAbsent'     => ($hasAm XOR $hasPm),
-                'HasAmSession'     => $hasAm,
-                'HasPmSession'     => $hasPm,
+                'OvertimeMinutes' => $totalOt,
+                'WorkedMinutes' => $totalWorked,
+                'Late' => $this->fmt($totalLate),
+                'Undertime' => $this->fmt($totalUt),
+                'Overtime' => $this->fmt($totalOt),
+                'WorkedHours' => $this->fmt($totalWorked),
+                'IsWeekend' => false,
+                'IsFullAbsent' => (!$hasAm && !$hasPm),
+                'IsHalfAbsent' => ($hasAm XOR $hasPm),
+                'HasAmSession' => $hasAm,
+                'HasPmSession' => $hasPm,
             ];
         }
 
@@ -178,9 +179,9 @@ class DtrCalculator
      */
     public function calculateSummary(array $rows): array
     {
-        $workingDays = $daysPresent = $absentDays = $halfDays  = 0;
-        $lateDays    = $lateMins    = $utDays     = $utMins    = 0;
-        $otMins      = $workedMins  = 0;
+        $workingDays = $daysPresent = $absentDays = $halfDays = 0;
+        $lateDays = $lateMins = $utDays = $utMins = 0;
+        $otMins = $workedMins = 0;
 
         foreach ($rows as $row) {
             if ($row['IsWeekend'])
@@ -206,30 +207,30 @@ class DtrCalculator
                 $utMins += $row['UndertimeMinutes'];
             }
 
-            $otMins     += $row['OvertimeMinutes'];
+            $otMins += $row['OvertimeMinutes'];
             $workedMins += $row['WorkedMinutes'];
         }
 
         return [
-            'total_working_days'          => $workingDays,
-            'days_present'                => $daysPresent,
-            'absent_days'                 => $absentDays,
-            'half_days'                   => $halfDays,
-            'absent_days_total'           => $absentDays + ($halfDays * 0.5),
-            'late_days'                   => $lateDays,
-            'late_total_minutes'          => $lateMins,
-            'late_hours'                  => (int) floor($lateMins / 60),
-            'late_minutes_remainder'      => $lateMins % 60,
-            'undertime_days'              => $utDays,
-            'undertime_total_minutes'     => $utMins,
-            'undertime_hours'             => (int) floor($utMins / 60),
+            'total_working_days' => $workingDays,
+            'days_present' => $daysPresent,
+            'absent_days' => $absentDays,
+            'half_days' => $halfDays,
+            'absent_days_total' => $absentDays + ($halfDays * 0.5),
+            'late_days' => $lateDays,
+            'late_total_minutes' => $lateMins,
+            'late_hours' => (int) floor($lateMins / 60),
+            'late_minutes_remainder' => $lateMins % 60,
+            'undertime_days' => $utDays,
+            'undertime_total_minutes' => $utMins,
+            'undertime_hours' => (int) floor($utMins / 60),
             'undertime_minutes_remainder' => $utMins % 60,
-            'overtime_total_minutes'      => $otMins,
-            'overtime_hours'              => (int) floor($otMins / 60),
-            'overtime_minutes_remainder'  => $otMins % 60,
-            'worked_total_minutes'        => $workedMins,
-            'worked_hours'                => (int) floor($workedMins / 60),
-            'worked_minutes_remainder'    => $workedMins % 60,
+            'overtime_total_minutes' => $otMins,
+            'overtime_hours' => (int) floor($otMins / 60),
+            'overtime_minutes_remainder' => $otMins % 60,
+            'worked_total_minutes' => $workedMins,
+            'worked_hours' => (int) floor($workedMins / 60),
+            'worked_minutes_remainder' => $workedMins % 60,
         ];
     }
 
@@ -238,8 +239,16 @@ class DtrCalculator
     private function parseTime(string $value, Carbon $date): ?Carbon
     {
         $value = trim($value);
-        if ($value === '' || $value === '00:00' || $value === '0:00')
+        if ($value === '' || $value === '00:00' || $value === '0:00') {
+            if ($value !== '') {
+                // Midnight punch discarded — may indicate a device clock reset
+                Log::debug('[DtrCalculator] Discarding midnight punch', [
+                    'value' => $value,
+                    'date'  => $date->toDateString(),
+                ]);
+            }
             return null;
+        }
         if (!preg_match('/^(\d{1,2}):(\d{2})$/', $value, $m))
             return null;
         try {
@@ -269,27 +278,27 @@ class DtrCalculator
     private function weekendRow(array $record, Carbon $date): array
     {
         return [
-            'EmployeeID'       => $record['EmployeeID'],
-            'Name'             => $record['Name'],
-            'Date'             => $date->format('Y-m-d'),
-            'DayOfWeek'        => $date->format('D'),
-            'MorningIn'        => '',
-            'MorningOut'       => '',
-            'AfternoonIn'      => '',
-            'AfternoonOut'     => '',
-            'LateMinutes'      => 0,
+            'EmployeeID' => $record['EmployeeID'],
+            'Name' => $record['Name'],
+            'Date' => $date->format('Y-m-d'),
+            'DayOfWeek' => $date->format('D'),
+            'MorningIn' => '',
+            'MorningOut' => '',
+            'AfternoonIn' => '',
+            'AfternoonOut' => '',
+            'LateMinutes' => 0,
             'UndertimeMinutes' => 0,
-            'OvertimeMinutes'  => 0,
-            'WorkedMinutes'    => 0,
-            'Late'             => '',
-            'Undertime'        => '',
-            'Overtime'         => '',
-            'WorkedHours'      => '',
-            'IsWeekend'        => true,
-            'IsFullAbsent'     => false,
-            'IsHalfAbsent'     => false,
-            'HasAmSession'     => false,
-            'HasPmSession'     => false,
+            'OvertimeMinutes' => 0,
+            'WorkedMinutes' => 0,
+            'Late' => '',
+            'Undertime' => '',
+            'Overtime' => '',
+            'WorkedHours' => '',
+            'IsWeekend' => true,
+            'IsFullAbsent' => false,
+            'IsHalfAbsent' => false,
+            'HasAmSession' => false,
+            'HasPmSession' => false,
         ];
     }
 }
