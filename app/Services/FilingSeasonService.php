@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use Filament\Notifications\Notification;
-use Filament\Notifications\Actions\Action;
 
 /**
  * FilingSeasonService
@@ -99,20 +97,7 @@ class FilingSeasonService
         $employees = User::where('role', User::ROLE_REGULAR)->get();
 
         foreach ($employees as $employee) {
-            Notification::make()
-                ->title('📂 Filing Season is Now Open')
-                ->body('The administrator has opened the filing season. You may now edit and resubmit your SALN and PDS if they have been unlocked.')
-                ->icon('heroicon-o-lock-open')
-                ->iconColor('success')
-                ->actions([
-                    Action::make('viewSaln')
-                        ->label('View SALN')
-                        ->url('/hrms/salns'),
-                    Action::make('viewPds')
-                        ->label('View PDS')
-                        ->url('/hrms/pds'),
-                ])
-                ->sendToDatabase($employee);
+            $employee->notify(new \App\Notifications\FilingSeasonOpened());
         }
     }
 
@@ -125,17 +110,7 @@ class FilingSeasonService
         $employees = User::where('role', User::ROLE_REGULAR)->get();
 
         foreach ($employees as $employee) {
-            Notification::make()
-                ->title('🔒 Filing Season Has Closed')
-                ->body('The administrator has closed the filing season. SALN and PDS editing is no longer available until the next filing season.')
-                ->icon('heroicon-o-lock-closed')
-                ->iconColor('danger')
-                ->actions([
-                    Action::make('viewDocs')
-                        ->label('View My Documents')
-                        ->url('/hrms/salns'),
-                ])
-                ->sendToDatabase($employee);
+            $employee->notify(new \App\Notifications\FilingSeasonClosed());
         }
     }
 }

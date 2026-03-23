@@ -34,8 +34,8 @@ class EmployeeResource extends Resource
     protected static ?string $navigationLabel = 'Employees';
     protected static ?string $modelLabel = 'Employee';
     protected static ?string $pluralModelLabel = 'Employees';
-    protected static ?string $navigationGroup = 'System';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationGroup = 'People & Access';
+    protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
 
     /* ============================================================

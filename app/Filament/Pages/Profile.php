@@ -12,7 +12,7 @@ class Profile extends Page
     protected static string  $view            = 'filament.pages.profile';
     protected static ?string $navigationLabel = 'My Profile';
     protected static ?string $title           = 'My Profile';
-    protected static ?string $navigationGroup = 'System';
+    protected static ?string $navigationGroup = 'My Account';
     protected static ?int    $navigationSort  = 1;
 
     public bool $mustChangePassword = false;

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BiometricEmployeeMapping;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -9,112 +10,58 @@ use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /**
- * XlsLogParser  —  corrected edition
+ * XlsLogParser — with biometric mapping support
  *
  * ══════════════════════════════════════════════════════════════════════════════
- * THREE BUGS FIXED vs. THE PREVIOUS VERSION
+ * CHANGE LOG vs. PREVIOUS VERSION
  * ══════════════════════════════════════════════════════════════════════════════
  *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ BUG 1 (CRITICAL) — Off-by-one in column → day-of-month mapping         │
- * │                                                                         │
- * │ Root cause                                                               │
- * │   The inner loop that reads the spreadsheet into a PHP array uses a     │
- * │    0-based index ($c − 1, because PHP arrays are 0-based):              │
- * │     $row[] = $sheet->getCell(colLetter($c) . $r)->getValue();           │
- * │   Afterwards the code iterates `foreach ($punchRow as $colIdx => $val)` │
- * │   and sets `$dayNum = $colIdx`.  Since the first real column            │
- * │   (PhpSpreadsheet col A / index 1) ends up at PHP array key 0,         │
- * │   $dayNum = 0 everywhere, silently mapping every day to day 0.         │
- * │                                                                         │
- * │ What the XLS actually contains                                           │
- * │   The header row reads: col A = 1, col B = 2, … col AB = 28.           │
- * │   Punch data rows: col A (key 0 in PHP) = day 1, col B (key 1) = day 2 │
- * │   etc.  So the correct mapping is:                                       │
- * │     day_of_month = php_array_key + 1                                    │
- * │                                                                         │
- * │ Visible symptom in the screenshots                                       │
- * │   Every employee's time entries appeared one row too early (e.g.        │
- * │   Feb 2 data showed up on Feb 1, Feb 3 data on Feb 2, etc.), and       │
- * │   the last working day was missing entirely.                             │
- * │                                                                         │
- * │ Fix applied                                                              │
- * │   In parseLogsSheet():                                                   │
- * │     OLD: $dayNum = $colIdx;                                              │
- * │     NEW: $dayNum = $colIdx + 1;   // col A (key 0) = day 1             │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * ONLY ONE METHOD WAS MODIFIED: detectEmployees()
  *
  * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ BUG 2 — Wrong handling of 4-tap "adjacent duplicate" case               │
+ * │ NEW — Hybrid lookup in detectEmployees()                                │
  * │                                                                         │
- * │ Root cause                                                               │
- * │   The old assignSessions() had a special branch:                        │
- * │     if ($times[1] === $times[2])                                         │
- * │         → MI=$t[0], MO=$t[1], AI='', AO=$t[3]                          │
- * │   The idea was that a double-tap on the reader meant MO was recorded    │
- * │   twice and AI should be blank.                                          │
+ * │ Problem                                                                  │
+ * │   The XLS file uses simple device enrollment numbers (1, 2, 3…).       │
+ * │   ATI stores government plantilla IDs in users.employee_id              │
+ * │   (e.g. "OSEC-DAB-AGR-252-1998"). Direct comparison always fails.       │
  * │                                                                         │
- * │ What BioTime actually does                                               │
- * │   Cross-referencing the Logs raw data against the per-employee DTR      │
- * │   sheets (e.g. emp 1 "1.2.3" sheet, emp 2) confirms that BioTime       │
- * │   always uses positional assignment for 4 taps regardless of duplicates:│
- * │     MI=$t[0], MO=$t[1], AI=$t[2], AO=$t[3]                             │
- * │   Evidence: ['07:19','12:50','12:50','17:12'] → MI=07:19 MO=12:50      │
- * │             AI=12:50 AO=17:12  (AI kept even though it equals MO)       │
+ * │ Solution                                                                 │
+ * │   1. PRIMARY: query biometric_employee_mappings (is_active=true)        │
+ * │      keyed by device_id. If a mapping exists → use that user.           │
+ * │   2. FALLBACK: compare against users.employee_id directly (old logic).  │
+ * │      Preserved unchanged so existing setups using numeric employee_id   │
+ * │      values continue to work without any admin intervention.            │
+ * │   3. UNMATCHED: emit a Log::warning with device_id for debugging.       │
  * │                                                                         │
- * │ Fix applied                                                              │
- * │   The adjacent-duplicate branch is removed.  N=4 is always positional. │
+ * │ What did NOT change                                                      │
+ * │   • parseLogsSheet()      — unchanged                                   │
+ * │   • buildDtrRows()        — unchanged                                   │
+ * │   • assignSessions()      — unchanged (all 3 bug fixes retained)        │
+ * │   • parseAllEmployees()   — unchanged                                   │
+ * │   • parseForEmployee()    — unchanged                                   │
+ * │   • extractPeriod()       — unchanged                                   │
+ * │   • All private helpers   — unchanged                                   │
  * └─────────────────────────────────────────────────────────────────────────┘
  *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ BUG 3 — Wrong slot assignment for N ≥ 5 taps                            │
- * │                                                                         │
- * │ Root cause                                                               │
- * │   Old rule: MI=tap[0], MO=tap[1], AI=tap[2], AO=tap[last]              │
- * │   This assigns the second tap as MO and the third as AI regardless of   │
- * │   whether they are in the correct time zone.                             │
- * │                                                                         │
- * │ What BioTime actually does (verified from 1.2.3 sheet)                  │
- * │   Evidence case: ['06:30','12:03','12:05','12:40','16:31']              │
- * │   BioTime result: AM_in=06:30 AM_out=12:40 PM_in=12:05 PM_out=16:31   │
- * │   = MI=tap[0], AI=tap[N-3], MO=tap[N-2], AO=tap[N-1]                  │
- * │   For N=5: MI=tap[0], AI=tap[2], MO=tap[3], AO=tap[4]                  │
- * │                                                                         │
- * │ Fix applied                                                              │
- * │   N ≥ 5 now uses:                                                        │
- * │     MI = tap[0]                                                          │
- * │     AI = tap[N-3]   (second-to-second-last)                              │
- * │     MO = tap[N-2]   (second-to-last)                                    │
- * │     AO = tap[N-1]   (last)                                               │
- * └─────────────────────────────────────────────────────────────────────────┘
+ * ── REAL-WORLD DATA CONFIRMED FROM 001_2026_2_MON.xls ────────────────────────
+ * The uploaded XLS confirms:
+ *   Device No 1  → JENCARNACION  (REGULAR)
+ *   Device No 2  → R RUBIS       (REGULAR)
+ *   Device No 42 → OB DALAM      (REGULAR)
+ *   Device No 4  → M CASTRO      (JOB ORDER)
+ *   ... and 51 more employees with numeric device IDs 1–96
  *
- * ── FILE STRUCTURE ───────────────────────────────────────────────────────────
- * Sheet 0  "Summary"  – totals only (not used)
- * Sheet 1  "Logs"     – one employee block per 2 rows; punch times stored in
- *                       cells as newline-delimited strings, one column per
- *                       calendar day
+ * None of these numeric IDs will ever match a plantilla ID like
+ * "OSEC-DAB-AGR-252-1998" — hence this mapping table is required.
  *
- * Logs sheet block structure (repeats every 2 rows per employee):
- *   Row N    employee header: col[0]="No :", col[2]=emp_no, col[10]=name
- *   Row N+1  punch data:      cell value = newline-separated HH:MM times
- *                             PHP array key 0 = day 1, key 1 = day 2, …
- *
- * ── PUNCH-SLOT ASSIGNMENT RULES (corrected) ──────────────────────────────────
- *
+ * ── PUNCH-SLOT ASSIGNMENT RULES (unchanged) ──────────────────────────────────
  *  N = 0  → all empty (absence)
  *  N = 1  → MI=tap[0]
- *  N = 2  → time-zone disambiguation:
- *              Both AM  (≤ 12:30)  → MI=tap[0], MO=tap[1]
- *              Both PM  (> 12:30)  → MO=tap[0], AO=tap[1]   (PM-only shift)
- *              AM + PM             → MI=tap[0], AO=tap[1]   (full day, no mid-taps)
- *  N = 3  → positional: MI=tap[0], MO=tap[1], AI=tap[2]
- *  N = 4  → positional: MI=tap[0], MO=tap[1], AI=tap[2], AO=tap[3]
- *            (the old adjacent-duplicate exception has been removed — BioTime
- *             keeps all four slots regardless of repeated time values)
+ *  N = 2  → time-zone disambiguation (AM/PM/mixed)
+ *  N = 3  → positional: MI, MO, AI
+ *  N = 4  → positional: MI, MO, AI, AO
  *  N ≥ 5  → MI=tap[0], AI=tap[N-3], MO=tap[N-2], AO=tap[N-1]
- *
- * ── MATCHING STRATEGY ────────────────────────────────────────────────────────
- * XLS employee number ←→ users.employee_id  (trimmed-string comparison)
  */
 class XlsLogParser
 {
@@ -128,74 +75,125 @@ class XlsLogParser
     /**
      * Scan the XLS and return ONLY employees that exist in the users table.
      *
+     * ── LOOKUP ORDER ──────────────────────────────────────────────────────────
+     * 1. biometric_employee_mappings (is_active=true) — keyed by device_id
+     * 2. users.employee_id direct match (original fallback — DO NOT REMOVE)
+     *
+     * This hybrid approach means:
+     * • Admins who have set up mappings get correct matching immediately.
+     * • Existing setups where users.employee_id happens to store the biometric
+     *   number (numeric) continue to work without any migration effort.
+     * • Unmatched device IDs are logged as warnings — never silently dropped.
+     *
      * @param  string $filePath  Absolute path to the .xls / .xlsx file
      * @return Collection  keyed by users.id
      */
     public function detectEmployees(string $filePath): Collection
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees = $this->parseLogsSheet($spreadsheet);
+        $employees   = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
 
         Log::info('[XlsLogParser] detectEmployees — XLS employees found', [
             'count' => $employees->count(),
-            'ids' => $employees->keys()->values()->toArray(),
+            'ids'   => $employees->keys()->values()->toArray(),
         ]);
 
         if ($employees->isEmpty()) {
             return collect();
         }
 
+        // ── PRIMARY: load all active mappings keyed by device_id ──────────────
+        // Loaded once, outside the foreach, to avoid N+1 queries.
+        $mappingLookup = BiometricEmployeeMapping::active()
+            ->with('user')
+            ->get()
+            ->keyBy(fn($m) => trim((string) $m->device_id));
+
+        // ── FALLBACK: load DB users keyed by employee_id (original logic) ─────
+        // Kept intact so existing numeric employee_id setups are unaffected.
         $allDbUsers = User::whereIn('role', [User::ROLE_REGULAR, User::ROLE_JOB_ORDER])
             ->whereNotNull('employee_id')
             ->where('employee_id', '!=', '')
             ->get();
 
         Log::info('[XlsLogParser] DB employees loaded', [
-            'total' => $allDbUsers->count(),
-            'db_employee_ids' => $allDbUsers->pluck('employee_id', 'id')->toArray(),
+            'total'            => $allDbUsers->count(),
+            'active_mappings'  => $mappingLookup->count(),
+            'db_employee_ids'  => $allDbUsers->pluck('employee_id', 'id')->toArray(),
         ]);
 
         $dbLookup = $allDbUsers->keyBy(fn($u) => trim((string) $u->employee_id));
-        $matched = collect();
+        $matched  = collect();
 
         foreach ($employees as $xlsNo => $xlsData) {
             $trimmedNo = trim((string) $xlsNo);
-            $dbUser = $dbLookup->get($trimmedNo);
+            $dbUser    = null;
+            $source    = null;
 
+            // ── Step 1: Try the mapping table (primary) ───────────────────────
+            $mapping = $mappingLookup->get($trimmedNo);
+
+            if ($mapping && $mapping->user) {
+                $dbUser = $mapping->user;
+                $source = 'mapping_table';
+
+                Log::info('[XlsLogParser] Matched via mapping table', [
+                    'device_id'   => $trimmedNo,
+                    'xls_name'    => $xlsData['xls_name'],
+                    'user_id'     => $dbUser->id,
+                    'db_name'     => $dbUser->name,
+                    'device_name' => $mapping->device_name,
+                ]);
+            }
+
+            // ── Step 2: Fallback to users.employee_id (original logic) ────────
+            // DO NOT REMOVE — backward compatibility for setups where
+            // users.employee_id already stores the biometric device number.
             if (!$dbUser) {
-                Log::debug('[XlsLogParser] No DB match — skipped', [
-                    'xls_no' => $xlsNo,
-                    'xls_name' => $xlsData['xls_name'],
+                $dbUser = $dbLookup->get($trimmedNo);
+                $source = $dbUser ? 'employee_id_fallback' : null;
+
+                if ($dbUser) {
+                    Log::info('[XlsLogParser] Matched via employee_id fallback', [
+                        'device_id' => $trimmedNo,
+                        'xls_name'  => $xlsData['xls_name'],
+                        'user_id'   => $dbUser->id,
+                        'db_name'   => $dbUser->name,
+                    ]);
+                }
+            }
+
+            // ── Step 3: No match found — log warning, skip ───────────────────
+            if (!$dbUser) {
+                Log::warning('[DTR] No employee match for device ID — skipped', [
+                    'device_id' => $trimmedNo,
+                    'xls_name'  => $xlsData['xls_name'],
+                    'hint'      => 'Add a mapping in System → Biometric Mappings, or set users.employee_id to this device ID.',
                 ]);
                 continue;
             }
 
             $matched->put($dbUser->id, [
-                'user_id' => $dbUser->id,
-                'db_name' => $dbUser->name,
-                'employee_id' => trim((string) $dbUser->employee_id),
-                'xls_name' => $xlsData['xls_name'],
-                'department' => $xlsData['department'],
-                'days' => $xlsData['days'],
-                'day_count' => count($xlsData['days']),
-                'punch_count' => $xlsData['punch_count'],
-            ]);
-
-            Log::info('[XlsLogParser] Matched', [
-                'user_id' => $dbUser->id,
-                'db_name' => $dbUser->name,
-                'employee_id' => $dbUser->employee_id,
-                'days' => count($xlsData['days']),
-                'punches' => $xlsData['punch_count'],
+                'user_id'      => $dbUser->id,
+                'db_name'      => $dbUser->name,
+                'employee_id'  => trim((string) $dbUser->employee_id),
+                'xls_name'     => $xlsData['xls_name'],
+                'department'   => $xlsData['department'],
+                'days'         => $xlsData['days'],
+                'day_count'    => count($xlsData['days']),
+                'punch_count'  => $xlsData['punch_count'],
+                'match_source' => $source, // 'mapping_table' | 'employee_id_fallback'
             ]);
         }
 
         Log::info('[XlsLogParser] Match complete', [
-            'matched' => $matched->count(),
-            'skipped' => $employees->count() - $matched->count(),
+            'matched'            => $matched->count(),
+            'skipped'            => $employees->count() - $matched->count(),
+            'via_mapping'        => $matched->where('match_source', 'mapping_table')->count(),
+            'via_fallback'       => $matched->where('match_source', 'employee_id_fallback')->count(),
         ]);
 
         return $matched->sortBy('db_name')->values()->keyBy('user_id');
@@ -211,7 +209,7 @@ class XlsLogParser
     public function parseAllEmployees(string $filePath, string $period = ''): array
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees = $this->parseLogsSheet($spreadsheet);
+        $employees   = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
@@ -231,14 +229,14 @@ class XlsLogParser
      */
     public function parseForEmployee(string $filePath, int|string $employeeId, string $period = ''): array
     {
-        $spreadsheet = $this->loadSpreadsheet($filePath);
-        $employees = $this->parseLogsSheet($spreadsheet);
+        $spreadsheet  = $this->loadSpreadsheet($filePath);
+        $employees    = $this->parseLogsSheet($spreadsheet);
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet);
 
         $normalizedId = trim((string) $employeeId);
-        $xlsData = $employees->get($normalizedId);
+        $xlsData      = $employees->get($normalizedId);
 
         if (!$xlsData) {
             throw new \Exception("No attendance records found in XLS for Employee ID: {$employeeId}");
@@ -257,7 +255,7 @@ class XlsLogParser
     public function extractPeriod(string $filePath): string
     {
         $spreadsheet = $this->loadSpreadsheet($filePath);
-        $sheet = $this->getLogsSheet($spreadsheet);
+        $sheet       = $this->getLogsSheet($spreadsheet);
 
         $raw = trim((string) $sheet->getCell('C3')->getValue());
 
@@ -270,7 +268,7 @@ class XlsLogParser
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Private helpers
+    // Private helpers (ALL UNCHANGED from previous version)
     // ─────────────────────────────────────────────────────────────────────────
 
     private function loadSpreadsheet(string $filePath): \PhpOffice\PhpSpreadsheet\Spreadsheet
@@ -300,30 +298,19 @@ class XlsLogParser
     /**
      * Parse the entire Logs sheet into a Collection keyed by XLS employee number.
      *
-     * ── COLUMN → DAY MAPPING (BUG 1 FIX) ────────────────────────────────────
-     * The Logs sheet day-header row contains: col A = 1, col B = 2, … col AB = 28.
-     * Punch data is stored one column per calendar day, aligned with the headers.
+     * ── COLUMN → DAY MAPPING (BUG 1 FIX — retained) ──────────────────────────
+     * PHP array key 0 = column A = day 1 → day_of_month = colIdx + 1
      *
-     * When PhpSpreadsheet reads the sheet into a PHP array via the inner loop:
-     *   for ($c = 1; $c <= $maxColIdx; $c++) {
-     *       $row[] = $sheet->getCell(col($c) . $r)->getValue();
-     *   }
-     * the resulting PHP array is 0-based:
-     *   $row[0] = col A (PhpSpreadsheet col 1) = day 1
-     *   $row[1] = col B (PhpSpreadsheet col 2) = day 2
-     *   …
-     *
-     * Therefore the correct mapping is:
-     *   day_of_month = PHP_array_index + 1
-     *
-     * The old code used `$dayNum = $colIdx` (i.e. 0-based index = day number),
-     * which shifted every entry one day earlier than it should be.
+     * Confirmed against 001_2026_2_MON.xls:
+     *   Row 3 header: col[0]=1.0, col[1]=2.0, ... col[27]=28.0
+     *   Row 4 is employee header (No :, emp_no at col[2], name at col[10])
+     *   Row 5 is punch data (newline-separated HH:MM per cell)
      */
     private function parseLogsSheet(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet): Collection
     {
-        $sheet = $this->getLogsSheet($spreadsheet);
-        $maxRow = $sheet->getHighestRow();
-        $maxCol = $sheet->getHighestColumn();
+        $sheet     = $this->getLogsSheet($spreadsheet);
+        $maxRow    = $sheet->getHighestRow();
+        $maxCol    = $sheet->getHighestColumn();
         $maxColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($maxCol);
 
         // Read all cells into a plain PHP array (single pass for speed)
@@ -332,18 +319,18 @@ class XlsLogParser
             $row = [];
             for ($c = 1; $c <= $maxColIdx; $c++) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
-                $row[] = (string) $sheet->getCell($colLetter . $r)->getValue();
+                $row[]     = (string) $sheet->getCell($colLetter . $r)->getValue();
             }
             $data[] = $row;
         }
 
         // Extract year/month from period header (row 3, col C = index [2][2])
-        $periodStr = $data[2][2] ?? '';
+        $periodStr       = $data[2][2] ?? '';
         [$year, $month] = $this->parseYearMonth($periodStr);
 
         $employees = collect();
-        $i = 0;
-        $total = count($data);
+        $i         = 0;
+        $total     = count($data);
 
         while ($i < $total) {
             $row = $data[$i];
@@ -354,9 +341,10 @@ class XlsLogParser
             }
 
             // Employee header row
-            $xlsNo = trim($row[2] ?? '');
+            // Confirmed layout from real XLS: col[2]=device_no, col[10]=name, col[20]=dept
+            $xlsNo   = trim($row[2]  ?? '');
             $xlsName = trim($row[10] ?? '');
-            $dept = trim($row[20] ?? '');
+            $dept    = trim($row[20] ?? '');
 
             if ($xlsNo === '') {
                 $i++;
@@ -367,7 +355,7 @@ class XlsLogParser
             $punchRow = ($i + 1 < $total) ? $data[$i + 1] : [];
 
             $punchesByDay = [];
-            $punchCount = 0;
+            $punchCount   = 0;
 
             foreach ($punchRow as $colIdx => $cellValue) {
                 $cellValue = trim($cellValue);
@@ -376,10 +364,7 @@ class XlsLogParser
                     continue;
                 }
 
-                // ── BUG 1 FIX ────────────────────────────────────────────────
-                // PHP array is 0-based; col index 0 = column A = day 1.
-                // day_of_month = colIdx + 1
-                // ─────────────────────────────────────────────────────────────
+                // BUG 1 FIX: PHP array is 0-based; col index 0 = column A = day 1.
                 $dayNum = $colIdx + 1;
 
                 if ($dayNum < 1 || $dayNum > 31) {
@@ -399,18 +384,18 @@ class XlsLogParser
 
                 if (!empty($times)) {
                     $punchesByDay[$date] = $times;
-                    $punchCount += count($times);
+                    $punchCount         += count($times);
                 }
             }
 
             ksort($punchesByDay);
 
             $employees->put($xlsNo, [
-                'xls_no' => $xlsNo,
-                'xls_name' => $xlsName,
-                'department' => $dept,
-                'punch_count' => $punchCount,
-                'days' => array_keys($punchesByDay),
+                'xls_no'         => $xlsNo,
+                'xls_name'       => $xlsName,
+                'department'     => $dept,
+                'punch_count'    => $punchCount,
+                'days'           => array_keys($punchesByDay),
                 'punches_by_day' => $punchesByDay,
             ]);
 
@@ -434,17 +419,17 @@ class XlsLogParser
             $current = $startDate->copy();
 
             while ($current->lte($endDate)) {
-                $dateStr = $current->format('Y-m-d');
-                $punches = $xlsData['punches_by_day'][$dateStr] ?? [];
+                $dateStr  = $current->format('Y-m-d');
+                $punches  = $xlsData['punches_by_day'][$dateStr] ?? [];
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID' => $xlsData['xls_no'],
-                    'Name' => $xlsData['xls_name'],
-                    'Date' => $dateStr,
-                    'MorningIn' => $sessions['MorningIn'],
-                    'MorningOut' => $sessions['MorningOut'],
-                    'AfternoonIn' => $sessions['AfternoonIn'],
+                    'EmployeeID'   => $xlsData['xls_no'],
+                    'Name'         => $xlsData['xls_name'],
+                    'Date'         => $dateStr,
+                    'MorningIn'    => $sessions['MorningIn'],
+                    'MorningOut'   => $sessions['MorningOut'],
+                    'AfternoonIn'  => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
 
@@ -456,12 +441,12 @@ class XlsLogParser
                 $sessions = $this->assignSessions($punches);
 
                 $rows[] = [
-                    'EmployeeID' => $xlsData['xls_no'],
-                    'Name' => $xlsData['xls_name'],
-                    'Date' => $dateStr,
-                    'MorningIn' => $sessions['MorningIn'],
-                    'MorningOut' => $sessions['MorningOut'],
-                    'AfternoonIn' => $sessions['AfternoonIn'],
+                    'EmployeeID'   => $xlsData['xls_no'],
+                    'Name'         => $xlsData['xls_name'],
+                    'Date'         => $dateStr,
+                    'MorningIn'    => $sessions['MorningIn'],
+                    'MorningOut'   => $sessions['MorningOut'],
+                    'AfternoonIn'  => $sessions['AfternoonIn'],
                     'AfternoonOut' => $sessions['AfternoonOut'],
                 ];
             }
@@ -471,34 +456,8 @@ class XlsLogParser
     }
 
     /**
-     * Assign a list of raw ZKTeco punch times to the four DTR slots.
-     *
-     * ── CORRECTED ALGORITHM ───────────────────────────────────────────────────
-     *
-     *   N = 0  → all empty (absence)
-     *
-     *   N = 1  → MorningIn only
-     *
-     *   N = 2  → time-zone disambiguation:
-     *     Both AM  (≤ 12:30)  → MI, MO
-     *     Both PM  (> 12:30)  → MO, AO          (afternoon-only shift)
-     *     AM + PM  (gap)      → MI, AO           (full day, no mid-day taps)
-     *
-     *   N = 3  → positional: MI=tap[0], MO=tap[1], AI=tap[2]
-     *
-     *   N = 4  → positional: MI=tap[0], MO=tap[1], AI=tap[2], AO=tap[3]
-     *     NOTE: The old "adjacent duplicate" exception (blanking AI when
-     *     tap[1]==tap[2]) has been removed. BioTime keeps all four slots
-     *     regardless of repeated values — verified against the 1.2.3 sheet.
-     *
-     *   N ≥ 5  → MI=tap[0], AI=tap[N-3], MO=tap[N-2], AO=tap[N-1]
-     *     Rationale: BioTime anchors the outer taps (first = MI, last = AO)
-     *     and the inner-last two become MO and AI respectively, discarding
-     *     intermediate "noise" taps in the middle.
-     *     Evidence: ['06:30','12:03','12:05','12:40','16:31']
-     *       → MI=06:30, AI=12:05, MO=12:40, AO=16:31
-     *       = tap[0], tap[2], tap[3], tap[4]
-     *       = tap[0], tap[N-3], tap[N-2], tap[N-1]  (N=5)
+     * Assign punch times to DTR slots.
+     * Algorithm unchanged — all three bug fixes retained.
      *
      * @param  string[] $times  Chronologically sorted HH:MM strings
      * @return array   ['MorningIn'=>..., 'MorningOut'=>..., 'AfternoonIn'=>..., 'AfternoonOut'=>...]
@@ -506,7 +465,7 @@ class XlsLogParser
     private function assignSessions(array $times): array
     {
         $mi = $mo = $ai = $ao = '';
-        $n = count($times);
+        $n  = count($times);
 
         if ($n === 0) {
             // No punches — absence day
@@ -519,50 +478,31 @@ class XlsLogParser
             $m1 = $this->toMinutes($times[1]);
 
             if ($m0 <= self::NOON_MINUTES && $m1 <= self::NOON_MINUTES) {
-                // Both morning: MI + MO
                 $mi = $times[0];
                 $mo = $times[1];
             } elseif ($m0 > self::NOON_MINUTES && $m1 > self::NOON_MINUTES) {
-                // Both afternoon: AI + AO (employee present in PM session only)
+                // BUG 3 FIX: both PM → AI + AO, not MO + AO
                 $ai = $times[0];
                 $ao = $times[1];
             } else {
-                // One AM + one PM: MI + AO (full day, no mid-day taps recorded)
                 $mi = $times[0];
                 $ao = $times[1];
             }
 
         } elseif ($n === 3) {
-            // Positional: MI, MO, AI
             $mi = $times[0];
             $mo = $times[1];
             $ai = $times[2];
 
         } elseif ($n === 4) {
-            // ── BUG 2 FIX ─────────────────────────────────────────────────────
-            // Always positional for 4 taps.
-            // The old adjacent-duplicate exception blanked AI when tap[1]==tap[2],
-            // but BioTime keeps all four slots (verified from 1.2.3 reference sheet).
-            // ──────────────────────────────────────────────────────────────────
+            // BUG 2 FIX: always positional, no adjacent-duplicate exception
             $mi = $times[0];
             $mo = $times[1];
             $ai = $times[2];
             $ao = $times[3];
 
         } else {
-            // N ≥ 5
-            // ── BUG 3 FIX ─────────────────────────────────────────────────────
-            // Old rule: MI=tap[0], MO=tap[1], AI=tap[2], AO=tap[last]
-            //   → wrong: MO was assigned to tap[1] which may be a noon-area tap,
-            //     not the true end-of-morning punch.
-            // Correct rule (verified against BioTime 1.2.3 reference sheet):
-            //   MI = tap[0]         (first punch = arrival)
-            //   AI = tap[N-3]       (second-to-second-last = afternoon arrival)
-            //   MO = tap[N-2]       (second-to-last = end of morning)
-            //   AO = tap[N-1]       (last punch = end of day)
-            // Evidence: N=5 ['06:30','12:03','12:05','12:40','16:31']
-            //   → MI=tap[0]=06:30, AI=tap[2]=12:05, MO=tap[3]=12:40, AO=tap[4]=16:31
-            // ──────────────────────────────────────────────────────────────────
+            // N ≥ 5 — BUG 3 FIX
             $mi = $times[0];
             $ai = $times[$n - 3];
             $mo = $times[$n - 2];
@@ -570,16 +510,15 @@ class XlsLogParser
         }
 
         return [
-            'MorningIn' => $mi,
-            'MorningOut' => $mo,
-            'AfternoonIn' => $ai,
+            'MorningIn'    => $mi,
+            'MorningOut'   => $mo,
+            'AfternoonIn'  => $ai,
             'AfternoonOut' => $ao,
         ];
     }
 
     /**
-     * Parse year and month from a period string like "2026/02/01 ~ 02/28".
-     * Returns [year, month] as integers; defaults to current year/month if unparseable.
+     * Parse year and month from "2026/02/01 ~ 02/28".
      */
     private function parseYearMonth(string $period): array
     {
@@ -592,19 +531,15 @@ class XlsLogParser
 
     /**
      * Parse start and end Carbon instances from a period string.
-     * Returns [Carbon, Carbon] on success, [null, null] if unparseable.
-     *
-     * Supported format: "2026/02/01 ~ 02/28"
      */
     private function parsePeriodRange(string $period): array
     {
         if (preg_match('/(\d{4})\/(\d{2})\/(\d{2})\s*~\s*(\d{2})\/(\d{2})/', $period, $m)) {
-            $year = (int) $m[1];
+            $year  = (int) $m[1];
             $start = Carbon::createFromDate($year, (int) $m[2], (int) $m[3]);
-            $end = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
+            $end   = Carbon::createFromDate($year, (int) $m[4], (int) $m[5]);
 
-            // Cross-year period guard (e.g. "2025/12/16 ~ 01/15"):
-            // if end precedes start, the period wraps into the next year.
+            // Cross-year period guard
             if ($end->lt($start)) {
                 $end->addYear();
             }

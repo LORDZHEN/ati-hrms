@@ -20,7 +20,7 @@ class AnnouncementResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
     protected static ?string $slug = 'announcements';
     protected static ?string $navigationGroup = 'System';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 1;
 
     /* ============================================================
        ACCESS CONTROL

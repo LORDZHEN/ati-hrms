@@ -614,7 +614,7 @@ class SalnResource extends Resource
                 ->falseIcon('heroicon-o-lock-closed')
                 ->trueColor('success')
                 ->falseColor('danger')
-                ->formatStateUsing(fn($state, $record) => $record?->status === 'approved' ? $state : null)
+                ->getStateUsing(fn($record) => $record?->status === 'approved' ? $record->editing_unlocked : null)
                 ->tooltip(fn($record) => match (true) {
                     $record?->status !== 'approved' => null,
                     $record->editing_unlocked => 'Editing Unlocked',

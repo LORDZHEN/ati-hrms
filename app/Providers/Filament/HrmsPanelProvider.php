@@ -40,28 +40,33 @@ class HrmsPanelProvider extends PanelProvider
                 'gray' => Color::hex('#4a5568'),
             ])
 
-            // ── FIX: Register ALL navigation groups used across pages/resources ──
-            // The order here controls the order they appear in the sidebar.
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('System')
+                    ->label('Documents')
+                    ->icon('heroicon-o-folder-open')
                     ->collapsible(),
                 NavigationGroup::make()
-                    ->label('Documents')
+                    ->label('People & Access')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsible(),
+                NavigationGroup::make()
+                    ->label('System')
+                    ->icon('heroicon-o-cog-6-tooth')
                     ->collapsible(),
                 NavigationGroup::make()
                     ->label('My Account')
+                    ->icon('heroicon-o-user-circle')
                     ->collapsible(),
             ])
 
             ->sidebarCollapsibleOnDesktop()
             ->globalSearch(false)
 
-            // ── Inject CSS for user info dark/light mode ──
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn(): HtmlString => new HtmlString('
                 <style>
+                    /* ── User info widget ───────────────────────────────────── */
                     .hrms-user-info {
                         display: flex;
                         flex-direction: column;
@@ -70,7 +75,6 @@ class HrmsPanelProvider extends PanelProvider
                         padding-right: 0.5rem;
                         line-height: 1.3;
                     }
-
                     span.hrms-user-name,
                     div.hrms-user-info span.hrms-user-name {
                         font-size: 0.875rem !important;
@@ -81,7 +85,6 @@ class HrmsPanelProvider extends PanelProvider
                         text-shadow: none !important;
                         -webkit-text-fill-color: #111827 !important;
                     }
-
                     span.hrms-user-role,
                     div.hrms-user-info span.hrms-user-role {
                         font-size: 0.6875rem !important;
@@ -93,23 +96,58 @@ class HrmsPanelProvider extends PanelProvider
                         opacity: 1 !important;
                         -webkit-text-fill-color: #16a34a !important;
                     }
-
                     html.dark span.hrms-user-name,
                     html.dark div.hrms-user-info span.hrms-user-name {
                         color: #f1f5f9 !important;
                         -webkit-text-fill-color: #f1f5f9 !important;
                     }
-
                     html.dark span.hrms-user-role,
                     html.dark div.hrms-user-info span.hrms-user-role {
                         color: #4ade80 !important;
                         -webkit-text-fill-color: #4ade80 !important;
                     }
+
+                    /* ── FIX: Restore icons on grouped sidebar items ─────────── */
+
+                    /* Show the icon element that Filament hides inside groups */
+                    .fi-sidebar-nav .fi-sidebar-group .fi-sidebar-item-icon,
+                    nav .fi-sidebar-group li a .fi-sidebar-item-icon {
+                        display: flex !important;
+                        flex-shrink: 0 !important;
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                        width: 1.25rem !important;
+                        height: 1.25rem !important;
+                    }
+
+                    /* Show the SVG icon inside the wrapper */
+                    .fi-sidebar-group .fi-sidebar-item-icon svg {
+                        display: block !important;
+                        width: 1.25rem !important;
+                        height: 1.25rem !important;
+                        opacity: 1 !important;
+                    }
+
+                    /* Hide the bullet dot replacement */
+                    .fi-sidebar-group li > a > span.fi-sidebar-item-bullet,
+                    .fi-sidebar-group [class~="fi-sidebar-item-bullet"] {
+                        display: none !important;
+                    }
+
+                    /* Keep consistent spacing with icon restored */
+                    .fi-sidebar-group .fi-sidebar-item-label {
+                        margin-left: 0.25rem;
+                    }
+
+                    /* In fully-collapsed state, keep icons centred */
+                    .fi-sidebar-nav[data-collapsed] .fi-sidebar-group .fi-sidebar-item-icon,
+                    .fi-sidebar[data-collapsed="true"] .fi-sidebar-group .fi-sidebar-item-icon {
+                        margin-inline: auto !important;
+                    }
                 </style>
-            ')
+                ')
             )
 
-            // ── User name stacked over role, displayed beside the avatar ──
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn(): HtmlString => new HtmlString(

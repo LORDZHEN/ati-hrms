@@ -22,7 +22,7 @@ class TransactionHistoryResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationLabel = 'Transaction History';
     protected static ?string $navigationGroup = 'System';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 3;
     protected static ?string $slug = 'transaction-histories';
 
     protected static ?string $modelLabel = 'Transaction';
