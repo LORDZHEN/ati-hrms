@@ -470,6 +470,7 @@ class PersonalDataSheetResource extends Resource
     protected static function getTableColumns(bool $isAdmin): array
     {
         return [
+            // ── 1. Employee (mirrors SALN: bold, primary icon, searchable) ─────
             Tables\Columns\TextColumn::make('full_name')
                 ->label('Employee')
                 ->getStateUsing(fn($record) => self::getFullName($record))
@@ -477,26 +478,54 @@ class PersonalDataSheetResource extends Resource
                 ->sortable()
                 ->weight(FontWeight::Bold)
                 ->icon('heroicon-o-user-circle')
-                ->iconColor('primary'),
-
-            Tables\Columns\TextColumn::make('email')
-                ->label('Email')
-                ->icon('heroicon-o-envelope')
                 ->iconColor('primary')
-                ->copyable()
-                ->copyMessage('Email copied!')
-                ->placeholder('No email')
-                ->toggleable(isToggledHiddenByDefault: true),
+                ->visible($isAdmin),
 
-            Tables\Columns\TextColumn::make('mobile')
-                ->label('Mobile')
-                ->icon('heroicon-o-phone')
-                ->iconColor('success')
-                ->copyable()
-                ->copyMessage('Mobile copied!')
-                ->placeholder('No mobile')
-                ->toggleable(isToggledHiddenByDefault: true),
+            // ── 2. Status (mirrors SALN: badge with icons per state) ──────────
+            Tables\Columns\TextColumn::make('status')
+                ->label('Status')
+                ->badge()
+                ->sortable()
+                ->formatStateUsing(fn(string $state): string => ucfirst($state))
+                ->color(fn(string $state) => match ($state) {
+                    'approved' => 'success',
+                    'disapproved' => 'danger',
+                    'submitted' => 'warning',
+                    default => 'gray',
+                })
+                ->icon(fn(string $state) => match ($state) {
+                    'approved' => 'heroicon-o-check-circle',
+                    'disapproved' => 'heroicon-o-x-circle',
+                    'submitted' => 'heroicon-o-clock',
+                    default => null,
+                }),
 
+            // ── 3. Edit Lock (NEW — mirrors SALN exactly) ─────────────────────
+            //    • Only shown to admins (visible($isAdmin))
+            //    • Only renders an icon when status === 'approved'; null otherwise
+            //      so non-approved rows show a blank cell, not a misleading icon
+            //    • trueIcon/falseIcon + trueColor/falseColor replicate SALN style
+            //    • tooltip gives quick context on hover
+            Tables\Columns\IconColumn::make('editing_unlocked')
+                ->label('Edit Lock')
+                ->boolean()
+                ->trueIcon('heroicon-o-lock-open')
+                ->falseIcon('heroicon-o-lock-closed')
+                ->trueColor('success')
+                ->falseColor('danger')
+                ->getStateUsing(
+                    fn($record) => $record?->status === 'approved'
+                    ? $record->editing_unlocked
+                    : null                          // null → blank cell for non-approved rows
+                )
+                ->tooltip(fn($record) => match (true) {
+                    $record?->status !== 'approved' => null,
+                    $record->editing_unlocked => 'Editing Unlocked',
+                    default => 'Editing Locked',
+                })
+                ->visible($isAdmin),
+
+            // ── 4. Completion (PDS-specific, kept with SALN badge conventions) ─
             Tables\Columns\TextColumn::make('completion_rate')
                 ->label('Completion')
                 ->getStateUsing(fn($record) => self::calculateCompletionRate($record))
@@ -513,35 +542,7 @@ class PersonalDataSheetResource extends Resource
                     default => 'heroicon-o-x-circle',
                 }),
 
-            Tables\Columns\TextColumn::make('status')
-                ->label('Status')
-                ->badge()
-                ->sortable()
-                ->color(fn(string $state) => match ($state) {
-                    'submitted' => 'warning',
-                    'approved' => 'success',
-                    'disapproved' => 'danger',
-                    default => 'gray',
-                })
-                ->icon(fn(string $state) => match ($state) {
-                    'submitted' => 'heroicon-m-clock',
-                    'approved' => 'heroicon-m-check-circle',
-                    'disapproved' => 'heroicon-m-x-circle',
-                    default => null,
-                })
-                ->formatStateUsing(fn(string $state): string => ucfirst($state)),
-
-            // Lock status indicator (admin only, approved records)
-            Tables\Columns\IconColumn::make('editing_unlocked')
-                ->label('Edit Lock')
-                ->boolean()
-                ->trueIcon('heroicon-o-lock-open')
-                ->falseIcon('heroicon-o-lock-closed')
-                ->trueColor('success')
-                ->falseColor('danger')
-                ->tooltip(fn($record) => $record->editing_unlocked ? 'Editing Unlocked' : 'Editing Locked')
-                ->visible(fn($record) => $isAdmin && $record?->status === 'approved'),
-
+            // ── 5. Last Submitted (mirrors SALN's "Filed": since + tooltip) ────
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Last Submitted')
                 ->since()
@@ -551,6 +552,27 @@ class PersonalDataSheetResource extends Resource
                 ->icon('heroicon-o-paper-airplane')
                 ->iconColor('gray'),
 
+            // ── 6. Email (hidden by default, unchanged) ───────────────────────
+            Tables\Columns\TextColumn::make('email')
+                ->label('Email')
+                ->icon('heroicon-o-envelope')
+                ->iconColor('primary')
+                ->copyable()
+                ->copyMessage('Email copied!')
+                ->placeholder('No email')
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            // ── 7. Mobile (hidden by default, unchanged) ──────────────────────
+            Tables\Columns\TextColumn::make('mobile')
+                ->label('Mobile')
+                ->icon('heroicon-o-phone')
+                ->iconColor('success')
+                ->copyable()
+                ->copyMessage('Mobile copied!')
+                ->placeholder('No mobile')
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            // ── 8. Remarks (mirrors SALN: warning color + chat icon when set) ──
             Tables\Columns\TextColumn::make('remarks')
                 ->label('Remarks')
                 ->limit(50)
